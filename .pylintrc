@@ -1,0 +1,7 @@
+[MESSAGES CONTROL]
+disable = too-many-ancestors,
+          too-few-public-methods,
+          invalid-name,
+          unused-argument,
+          redefined-outer-name,
+          useless-super-delegation,
