@@ -1,2 +1,7 @@
 docs/* linguist-documentation
 notebooks/* linguist-vendored
+pypi-distrib-archives.bat -linguist-detectable
+pypi-distrib-upload.bat -linguist-detectable
+run-jupyter-notebook.bat -linguist-detectable
+run-mypy.bat -linguist-detectable
+run-pdoc.bat -linguist-detectable
