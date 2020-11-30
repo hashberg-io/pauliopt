@@ -6,7 +6,6 @@ setuptools.setup(
     name="pauliopt",
     version="0.0.0",
     author="y-richie-y, sg495",
-    author_email="y-richie-y@users.noreply.github.com",
     description="A Python library to simplify quantum circuits of Pauli gadgets.",
     url="https://github.com/sg495/pauliopt",
     packages=setuptools.find_packages(exclude=["test"]),
@@ -20,5 +19,8 @@ setuptools.setup(
     package_data={"": [],
                   "pauliopt": ["pauliopt/py.typed"],
                  },
-    include_package_data=True
+    include_package_data=True,
+    install_requires=[
+        "numpy",
+    ],
 )
