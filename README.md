@@ -3,7 +3,7 @@
 [![Checked with Mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](https://github.com/python/mypy)
 [![PyPI version shields.io](https://img.shields.io/pypi/v/pauliopt.svg)](https://pypi.python.org/pypi/pauliopt/)
 [![PyPI status](https://img.shields.io/pypi/status/pauliopt.svg)](https://pypi.python.org/pypi/payliopt/)
-
+[![Generic badge](https://img.shields.io/badge/supported%20by-Hashberg-blue)](https://hashberg.io/)
 
 PauliOpt is a Python library to simplify quantum circuits composed of phase and Pauli gadgets.
 
