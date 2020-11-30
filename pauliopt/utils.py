@@ -8,50 +8,48 @@ from fractions import Fraction
 from typing import (Final, List, Literal, Optional, overload,
                     Protocol,runtime_checkable, Sequence, Tuple, TypeVar, Union)
 
-ZX = Literal["Z", "X"]
-"""
-    Literal type alias for the Z and X bases.
-"""
-
-Z: Final[ZX] = "Z"
-"""
-    Literal value for the Z basis.
-"""
-
-X: Final[ZX] = "X"
-"""
-    Literal value for the X basis.
-"""
-
-ZXY = Literal["Z", "X", "Y"]
-"""
-    Literal type alias for the Z, X and Y bases.
-"""
-
-Y: Final[ZXY] = "Y"
-"""
-    Literal value for the Y basis.
-"""
-
-
 AngleT = TypeVar("AngleT", bound="AngleProtocol")
 """
     Type variable for something fitting the `AngleProtocol` protocol below.
 """
 
 @runtime_checkable
-class AngleProtocol(Protocol):
+class AngleProtocol(Protocol[AngleT]):
     """
         A protocol for an angle type.
+
+        Copyright (C) 2019 - Hashberg Ltd
     """
 
     def __neg__(self: AngleT) -> AngleT:
         ...
 
+    def __pos__(self) -> AngleT:
+        ...
 
-CircleInitT = Union[int, Fraction, Decimal, str]
+    def __add__(self, other: AngleT) -> AngleT:
+        ...
 
-class Angle:
+    def __sub__(self, other: AngleT) -> AngleT:
+        ...
+
+    def __mul__(self, other: Union[int, Fraction]) -> AngleT:
+        ...
+
+    def __rmul__(self, other: Union[int, Fraction]) -> AngleT:
+        ...
+
+    def __truediv__(self, other: Union[int, Fraction]) -> AngleT:
+        ...
+
+    def __float__(self) -> float:
+        ...
+
+
+
+AngleInitT = Union[int, Fraction, Decimal, str]
+
+class Angle(AngleProtocol["Angle"]):
     """
         A container class for angles,
         as rational multiples of PI modulo 2PI.
@@ -61,7 +59,7 @@ class Angle:
 
     _value: Fraction
 
-    def __init__(self, theta: Union["Angle", CircleInitT]):
+    def __init__(self, theta: Union["Angle", AngleInitT]):
         if isinstance(theta, Angle):
             self._value = theta.value
         else:
@@ -237,6 +235,9 @@ Angle.pi = Angle(1) # type: ignore
 
 
 pi: Final[Angle] = Angle.pi
+""" Constant for `Angle.pi`. """
+
+π: Final[Angle] = Angle.pi
 """ Constant for `Angle.pi`. """
 
 

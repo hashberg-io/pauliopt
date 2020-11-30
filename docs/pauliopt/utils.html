@@ -38,50 +38,48 @@ from fractions import Fraction
 from typing import (Final, List, Literal, Optional, overload,
                     Protocol,runtime_checkable, Sequence, Tuple, TypeVar, Union)
 
-ZX = Literal[&#34;Z&#34;, &#34;X&#34;]
-&#34;&#34;&#34;
-    Literal type alias for the Z and X bases.
-&#34;&#34;&#34;
-
-Z: Final[ZX] = &#34;Z&#34;
-&#34;&#34;&#34;
-    Literal value for the Z basis.
-&#34;&#34;&#34;
-
-X: Final[ZX] = &#34;X&#34;
-&#34;&#34;&#34;
-    Literal value for the X basis.
-&#34;&#34;&#34;
-
-ZXY = Literal[&#34;Z&#34;, &#34;X&#34;, &#34;Y&#34;]
-&#34;&#34;&#34;
-    Literal type alias for the Z, X and Y bases.
-&#34;&#34;&#34;
-
-Y: Final[ZXY] = &#34;Y&#34;
-&#34;&#34;&#34;
-    Literal value for the Y basis.
-&#34;&#34;&#34;
-
-
 AngleT = TypeVar(&#34;AngleT&#34;, bound=&#34;AngleProtocol&#34;)
 &#34;&#34;&#34;
     Type variable for something fitting the `AngleProtocol` protocol below.
 &#34;&#34;&#34;
 
 @runtime_checkable
-class AngleProtocol(Protocol):
+class AngleProtocol(Protocol[AngleT]):
     &#34;&#34;&#34;
         A protocol for an angle type.
+
+        Copyright (C) 2019 - Hashberg Ltd
     &#34;&#34;&#34;
 
     def __neg__(self: AngleT) -&gt; AngleT:
         ...
 
+    def __pos__(self) -&gt; AngleT:
+        ...
 
-CircleInitT = Union[int, Fraction, Decimal, str]
+    def __add__(self, other: AngleT) -&gt; AngleT:
+        ...
 
-class Angle:
+    def __sub__(self, other: AngleT) -&gt; AngleT:
+        ...
+
+    def __mul__(self, other: Union[int, Fraction]) -&gt; AngleT:
+        ...
+
+    def __rmul__(self, other: Union[int, Fraction]) -&gt; AngleT:
+        ...
+
+    def __truediv__(self, other: Union[int, Fraction]) -&gt; AngleT:
+        ...
+
+    def __float__(self) -&gt; float:
+        ...
+
+
+
+AngleInitT = Union[int, Fraction, Decimal, str]
+
+class Angle(AngleProtocol[&#34;Angle&#34;]):
     &#34;&#34;&#34;
         A container class for angles,
         as rational multiples of PI modulo 2PI.
@@ -91,7 +89,7 @@ class Angle:
 
     _value: Fraction
 
-    def __init__(self, theta: Union[&#34;Angle&#34;, CircleInitT]):
+    def __init__(self, theta: Union[&#34;Angle&#34;, AngleInitT]):
         if isinstance(theta, Angle):
             self._value = theta.value
         else:
@@ -267,6 +265,9 @@ Angle.pi = Angle(1) # type: ignore
 
 
 pi: Final[Angle] = Angle.pi
+&#34;&#34;&#34; Constant for `Angle.pi`. &#34;&#34;&#34;
+
+π: Final[Angle] = Angle.pi
 &#34;&#34;&#34; Constant for `Angle.pi`. &#34;&#34;&#34;
 
 
@@ -446,27 +447,11 @@ def log_temp_schedule(t_init: Number, t_final: Number) -&gt; TempSchedule:
 <dd>
 <div class="desc"><p>Type variable for something fitting the <code><a title="pauliopt.utils.AngleProtocol" href="#pauliopt.utils.AngleProtocol">AngleProtocol</a></code> protocol below.</p></div>
 </dd>
-<dt id="pauliopt.utils.X"><code class="name">var <span class="ident">X</span> : Final[Literal['<a title="pauliopt.utils.Z" href="#pauliopt.utils.Z">Z</a>', '<a title="pauliopt.utils.X" href="#pauliopt.utils.X">X</a>']]</code></dt>
-<dd>
-<div class="desc"><p>Literal value for the X basis.</p></div>
-</dd>
-<dt id="pauliopt.utils.Y"><code class="name">var <span class="ident">Y</span> : Final[Literal['<a title="pauliopt.utils.Z" href="#pauliopt.utils.Z">Z</a>', '<a title="pauliopt.utils.X" href="#pauliopt.utils.X">X</a>', '<a title="pauliopt.utils.Y" href="#pauliopt.utils.Y">Y</a>']]</code></dt>
-<dd>
-<div class="desc"><p>Literal value for the Y basis.</p></div>
-</dd>
-<dt id="pauliopt.utils.Z"><code class="name">var <span class="ident">Z</span> : Final[Literal['<a title="pauliopt.utils.Z" href="#pauliopt.utils.Z">Z</a>', '<a title="pauliopt.utils.X" href="#pauliopt.utils.X">X</a>']]</code></dt>
-<dd>
-<div class="desc"><p>Literal value for the Z basis.</p></div>
-</dd>
-<dt id="pauliopt.utils.ZX"><code class="name">var <span class="ident">ZX</span></code></dt>
-<dd>
-<div class="desc"><p>Literal type alias for the Z and X bases.</p></div>
-</dd>
-<dt id="pauliopt.utils.ZXY"><code class="name">var <span class="ident">ZXY</span></code></dt>
-<dd>
-<div class="desc"><p>Literal type alias for the Z, X and Y bases.</p></div>
-</dd>
 <dt id="pauliopt.utils.pi"><code class="name">var <span class="ident">pi</span> : Final[<a title="pauliopt.utils.Angle" href="#pauliopt.utils.Angle">Angle</a>]</code></dt>
+<dd>
+<div class="desc"><p>Constant for <code><a title="pauliopt.utils.Angle.pi" href="#pauliopt.utils.Angle.pi">Angle.pi</a></code>.</p></div>
+</dd>
+<dt id="pauliopt.utils.π"><code class="name">var <span class="ident">π</span> : Final[<a title="pauliopt.utils.Angle" href="#pauliopt.utils.Angle">Angle</a>]</code></dt>
 <dd>
 <div class="desc"><p>Constant for <code><a title="pauliopt.utils.Angle.pi" href="#pauliopt.utils.Angle.pi">Angle.pi</a></code>.</p></div>
 </dd>
@@ -592,7 +577,7 @@ as rational multiples of PI modulo 2PI.</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class Angle:
+<pre><code class="python">class Angle(AngleProtocol[&#34;Angle&#34;]):
     &#34;&#34;&#34;
         A container class for angles,
         as rational multiples of PI modulo 2PI.
@@ -602,7 +587,7 @@ as rational multiples of PI modulo 2PI.</p>
 
     _value: Fraction
 
-    def __init__(self, theta: Union[&#34;Angle&#34;, CircleInitT]):
+    def __init__(self, theta: Union[&#34;Angle&#34;, AngleInitT]):
         if isinstance(theta, Angle):
             self._value = theta.value
         else:
@@ -772,6 +757,12 @@ as rational multiples of PI modulo 2PI.</p>
     pi: Final[&#34;Angle&#34;] # type: ignore
     &#34;&#34;&#34; A constant for the angle pi. &#34;&#34;&#34;</code></pre>
 </details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="pauliopt.utils.AngleProtocol" href="#pauliopt.utils.AngleProtocol">AngleProtocol</a></li>
+<li>typing.Protocol</li>
+<li>typing.Generic</li>
+</ul>
 <h3>Class variables</h3>
 <dl>
 <dt id="pauliopt.utils.Angle.pi"><code class="name">var <span class="ident">pi</span> : Final[<a title="pauliopt.utils.Angle" href="#pauliopt.utils.Angle">Angle</a>]</code></dt>
@@ -914,23 +905,51 @@ def value(self) -&gt; Fraction:
 <span>(</span><span>*args, **kwargs)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>A protocol for an angle type.</p></div>
+<div class="desc"><p>A protocol for an angle type.</p>
+<p>Copyright (C) 2019 - Hashberg Ltd</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class AngleProtocol(Protocol):
+<pre><code class="python">class AngleProtocol(Protocol[AngleT]):
     &#34;&#34;&#34;
         A protocol for an angle type.
+
+        Copyright (C) 2019 - Hashberg Ltd
     &#34;&#34;&#34;
 
     def __neg__(self: AngleT) -&gt; AngleT:
+        ...
+
+    def __pos__(self) -&gt; AngleT:
+        ...
+
+    def __add__(self, other: AngleT) -&gt; AngleT:
+        ...
+
+    def __sub__(self, other: AngleT) -&gt; AngleT:
+        ...
+
+    def __mul__(self, other: Union[int, Fraction]) -&gt; AngleT:
+        ...
+
+    def __rmul__(self, other: Union[int, Fraction]) -&gt; AngleT:
+        ...
+
+    def __truediv__(self, other: Union[int, Fraction]) -&gt; AngleT:
+        ...
+
+    def __float__(self) -&gt; float:
         ...</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li>typing.Protocol</li>
 <li>typing.Generic</li>
+</ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="pauliopt.utils.Angle" href="#pauliopt.utils.Angle">Angle</a></li>
 </ul>
 </dd>
 <dt id="pauliopt.utils.SVGBuilder"><code class="flex name class">
@@ -1199,14 +1218,10 @@ The temperature is a <code>number</code> computed from the iteration number <cod
 </ul>
 </li>
 <li><h3><a href="#header-variables">Global variables</a></h3>
-<ul class="two-column">
+<ul class="">
 <li><code><a title="pauliopt.utils.AngleT" href="#pauliopt.utils.AngleT">AngleT</a></code></li>
-<li><code><a title="pauliopt.utils.X" href="#pauliopt.utils.X">X</a></code></li>
-<li><code><a title="pauliopt.utils.Y" href="#pauliopt.utils.Y">Y</a></code></li>
-<li><code><a title="pauliopt.utils.Z" href="#pauliopt.utils.Z">Z</a></code></li>
-<li><code><a title="pauliopt.utils.ZX" href="#pauliopt.utils.ZX">ZX</a></code></li>
-<li><code><a title="pauliopt.utils.ZXY" href="#pauliopt.utils.ZXY">ZXY</a></code></li>
 <li><code><a title="pauliopt.utils.pi" href="#pauliopt.utils.pi">pi</a></code></li>
+<li><code><a title="pauliopt.utils.π" href="#pauliopt.utils.π">π</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>

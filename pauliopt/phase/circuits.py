@@ -3,11 +3,108 @@
 """
 
 from math import ceil, log10
-from typing import (cast, Collection, Dict, FrozenSet, Generic, Iterator, List,
-                    Optional, overload, Sequence, Tuple, Union)
+from typing import (Callable, cast, Collection, Dict, Final, FrozenSet, Generic, Iterator, List,
+                    Literal, Optional, overload, Protocol, runtime_checkable, Sequence, Tuple,TypeVar,  Union)
 import numpy as np # type: ignore
 from pauliopt.topologies import Coupling, Topology, Matching
-from pauliopt.utils import ZX, Z, X, AngleT, AngleProtocol, Angle, SVGBuilder
+from pauliopt.utils import AngleT, AngleProtocol, Angle, SVGBuilder, Number
+
+
+
+
+
+_WeightT = TypeVar("_WeightT", bound="_Weight")
+
+class _Weight(Protocol[_WeightT]):
+
+    def __add__(self, other: _WeightT) -> _WeightT:
+        ...
+
+    def __lt__(self, other: _WeightT) -> bool:
+        ...
+
+def _prims_algorithm(nodes: Collection[int], weight: Callable[[int, int], _WeightT],
+                     zero: _WeightT, inf: _WeightT) -> _WeightT:
+    """
+        A modified version of Prim's algorithm that
+        computes the weight of the minimum spanning tree connecting
+        the given nodes, using the given weight function for branches.
+        The number `inf` should be larger than the maximum weight
+        that can be encountered in the process.
+        The number `zero` should be `zero` for the given number type.
+    """
+    if not nodes:
+        return zero
+    mst_length: _WeightT = zero
+    # Initialise set of nodes to visit:
+    to_visit = set(nodes)
+    n0 = next(iter(to_visit))
+    to_visit.remove(n0)
+    # Initialise dict of distances from visited set:
+    dist_from_visited: Dict[int, _WeightT] = {
+        n: weight(n0, n) for n in nodes
+    }
+    while to_visit:
+        # Look for the node to be visited which is nearest to the visited set:
+        nearest_node = 0 # dummy value
+        nearest_dist: _WeightT = inf # dummy value
+        for n in to_visit:
+            n_dist: _WeightT = dist_from_visited[n]
+            if n_dist < nearest_dist:
+                nearest_node = n
+                nearest_dist = n_dist
+        # Nearest node is removed and added to the MST:
+        to_visit.remove(nearest_node)
+        mst_length += nearest_dist
+        # Update shortest distances to visited set:
+        for n in to_visit:
+            dist_nearest_n = weight(nearest_node, n)
+            if dist_nearest_n < dist_from_visited[n]:
+                dist_from_visited[n] = dist_nearest_n
+    return mst_length
+
+def _prims_algorithm_debug(nodes: Collection[int], weight: Callable[[int, int], _WeightT],
+                           zero: _WeightT, inf: _WeightT) -> Tuple[_Weight,
+                                                                   Sequence[_Weight],
+                                                                   Sequence[Tuple[int, int]]]:
+    if not nodes:
+        return zero, [], []
+    mst_length: _WeightT = zero
+    mst_branch_lengths = []
+    mst_branches = []
+    # Initialise set of nodes to visit:
+    to_visit = set(nodes)
+    n0 = next(iter(to_visit))
+    to_visit.remove(n0)
+    # Initialise dict of distances from visited set:
+    dist_from_visited: Dict[int, _WeightT] = {
+        n: weight(n0, n) for n in nodes
+    }
+    # Initialise possible edges for the MST:
+    edge_from_visited: Dict[int, Tuple[int, int]] = {
+        n: (n0, n) for n in nodes
+    }
+    while to_visit:
+        # Look for the node to be visited which is nearest to the visited set:
+        nearest_node = 0 # dummy value
+        nearest_dist: _WeightT = inf # dummy value
+        for n in to_visit:
+            n_dist: _WeightT = dist_from_visited[n]
+            if n_dist < nearest_dist:
+                nearest_node = n
+                nearest_dist = n_dist
+        # Nearest node is removed and added to the MST:
+        to_visit.remove(nearest_node)
+        mst_length += nearest_dist
+        mst_branch_lengths.append(mst_length)
+        mst_branches.append(edge_from_visited[nearest_node])
+        # Update shortest distances/edges to visited set:
+        for n in to_visit:
+            dist_nearest_n = weight(nearest_node, n)
+            if dist_nearest_n < dist_from_visited[n]:
+                dist_from_visited[n] = dist_nearest_n
+                edge_from_visited[n] = (nearest_node, n)
+    return mst_length, mst_branch_lengths, mst_branches
 
 
 class PhaseGadget(Generic[AngleT]):
@@ -16,16 +113,16 @@ class PhaseGadget(Generic[AngleT]):
     """
 
     _qubits: FrozenSet[int]
-    _basis: ZX
+    _basis: Literal["Z", "X"]
     _angle: AngleT
 
-    def __init__(self, basis: ZX, angle: AngleT, qubits: Collection[int]):
+    def __init__(self, basis: Literal["Z", "X"], angle: AngleT, qubits: Collection[int]):
         if not isinstance(qubits, Collection) or not all(isinstance(q, int) for q in qubits):
             raise TypeError("Qubits should be a collection of integers.")
         if not qubits:
             raise ValueError("At least one qubit must be specified.")
-        if basis not in (Z, X):
-            raise TypeError("Basis should be 'z' or 'x'.")
+        if basis not in ("Z", "X"):
+            raise TypeError("Basis should be 'Z' or 'X'.")
         if not isinstance(angle, AngleProtocol):
             raise TypeError(f"Angle should respect the `AngleProtocol` Protocol, "
                             f"found {angle} of type {type(angle)} instead.")
@@ -34,7 +131,7 @@ class PhaseGadget(Generic[AngleT]):
         self._qubits = frozenset(qubits)
 
     @property
-    def basis(self) -> ZX:
+    def basis(self) -> Literal["Z", "X"]:
         """
             Readonly property exposing the basis for this phase gadget.
         """
@@ -54,6 +151,45 @@ class PhaseGadget(Generic[AngleT]):
         """
         return self._qubits
 
+    def mst_impl_cx_count(self, topology: Topology) -> int:
+        """
+            Returns the CX count for an implementation of this phase gadget
+            on the given topology based on minimum spanning trees (MST).
+        """
+        if not isinstance(topology, Topology):
+            raise TypeError(f"Expected Topology, found {type(topology)}.")
+        return  _prims_algorithm(self._qubits,
+                                 lambda u, v: 4*topology.dist(u, v)-2,
+                                 0, 4*len(topology.qubits)-2)
+
+    def mst_impl_cx_circuit(self, topology: Topology) -> "CXCircuit":
+        """
+            CX circuit used to implement this gadget on the given topology
+            using a minimum spanning tree (MST) technique.
+            The implementation consists of this CX circuit, followed by
+            a phase gate on any qubit, followed by the dagger of this
+            CX circuit.
+        """
+        raise NotImplementedError()
+
+    def print_mst_impl_info(self, topology: Topology):
+        """
+            Prints information about an implementation of this phase gadget
+            on the given topology based on minimum spanning trees (MST).
+        """
+        if not isinstance(topology, Topology):
+            raise TypeError(f"Expected Topology, found {type(topology)}.")
+        mst_length, mst_branch_lengths, mst_branches = \
+            _prims_algorithm_debug(self._qubits,
+                                   lambda u, v: 4*topology.dist(u, v)-2,
+                                   0, 4*len(topology.qubits)-2)
+        print(f"MST implementation info for {str(self)}:")
+        print(f"  - Overall CX count for gadget: {mst_length}")
+        print(f"  - MST branches: {mst_branches}")
+        print(f"  - CX counts for MST branches: {mst_branch_lengths}")
+        # TODO: add CX circuit info when `mst_impl` is implemented.
+        print("")
+
     def __str__(self) -> str:
         return f"{self.basis}({self.angle}) @ {set(self.qubits)}"
 
@@ -72,21 +208,62 @@ class PhaseGadget(Generic[AngleT]):
                 and self.angle == other.angle
                 and self.qubits == other.qubits)
 
+class Z(Generic[AngleT]):
+    """
+        Constructs a Z phase gadget with the idiomatic syntax:
+
+        ```py
+            Z(angle) @ qubits
+        ```
+    """
+
+    _angle: AngleT
+
+    def __init__(self, angle: AngleT):
+        if not isinstance(angle, AngleProtocol):
+            raise TypeError(f"Angle should respect the `AngleProtocol` Protocol, "
+                            f"found {angle} of type {type(angle)} instead.")
+        self._angle = angle
+
+    def __matmul__(self, qubits: Collection[int]) -> PhaseGadget[AngleT]:
+        return PhaseGadget("Z", self._angle, qubits)
+
+class X(Generic[AngleT]):
+    """
+        Constructs an X phase gadget with the idiomatic syntax:
+
+        ```py
+            X(angle) @ qubits
+        ```
+    """
+
+    _angle: AngleT
+
+    def __init__(self, angle: AngleT):
+        if not isinstance(angle, AngleProtocol):
+            raise TypeError(f"Angle should respect the `AngleProtocol` Protocol, "
+                            f"found {angle} of type {type(angle)} instead.")
+        self._angle = angle
+
+    def __matmul__(self, qubits: Collection[int]) -> PhaseGadget[AngleT]:
+        return PhaseGadget("X", self._angle, qubits)
+
+
 class PhaseCircuit(Generic[AngleT]):
     """
         Container class for a circuit of mixed ZX phase gadgets.
     """
 
-    _matrix: Dict[ZX, np.ndarray]
+    _matrix: Dict[Literal["Z", "X"], np.ndarray]
     """
-        For `basis in (Z, X)`, the matrix `self._matrix[basis]`
+        For `basis in ("Z", "X")`, the matrix `self._matrix[basis]`
         is the binary matrix encoding the qubits spanned by the
         `basis` gadgets.
     """
 
-    _gadget_idxs: Dict[ZX, List[int]]
+    _gadget_idxs: Dict[Literal["Z", "X"], List[int]]
     """
-        For `basis in (Z, X)`, the list `self._gadget_idxs[basis]`
+        For `basis in ("Z", "X")`, the list `self._gadget_idxs[basis]`
         maps each column index `c` for `self._matrix[basis]` to the
         index `self._gadget_idxs[c]` in the global list of gadgets for
         this circuit for the `basis` gadget corresponding to column `c`.
@@ -125,14 +302,14 @@ class PhaseCircuit(Generic[AngleT]):
         # Create a reverse directory, mapping qubits to row indices in the matrices:
         self._qubits_idxs = {q: i for i, q in enumerate(self._qubits)}
         # Fills the lists of original indices and angles for the gadgets:
-        self._gadget_idxs = {Z: [], X: []}
+        self._gadget_idxs = {"Z": [], "X": []}
         self._angles = []
         for i, gadget in enumerate(gadgets):
             self._gadget_idxs[gadget.basis].append(i)
             self._angles.append(gadget.angle)
         num_qubits = len(self.qubits)
         self._matrix = {}
-        for basis in (Z, X):
+        for basis in cast(Sequence[Literal["Z", "X"]], ("Z", "X")):
             # Create a zero matrix for the basis:
             self._matrix[basis] = np.zeros(shape=(num_qubits, len(self._gadget_idxs[basis])),
                                            dtype=np.uint64)
@@ -257,8 +434,8 @@ class PhaseCircuit(Generic[AngleT]):
             builder.text((0, y), f"{str(q):>{num_digits}}", font_size=font_size)
             builder.text((width-pad_x+r, y), f"{str(q):>{num_digits}}", font_size=font_size)
         for row, gadget in enumerate(gadgets):
-            fill = zcolor if gadget.basis == Z else xcolor
-            other_fill = xcolor if gadget.basis == Z else zcolor
+            fill = zcolor if gadget.basis == "Z" else xcolor
+            other_fill = xcolor if gadget.basis == "Z" else zcolor
             x = pad_x + margin_x + row * row_width
             for q in gadget.qubits:
                 y = pad_y + (qubits.index(q)+1)*line_height
@@ -297,8 +474,8 @@ class PhaseCircuit(Generic[AngleT]):
             raise ValueError(f"Invalid control qubit {ctrl}.")
         if trgt not in qubits:
             raise ValueError(f"Invalid target qubit {trgt}.")
-        self._matrix[Z][ctrl, :] = (self._matrix[Z][ctrl, :] + self._matrix[Z][trgt, :]) % 2
-        self._matrix[X][trgt, :] = (self._matrix[X][trgt, :] + self._matrix[X][ctrl, :]) % 2
+        self._matrix["Z"][ctrl, :] = (self._matrix["Z"][ctrl, :] + self._matrix["Z"][trgt, :]) % 2
+        self._matrix["X"][trgt, :] = (self._matrix["X"][trgt, :] + self._matrix["X"][ctrl, :]) % 2
         return self
 
     def __eq__(self, other) -> bool:
@@ -312,39 +489,25 @@ class PhaseCircuit(Generic[AngleT]):
             return False
         return all(g == h for g, h in zip(self._iter_gadgets(), other._iter_gadgets()))
 
-    def __irshift__(self, gadgets: Union[Union[PhaseGadget,
-                                               Tuple[ZX, AngleT, Collection[int]]],
-                                         Sequence[Union[PhaseGadget,
-                                                        Tuple[ZX, AngleT, Collection[int]]]]])\
-                    -> "PhaseCircuit":
+    def __irshift__(self, gadgets: Union[PhaseGadget, Sequence[PhaseGadget]]) -> "PhaseCircuit":
         if isinstance(gadgets, PhaseGadget):
             gadgets = [gadgets]
-        # pylint: disable = C0330, too-many-boolean-expressions
-        if (isinstance(gadgets, Sequence) and len(gadgets) == 3
-            and gadgets[0] in (Z, X)
-            and isinstance(gadgets[1], AngleProtocol)
-            and isinstance(gadgets[2], Collection) and all(isinstance(q, int) for q in gadgets[2])):
-            gadgets = [cast(Tuple[ZX, AngleT, Collection[int]], gadgets)]
-        if not isinstance(gadgets, Sequence):
-            raise TypeError(f"Expected sequence of phase gadgets, found {gadgets}.")
+        if (not isinstance(gadgets, Sequence)
+                or not all(isinstance(gadget, PhaseGadget) for gadget in gadgets)):
+            raise TypeError(f"Expected phase gadget or sequence of phase gadgets, found {gadgets}.")
         for gadget in gadgets:
-            if not isinstance(gadget, PhaseGadget):
-                if not isinstance(gadget, Sequence) or len(gadget) != 3:
-                    raise TypeError(f"Expected triple (basis, angle, qubits), found {gadget}.")
-                basis, angle, qubits = cast(Tuple[ZX, AngleT, Collection[int]], gadget)
-                gadget = PhaseGadget(basis, angle, qubits)
             self.add_gadget(gadget)
         return self
 
     def _iter_gadgets(self) -> Iterator[PhaseGadget]:
-        next_idx = {Z: 0, X: 0}
+        next_idx = {"Z": 0, "X": 0}
         for i, angle in enumerate(self._angles):
-            Z_next = next_idx[Z]
-            X_next = next_idx[X]
-            if Z_next < len(self._gadget_idxs[Z]) and i == self._gadget_idxs[Z][Z_next]:
-                basis = Z
-            elif X_next < len(self._gadget_idxs[X]) and i == self._gadget_idxs[X][X_next]:
-                basis = X
+            Z_next = next_idx["Z"]
+            X_next = next_idx["X"]
+            if Z_next < len(self._gadget_idxs["Z"]) and i == self._gadget_idxs["Z"][Z_next]:
+                basis: Literal["Z", "X"] = "Z"
+            elif X_next < len(self._gadget_idxs["X"]) and i == self._gadget_idxs["X"][X_next]:
+                basis = "X"
             else:
                 raise Exception("This should never happen. Please open an issue on GitHub.")
             col_idx = next_idx[basis]
@@ -407,12 +570,14 @@ class PhaseCircuit(Generic[AngleT]):
             angles: Sequence[Angle] = [_angles]
         else:
             angles = _angles
-        bases = [Z, X]
+        bases = cast(Sequence[Literal["Z", "X"]], ("Z", "X"))
         gadgets: List[PhaseGadget] = [
             PhaseGadget(bases[(basis_idx+i)%2],
                         angle,
                         [qubits[leg] for leg in legs_idxs])
-            for i, (basis_idx, angle, legs_idxs) in enumerate(zip(basis_idxs, angles, legs_idxs_list))
+            for i, (basis_idx, angle, legs_idxs) in enumerate(zip(basis_idxs,
+                                                                  angles,
+                                                                  legs_idxs_list))
         ]
         return PhaseCircuit(qubits, gadgets)
 
@@ -587,6 +752,14 @@ class CXCircuitLayer:
         if incident_coupling is None:
             return None
         return self._gates[incident_coupling]
+
+    def has_cx(self, ctrl: int, trgt: int) -> bool:
+        """
+            Checks whether the given CX gate is in the layer:
+        """
+        gate = (ctrl, trgt)
+        coupling = Coupling(ctrl, trgt)
+        return self._gates.get(coupling, None) == gate
 
     def is_cx_flippable(self, ctrl: int, trgt: int) -> bool:
         """
@@ -820,6 +993,8 @@ class CXCircuit(Sequence[CXCircuitLayer]):
             raise TypeError(f"Expected sequence of layers, found {layers}")
         for layer in layers:
             if not isinstance(layer, CXCircuitLayer):
+                if not isinstance(layer, Sequence):
+                    raise TypeError(f"Expected a sequence of pairs of ints, found {layer}")
                 layer = CXCircuitLayer(self.topology, cast(Sequence[GateLike], layer))
             self._layers.append(layer)
         return self
@@ -894,6 +1069,12 @@ class CXCircuitLayerView():
             or `None` if there is no gate incident to the qubit.
         """
         return self._layer.incident(qubit)
+
+    def has_cx(self, ctrl: int, trgt: int) -> bool:
+        """
+            Checks whether the given CX gate is in the layer:
+        """
+        return self._layer.has_cx(ctrl, trgt)
 
     def is_cx_flippable(self, ctrl: int, trgt: int) -> bool:
         """

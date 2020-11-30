@@ -3,6 +3,6 @@
     by conjugation with topologically-aware random circuits of CX gates.
 """
 
-from pauliopt.phase.circuits import (X, Z, ZX, PhaseGadget, PhaseCircuit, CXCircuit, CXCircuitLayer,
+from pauliopt.phase.circuits import (Z, X, PhaseGadget, PhaseCircuit, CXCircuit, CXCircuitLayer,
                                      PhaseCircuitView, CXCircuitView, CXCircuitLayerView)
-from pauliopt.phase.optimizers import PhaseCircuitOptimizer, CostFun, cx_count_cost_fun, cx_count
+from pauliopt.phase.optimizers import PhaseCircuitOptimizer, CostFun, mst_impl_cost_fun, CXFlipOptimizer
