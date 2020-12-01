@@ -4,7 +4,7 @@
 """
 
 from collections import deque
-from typing import (cast, Deque, Final, FrozenSet, Literal, Optional, overload, Protocol,
+from typing import (cast, Deque, Dict, Final, FrozenSet, Literal, Optional, overload, Protocol,
                     runtime_checkable, Sequence, Set, Tuple, Type, TypedDict)
 import numpy as np # type: ignore
 from pauliopt.phase.circuits import (PhaseGadget, PhaseCircuit, PhaseCircuitView,
@@ -40,10 +40,17 @@ def mst_impl_cost_fun(topology: Topology, circuit_rep: int = 1) -> "CostFun":
         raise TypeError(f"Expected Topology, found {type(topology)}.")
     if not isinstance(circuit_rep, int) or circuit_rep <= 0:
         raise TypeError(f"Expected positive integer, found {circuit_rep}.")
+    cache: Dict[int, Number] = {}
     def cost_fun(phase_block: PhaseCircuitView, cx_block: CXCircuitView):
         phase_block_cost: Number = 0
         for gadget in phase_block.gadgets:
-            phase_block_cost += gadget.mst_impl_cx_count(topology)
+            h = hash(gadget)
+            if h in cache:
+                gadget_cost = cache[h]
+            else:
+                gadget_cost = gadget.mst_impl_cx_count(topology)
+                cache[h] = gadget_cost
+            phase_block_cost += gadget_cost
         return circuit_rep*phase_block_cost + 2*cx_block.num_gates
     return cost_fun
 
