@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.9.1" />
-<title>pauliopt.phase.optimizers API documentation</title>
+<title>pauliopt.phase.optimized_circuits API documentation</title>
 <meta name="description" content="This module contains code to optimize circuits of mixed ZX phase gadgets
 using topologically-aware circuits of CNOTs." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -21,7 +21,7 @@ using topologically-aware circuits of CNOTs." />
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>pauliopt.phase.optimizers</code></h1>
+<h1 class="title">Module <code>pauliopt.phase.optimized_circuits</code></h1>
 </header>
 <section id="section-intro">
 <p>This module contains code to optimize circuits of mixed ZX phase gadgets
@@ -36,13 +36,15 @@ using topologically-aware circuits of CNOTs.</p>
 &#34;&#34;&#34;
 
 from collections import deque
-from typing import (Deque, Dict, Generic, Optional, Protocol, runtime_checkable,
+from math import ceil, log10
+from typing import (Deque, Dict, Generic, List, Optional, Protocol, runtime_checkable,
                     Set, Tuple, TypedDict, Union)
 import numpy as np # type: ignore
-from pauliopt.phase.circuits import (PhaseGadget, PhaseCircuit, PhaseCircuitView,
-                                     CXCircuitLayer, CXCircuit, CXCircuitView)
+from pauliopt.phase.phase_circuits import PhaseGadget, PhaseCircuit, PhaseCircuitView
+from pauliopt.phase.cx_circuits import CXCircuitLayer, CXCircuit, CXCircuitView
 from pauliopt.topologies import Topology
-from pauliopt.utils import AngleT, TempSchedule, StandardTempSchedule, StandardTempSchedules
+from pauliopt.utils import (AngleT, TempSchedule, StandardTempSchedule,
+                            StandardTempSchedules, SVGBuilder)
 
 @runtime_checkable
 class AnnealingCostLogger(Protocol):
@@ -107,7 +109,7 @@ def _validate_loggers(loggers: AnnealingLoggers) -&gt; Tuple[Optional[AnnealingC
     return log_start, log_iter, log_end
 
 
-class PhaseCircuitOptimizer(Generic[AngleT]):
+class OptimizedPhaseCircuit(Generic[AngleT]):
     # pylint: disable = too-many-instance-attributes
     &#34;&#34;&#34;
         Optimizer for phase circuits based on simulated annealing.
@@ -236,7 +238,7 @@ class PhaseCircuitOptimizer(Generic[AngleT]):
         &#34;&#34;&#34;
         return self._cx_count
 
-    def as_qiskit_circuit(self):
+    def to_qiskit(self):
         &#34;&#34;&#34;
             Returns the optimized circuit as a Qiskit circuit.
 
@@ -370,7 +372,140 @@ class PhaseCircuitOptimizer(Generic[AngleT]):
         # pylint: disable = protected-access
         phase_block_cost = self._phase_block._cx_count(self._topology,
                                                        self._gadget_cx_count_cache)
-        return self._circuit_rep*phase_block_cost + 2*self._cx_block.num_gates</code></pre>
+        return self._circuit_rep*phase_block_cost + 2*self._cx_block.num_gates
+
+    def to_svg(self, *,
+               zcolor: str = &#34;#CCFFCC&#34;,
+               xcolor: str = &#34;#FF8888&#34;,
+               hscale: float = 1.0, vscale: float = 1.0,
+               scale: float = 1.0,
+               svg_code_only: bool = False
+               ):
+        &#34;&#34;&#34;
+            Returns an SVG representation of this optimized circuit, using
+            the ZX calculus to express phase gadgets and CX gates.
+
+            The keyword arguments `zcolor` and `xcolor` can be used to
+            specify a colour for the Z and X basis spiders in the circuit.
+            The keyword arguments `hscale` and `vscale` can be used to
+            scale the circuit representation horizontally and vertically.
+            The keyword argument `scale` can be used to scale the circuit
+            representation isotropically.
+            The keyword argument `svg_code_only` (default `False`) can be used
+            to specify that the SVG code itself be returned, rather than the
+            IPython `SVG` object.
+        &#34;&#34;&#34;
+        if not isinstance(zcolor, str):
+            raise TypeError(&#34;Keyword argument &#39;zcolor&#39; must be string.&#34;)
+        if not isinstance(xcolor, str):
+            raise TypeError(&#34;Keyword argument &#39;xcolor&#39; must be string.&#34;)
+        if not isinstance(hscale, (int, float)) or hscale &lt;= 0.0:
+            raise TypeError(&#34;Keyword argument &#39;hscale&#39; must be positive float.&#34;)
+        if not isinstance(vscale, (int, float)) or vscale &lt;= 0.0:
+            raise TypeError(&#34;Keyword argument &#39;vscale&#39; must be positive float.&#34;)
+        if not isinstance(scale, (int, float)) or scale &lt;= 0.0:
+            raise TypeError(&#34;Keyword argument &#39;scale&#39; must be positive float.&#34;)
+        return self._to_svg(zcolor=zcolor, xcolor=xcolor,
+                            hscale=hscale, vscale=vscale, scale=scale,
+                            svg_code_only=svg_code_only)
+    def _to_svg(self, *,
+                zcolor: str = &#34;#CCFFCC&#34;,
+                xcolor: str = &#34;#FF8888&#34;,
+                hscale: float = 1.0, vscale: float = 1.0,
+                scale: float = 1.0,
+                svg_code_only: bool = False
+                ):
+        # pylint: disable = too-many-locals, too-many-statements
+        num_qubits = self.num_qubits
+        vscale *= scale
+        hscale *= scale
+        cx_block = self._cx_block
+        phase_block = self._phase_block
+        pre_cx_gates = [gate for layer in reversed(cx_block) for gate in layer.gates]
+        gadgets = list(phase_block.gadgets)*self._circuit_rep
+        post_cx_gates = list(reversed(pre_cx_gates))
+        _layers: List[int] = [0 for _ in range(num_qubits)]
+        pre_cx_gates_depths: List[int] = []
+        max_cx_gates_depth: int = 0
+        for gate in pre_cx_gates:
+            m = min(gate)
+            M = max(gate)
+            d = max(_layers[q] for q in range(m, M+1))
+            max_cx_gates_depth = max(max_cx_gates_depth, d+1)
+            pre_cx_gates_depths.append(d)
+            for q in range(m, M+1):
+                _layers[q] = d+1
+        post_cx_gates_depths: List[int] = [max_cx_gates_depth - d
+                                           for d in reversed(pre_cx_gates_depths)]
+        num_digits = int(ceil(log10(num_qubits)))
+        line_height = int(ceil(30*vscale))
+        row_width = int(ceil(100*hscale))
+        cx_row_width = int(ceil(40*hscale))
+        pad_x = int(ceil(10*hscale))
+        margin_x = int(ceil(40*hscale))
+        pad_y = int(ceil(20*vscale))
+        r = pad_y//2-2
+        font_size = 2*r
+        pad_x += font_size*(num_digits+1)
+        delta_fst = row_width//2
+        delta_snd = 3*row_width//4
+        width = (2*pad_x + 2*margin_x + row_width*len(gadgets)
+                 + 2*max_cx_gates_depth * cx_row_width)
+        height = pad_y + line_height*(num_qubits+1)
+        builder = SVGBuilder(width, height)
+        for q in range(num_qubits):
+            y = pad_y + (q+1) * line_height
+            builder.line((pad_x, y), (width-pad_x, y))
+            builder.text((0, y), f&#34;{str(q):&gt;{num_digits}}&#34;, font_size=font_size)
+            builder.text((width-pad_x+r, y), f&#34;{str(q):&gt;{num_digits}}&#34;, font_size=font_size)
+        for i, (ctrl, trgt) in enumerate(pre_cx_gates):
+            row = pre_cx_gates_depths[i]
+            x = pad_x + margin_x + row * cx_row_width
+            y_ctrl = pad_y + (ctrl+1)*line_height
+            y_trgt = pad_y + (trgt+1)*line_height
+            builder.line((x, y_ctrl), (x, y_trgt))
+            builder.circle((x, y_ctrl), r, zcolor)
+            builder.circle((x, y_trgt), r, xcolor)
+        for _row, gadget in enumerate(gadgets):
+            fill = zcolor if gadget.basis == &#34;Z&#34; else xcolor
+            other_fill = xcolor if gadget.basis == &#34;Z&#34; else zcolor
+            row = _row
+            x = pad_x + margin_x + row * row_width + max_cx_gates_depth * cx_row_width
+            for q in gadget.qubits:
+                y = pad_y + (q+1)*line_height
+                builder.line((x, y), (x+delta_fst, pad_y))
+            for q in gadget.qubits:
+                y = pad_y + (q+1)*line_height
+                builder.circle((x, y), r, fill)
+            builder.line((x+delta_fst, pad_y), (x+delta_snd, pad_y))
+            builder.circle((x+delta_fst, pad_y), r, other_fill)
+            builder.circle((x+delta_snd, pad_y), r, fill)
+            builder.text((x+delta_snd+2*r, pad_y), str(gadget.angle), font_size=font_size)
+        for i, (ctrl, trgt) in enumerate(post_cx_gates):
+            row = post_cx_gates_depths[i]
+            x = (pad_x + margin_x + len(gadgets) * row_width
+                 + (row+max_cx_gates_depth) * cx_row_width)
+            y_ctrl = pad_y + (ctrl+1)*line_height
+            y_trgt = pad_y + (trgt+1)*line_height
+            builder.line((x, y_ctrl), (x, y_trgt))
+            builder.circle((x, y_ctrl), r, zcolor)
+            builder.circle((x, y_trgt), r, xcolor)
+        svg_code = repr(builder)
+        if svg_code_only:
+            return svg_code
+        try:
+            # pylint: disable = import-outside-toplevel
+            from IPython.core.display import SVG # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;IPython&#39; library.&#34;)
+        return SVG(svg_code)
+
+    def _repr_svg_(self):
+        &#34;&#34;&#34;
+            Magic method for IPython/Jupyter pretty-printing.
+            See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
+        &#34;&#34;&#34;
+        return self._to_svg(svg_code_only=True)</code></pre>
 </details>
 </section>
 <section>
@@ -382,7 +517,7 @@ class PhaseCircuitOptimizer(Generic[AngleT]):
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="pauliopt.phase.optimizers.AnnealingCostLogger"><code class="flex name class">
+<dt id="pauliopt.phase.optimized_circuits.AnnealingCostLogger"><code class="flex name class">
 <span>class <span class="ident">AnnealingCostLogger</span></span>
 <span>(</span><span>*args, **kwargs)</span>
 </code></dt>
@@ -406,7 +541,7 @@ class PhaseCircuitOptimizer(Generic[AngleT]):
 <li>typing.Generic</li>
 </ul>
 </dd>
-<dt id="pauliopt.phase.optimizers.AnnealingIterLogger"><code class="flex name class">
+<dt id="pauliopt.phase.optimized_circuits.AnnealingIterLogger"><code class="flex name class">
 <span>class <span class="ident">AnnealingIterLogger</span></span>
 <span>(</span><span>*args, **kwargs)</span>
 </code></dt>
@@ -433,7 +568,7 @@ class PhaseCircuitOptimizer(Generic[AngleT]):
 <li>typing.Generic</li>
 </ul>
 </dd>
-<dt id="pauliopt.phase.optimizers.AnnealingLoggers"><code class="flex name class">
+<dt id="pauliopt.phase.optimized_circuits.AnnealingLoggers"><code class="flex name class">
 <span>class <span class="ident">AnnealingLoggers</span></span>
 <span>(</span><span>*args, **kwargs)</span>
 </code></dt>
@@ -458,23 +593,23 @@ class PhaseCircuitOptimizer(Generic[AngleT]):
 </ul>
 <h3>Class variables</h3>
 <dl>
-<dt id="pauliopt.phase.optimizers.AnnealingLoggers.log_end"><code class="name">var <span class="ident">log_end</span> : <a title="pauliopt.phase.optimizers.AnnealingCostLogger" href="#pauliopt.phase.optimizers.AnnealingCostLogger">AnnealingCostLogger</a></code></dt>
+<dt id="pauliopt.phase.optimized_circuits.AnnealingLoggers.log_end"><code class="name">var <span class="ident">log_end</span> : <a title="pauliopt.phase.optimized_circuits.AnnealingCostLogger" href="#pauliopt.phase.optimized_circuits.AnnealingCostLogger">AnnealingCostLogger</a></code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
-<dt id="pauliopt.phase.optimizers.AnnealingLoggers.log_iter"><code class="name">var <span class="ident">log_iter</span> : <a title="pauliopt.phase.optimizers.AnnealingIterLogger" href="#pauliopt.phase.optimizers.AnnealingIterLogger">AnnealingIterLogger</a></code></dt>
+<dt id="pauliopt.phase.optimized_circuits.AnnealingLoggers.log_iter"><code class="name">var <span class="ident">log_iter</span> : <a title="pauliopt.phase.optimized_circuits.AnnealingIterLogger" href="#pauliopt.phase.optimized_circuits.AnnealingIterLogger">AnnealingIterLogger</a></code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
-<dt id="pauliopt.phase.optimizers.AnnealingLoggers.log_start"><code class="name">var <span class="ident">log_start</span> : <a title="pauliopt.phase.optimizers.AnnealingCostLogger" href="#pauliopt.phase.optimizers.AnnealingCostLogger">AnnealingCostLogger</a></code></dt>
+<dt id="pauliopt.phase.optimized_circuits.AnnealingLoggers.log_start"><code class="name">var <span class="ident">log_start</span> : <a title="pauliopt.phase.optimized_circuits.AnnealingCostLogger" href="#pauliopt.phase.optimized_circuits.AnnealingCostLogger">AnnealingCostLogger</a></code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
 </dl>
 </dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer"><code class="flex name class">
-<span>class <span class="ident">PhaseCircuitOptimizer</span></span>
-<span>(</span><span>original_circuit: <a title="pauliopt.phase.circuits.PhaseCircuit" href="circuits.html#pauliopt.phase.circuits.PhaseCircuit">PhaseCircuit</a>[~AngleT], topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>, num_layers: int, *, circuit_rep: int = 1, rng_seed: Union[int, NoneType] = None)</span>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit"><code class="flex name class">
+<span>class <span class="ident">OptimizedPhaseCircuit</span></span>
+<span>(</span><span>original_circuit: <a title="pauliopt.phase.phase_circuits.PhaseCircuit" href="phase_circuits.html#pauliopt.phase.phase_circuits.PhaseCircuit">PhaseCircuit</a>[~AngleT], topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>, num_layers: int, *, circuit_rep: int = 1, rng_seed: Union[int, NoneType] = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Optimizer for phase circuits based on simulated annealing.
@@ -503,7 +638,7 @@ CX blocks cancel each other out when repeating the optimized circuit <code>n</co
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class PhaseCircuitOptimizer(Generic[AngleT]):
+<pre><code class="python">class OptimizedPhaseCircuit(Generic[AngleT]):
     # pylint: disable = too-many-instance-attributes
     &#34;&#34;&#34;
         Optimizer for phase circuits based on simulated annealing.
@@ -632,7 +767,7 @@ CX blocks cancel each other out when repeating the optimized circuit <code>n</co
         &#34;&#34;&#34;
         return self._cx_count
 
-    def as_qiskit_circuit(self):
+    def to_qiskit(self):
         &#34;&#34;&#34;
             Returns the optimized circuit as a Qiskit circuit.
 
@@ -766,7 +901,140 @@ CX blocks cancel each other out when repeating the optimized circuit <code>n</co
         # pylint: disable = protected-access
         phase_block_cost = self._phase_block._cx_count(self._topology,
                                                        self._gadget_cx_count_cache)
-        return self._circuit_rep*phase_block_cost + 2*self._cx_block.num_gates</code></pre>
+        return self._circuit_rep*phase_block_cost + 2*self._cx_block.num_gates
+
+    def to_svg(self, *,
+               zcolor: str = &#34;#CCFFCC&#34;,
+               xcolor: str = &#34;#FF8888&#34;,
+               hscale: float = 1.0, vscale: float = 1.0,
+               scale: float = 1.0,
+               svg_code_only: bool = False
+               ):
+        &#34;&#34;&#34;
+            Returns an SVG representation of this optimized circuit, using
+            the ZX calculus to express phase gadgets and CX gates.
+
+            The keyword arguments `zcolor` and `xcolor` can be used to
+            specify a colour for the Z and X basis spiders in the circuit.
+            The keyword arguments `hscale` and `vscale` can be used to
+            scale the circuit representation horizontally and vertically.
+            The keyword argument `scale` can be used to scale the circuit
+            representation isotropically.
+            The keyword argument `svg_code_only` (default `False`) can be used
+            to specify that the SVG code itself be returned, rather than the
+            IPython `SVG` object.
+        &#34;&#34;&#34;
+        if not isinstance(zcolor, str):
+            raise TypeError(&#34;Keyword argument &#39;zcolor&#39; must be string.&#34;)
+        if not isinstance(xcolor, str):
+            raise TypeError(&#34;Keyword argument &#39;xcolor&#39; must be string.&#34;)
+        if not isinstance(hscale, (int, float)) or hscale &lt;= 0.0:
+            raise TypeError(&#34;Keyword argument &#39;hscale&#39; must be positive float.&#34;)
+        if not isinstance(vscale, (int, float)) or vscale &lt;= 0.0:
+            raise TypeError(&#34;Keyword argument &#39;vscale&#39; must be positive float.&#34;)
+        if not isinstance(scale, (int, float)) or scale &lt;= 0.0:
+            raise TypeError(&#34;Keyword argument &#39;scale&#39; must be positive float.&#34;)
+        return self._to_svg(zcolor=zcolor, xcolor=xcolor,
+                            hscale=hscale, vscale=vscale, scale=scale,
+                            svg_code_only=svg_code_only)
+    def _to_svg(self, *,
+                zcolor: str = &#34;#CCFFCC&#34;,
+                xcolor: str = &#34;#FF8888&#34;,
+                hscale: float = 1.0, vscale: float = 1.0,
+                scale: float = 1.0,
+                svg_code_only: bool = False
+                ):
+        # pylint: disable = too-many-locals, too-many-statements
+        num_qubits = self.num_qubits
+        vscale *= scale
+        hscale *= scale
+        cx_block = self._cx_block
+        phase_block = self._phase_block
+        pre_cx_gates = [gate for layer in reversed(cx_block) for gate in layer.gates]
+        gadgets = list(phase_block.gadgets)*self._circuit_rep
+        post_cx_gates = list(reversed(pre_cx_gates))
+        _layers: List[int] = [0 for _ in range(num_qubits)]
+        pre_cx_gates_depths: List[int] = []
+        max_cx_gates_depth: int = 0
+        for gate in pre_cx_gates:
+            m = min(gate)
+            M = max(gate)
+            d = max(_layers[q] for q in range(m, M+1))
+            max_cx_gates_depth = max(max_cx_gates_depth, d+1)
+            pre_cx_gates_depths.append(d)
+            for q in range(m, M+1):
+                _layers[q] = d+1
+        post_cx_gates_depths: List[int] = [max_cx_gates_depth - d
+                                           for d in reversed(pre_cx_gates_depths)]
+        num_digits = int(ceil(log10(num_qubits)))
+        line_height = int(ceil(30*vscale))
+        row_width = int(ceil(100*hscale))
+        cx_row_width = int(ceil(40*hscale))
+        pad_x = int(ceil(10*hscale))
+        margin_x = int(ceil(40*hscale))
+        pad_y = int(ceil(20*vscale))
+        r = pad_y//2-2
+        font_size = 2*r
+        pad_x += font_size*(num_digits+1)
+        delta_fst = row_width//2
+        delta_snd = 3*row_width//4
+        width = (2*pad_x + 2*margin_x + row_width*len(gadgets)
+                 + 2*max_cx_gates_depth * cx_row_width)
+        height = pad_y + line_height*(num_qubits+1)
+        builder = SVGBuilder(width, height)
+        for q in range(num_qubits):
+            y = pad_y + (q+1) * line_height
+            builder.line((pad_x, y), (width-pad_x, y))
+            builder.text((0, y), f&#34;{str(q):&gt;{num_digits}}&#34;, font_size=font_size)
+            builder.text((width-pad_x+r, y), f&#34;{str(q):&gt;{num_digits}}&#34;, font_size=font_size)
+        for i, (ctrl, trgt) in enumerate(pre_cx_gates):
+            row = pre_cx_gates_depths[i]
+            x = pad_x + margin_x + row * cx_row_width
+            y_ctrl = pad_y + (ctrl+1)*line_height
+            y_trgt = pad_y + (trgt+1)*line_height
+            builder.line((x, y_ctrl), (x, y_trgt))
+            builder.circle((x, y_ctrl), r, zcolor)
+            builder.circle((x, y_trgt), r, xcolor)
+        for _row, gadget in enumerate(gadgets):
+            fill = zcolor if gadget.basis == &#34;Z&#34; else xcolor
+            other_fill = xcolor if gadget.basis == &#34;Z&#34; else zcolor
+            row = _row
+            x = pad_x + margin_x + row * row_width + max_cx_gates_depth * cx_row_width
+            for q in gadget.qubits:
+                y = pad_y + (q+1)*line_height
+                builder.line((x, y), (x+delta_fst, pad_y))
+            for q in gadget.qubits:
+                y = pad_y + (q+1)*line_height
+                builder.circle((x, y), r, fill)
+            builder.line((x+delta_fst, pad_y), (x+delta_snd, pad_y))
+            builder.circle((x+delta_fst, pad_y), r, other_fill)
+            builder.circle((x+delta_snd, pad_y), r, fill)
+            builder.text((x+delta_snd+2*r, pad_y), str(gadget.angle), font_size=font_size)
+        for i, (ctrl, trgt) in enumerate(post_cx_gates):
+            row = post_cx_gates_depths[i]
+            x = (pad_x + margin_x + len(gadgets) * row_width
+                 + (row+max_cx_gates_depth) * cx_row_width)
+            y_ctrl = pad_y + (ctrl+1)*line_height
+            y_trgt = pad_y + (trgt+1)*line_height
+            builder.line((x, y_ctrl), (x, y_trgt))
+            builder.circle((x, y_ctrl), r, zcolor)
+            builder.circle((x, y_trgt), r, xcolor)
+        svg_code = repr(builder)
+        if svg_code_only:
+            return svg_code
+        try:
+            # pylint: disable = import-outside-toplevel
+            from IPython.core.display import SVG # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;IPython&#39; library.&#34;)
+        return SVG(svg_code)
+
+    def _repr_svg_(self):
+        &#34;&#34;&#34;
+            Magic method for IPython/Jupyter pretty-printing.
+            See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
+        &#34;&#34;&#34;
+        return self._to_svg(svg_code_only=True)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -774,7 +1042,7 @@ CX blocks cancel each other out when repeating the optimized circuit <code>n</co
 </ul>
 <h3>Instance variables</h3>
 <dl>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.circuit_rep"><code class="name">var <span class="ident">circuit_rep</span> : int</code></dt>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.circuit_rep"><code class="name">var <span class="ident">circuit_rep</span> : int</code></dt>
 <dd>
 <div class="desc"><p>Readonly property exposing the number of times that the original circuit is
 to be repeated, for use when computing CX counts.</p></div>
@@ -791,7 +1059,7 @@ def circuit_rep(self) -&gt; int:
     return self._circuit_rep</code></pre>
 </details>
 </dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.cx_block"><code class="name">var <span class="ident">cx_block</span> : <a title="pauliopt.phase.circuits.CXCircuitView" href="circuits.html#pauliopt.phase.circuits.CXCircuitView">CXCircuitView</a></code></dt>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.cx_block"><code class="name">var <span class="ident">cx_block</span> : <a title="pauliopt.phase.cx_circuits.CXCircuitView" href="cx_circuits.html#pauliopt.phase.cx_circuits.CXCircuitView">CXCircuitView</a></code></dt>
 <dd>
 <div class="desc"><p>Readonly property exposing a readonly view on the CX block of the optimized circuit.</p></div>
 <details class="source">
@@ -806,7 +1074,7 @@ def cx_block(self) -&gt; CXCircuitView:
     return self._cx_block_view</code></pre>
 </details>
 </dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.cx_count"><code class="name">var <span class="ident">cx_count</span> : int</code></dt>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.cx_count"><code class="name">var <span class="ident">cx_count</span> : int</code></dt>
 <dd>
 <div class="desc"><p>Readonly property exposing the current CX count for the optimized circuit.</p></div>
 <details class="source">
@@ -821,7 +1089,7 @@ def cx_count(self) -&gt; int:
     return self._cx_count</code></pre>
 </details>
 </dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.init_cx_count"><code class="name">var <span class="ident">init_cx_count</span> : int</code></dt>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.init_cx_count"><code class="name">var <span class="ident">init_cx_count</span> : int</code></dt>
 <dd>
 <div class="desc"><p>Readonly property exposing the CX count for the original circuit.</p></div>
 <details class="source">
@@ -836,7 +1104,7 @@ def init_cx_count(self) -&gt; int:
     return self._init_cx_count</code></pre>
 </details>
 </dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.num_qubits"><code class="name">var <span class="ident">num_qubits</span> : int</code></dt>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.num_qubits"><code class="name">var <span class="ident">num_qubits</span> : int</code></dt>
 <dd>
 <div class="desc"><p>Readonly property exposing the number of qubits spanned by the circuit to be optimized.</p></div>
 <details class="source">
@@ -851,7 +1119,7 @@ def num_qubits(self) -&gt; int:
     return self._num_qubits</code></pre>
 </details>
 </dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.original_gadgets"><code class="name">var <span class="ident">original_gadgets</span> : Tuple[<a title="pauliopt.phase.circuits.PhaseGadget" href="circuits.html#pauliopt.phase.circuits.PhaseGadget">PhaseGadget</a>, ...]</code></dt>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.original_gadgets"><code class="name">var <span class="ident">original_gadgets</span> : Tuple[<a title="pauliopt.phase.phase_circuits.PhaseGadget" href="phase_circuits.html#pauliopt.phase.phase_circuits.PhaseGadget">PhaseGadget</a>, ...]</code></dt>
 <dd>
 <div class="desc"><p>Readonly property exposing the gadgets in the original circuit to be optimized.</p></div>
 <details class="source">
@@ -866,7 +1134,7 @@ def original_gadgets(self) -&gt; Tuple[PhaseGadget, ...]:
     return self._original_gadgets</code></pre>
 </details>
 </dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.phase_block"><code class="name">var <span class="ident">phase_block</span> : <a title="pauliopt.phase.circuits.PhaseCircuitView" href="circuits.html#pauliopt.phase.circuits.PhaseCircuitView">PhaseCircuitView</a></code></dt>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.phase_block"><code class="name">var <span class="ident">phase_block</span> : <a title="pauliopt.phase.phase_circuits.PhaseCircuitView" href="phase_circuits.html#pauliopt.phase.phase_circuits.PhaseCircuitView">PhaseCircuitView</a></code></dt>
 <dd>
 <div class="desc"><p>Readonly property exposing a readonly view on the phase block of the optimized circuit.</p></div>
 <details class="source">
@@ -881,7 +1149,7 @@ def phase_block(self) -&gt; PhaseCircuitView:
     return self._phase_block_view</code></pre>
 </details>
 </dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.topology"><code class="name">var <span class="ident">topology</span> : <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a></code></dt>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.topology"><code class="name">var <span class="ident">topology</span> : <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a></code></dt>
 <dd>
 <div class="desc"><p>Readonly property exposing the topology constraining the circuit optimization.</p></div>
 <details class="source">
@@ -899,8 +1167,8 @@ def topology(self) -&gt; Topology:
 </dl>
 <h3>Methods</h3>
 <dl>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.anneal"><code class="name flex">
-<span>def <span class="ident">anneal</span></span>(<span>self, num_iters: int, *, schedule: Union[Tuple[Literal['linear', 'geometric', 'reciprocal', 'log'], Union[int, float], Union[int, float]], <a title="pauliopt.utils.TempSchedule" href="../utils.html#pauliopt.utils.TempSchedule">TempSchedule</a>] = ('linear', 1.0, 0.1), loggers: <a title="pauliopt.phase.optimizers.AnnealingLoggers" href="#pauliopt.phase.optimizers.AnnealingLoggers">AnnealingLoggers</a> = {})</span>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.anneal"><code class="name flex">
+<span>def <span class="ident">anneal</span></span>(<span>self, num_iters: int, *, schedule: Union[Tuple[Literal['linear', 'geometric', 'reciprocal', 'log'], Union[int, float], Union[int, float]], <a title="pauliopt.utils.TempSchedule" href="../utils.html#pauliopt.utils.TempSchedule">TempSchedule</a>] = ('linear', 1.0, 0.1), loggers: <a title="pauliopt.phase.optimized_circuits.AnnealingLoggers" href="#pauliopt.phase.optimized_circuits.AnnealingLoggers">AnnealingLoggers</a> = {})</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Performs a cycle of simulated annealing optimization,
@@ -952,45 +1220,7 @@ initial/final temperatures.</p></div>
         log_end(self._cx_count, num_iters)</code></pre>
 </details>
 </dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.as_qiskit_circuit"><code class="name flex">
-<span>def <span class="ident">as_qiskit_circuit</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Returns the optimized circuit as a Qiskit circuit.</p>
-<p>This method relies on the <code>qiskit</code> library being available.
-Specifically, the <code>circuit</code> argument must be of type
-<code>qiskit.providers.BaseBackend</code>.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def as_qiskit_circuit(self):
-    &#34;&#34;&#34;
-        Returns the optimized circuit as a Qiskit circuit.
-
-        This method relies on the `qiskit` library being available.
-        Specifically, the `circuit` argument must be of type
-        `qiskit.providers.BaseBackend`.
-    &#34;&#34;&#34;
-    try:
-        # pylint: disable = import-outside-toplevel
-        from qiskit.circuit import QuantumCircuit # type: ignore
-    except ModuleNotFoundError as _:
-        raise ModuleNotFoundError(&#34;You must install the &#39;qiskit&#39; library.&#34;)
-    circuit = QuantumCircuit(self.num_qubits)
-    for layer in reversed(self._cx_block):
-        for ctrl, trgt in layer.gates:
-            circuit.cx(ctrl, trgt)
-    for __ in range(self._circuit_rep):
-        for gadget in self._phase_block.gadgets:
-            gadget.on_qiskit_circuit(self._topology, circuit)
-    for layer in self._cx_block:
-        for ctrl, trgt in layer.gates:
-            circuit.cx(ctrl, trgt)
-    return circuit</code></pre>
-</details>
-</dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.flip_cx"><code class="name flex">
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.flip_cx"><code class="name flex">
 <span>def <span class="ident">flip_cx</span></span>(<span>self, layer_idx: int, ctrl: int, trgt: int) ‑> NoneType</span>
 </code></dt>
 <dd>
@@ -1025,7 +1255,7 @@ working forwards towards the last layer).</li>
     self._flip_cx(layer_idx, ctrl, trgt)</code></pre>
 </details>
 </dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.is_cx_flippable"><code class="name flex">
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.is_cx_flippable"><code class="name flex">
 <span>def <span class="ident">is_cx_flippable</span></span>(<span>self, layer_idx: int, ctrl: int, trgt: int) ‑> bool</span>
 </code></dt>
 <dd>
@@ -1044,7 +1274,7 @@ working forwards towards the last layer).</li>
     return layer.is_cx_flippable(ctrl, trgt)</code></pre>
 </details>
 </dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.random_flip_cx"><code class="name flex">
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.random_flip_cx"><code class="name flex">
 <span>def <span class="ident">random_flip_cx</span></span>(<span>self) ‑> Tuple[int, Tuple[int, int]]</span>
 </code></dt>
 <dd>
@@ -1077,6 +1307,99 @@ flipped (e.g. in case the flip needs to be subsequently undone).</p></div>
         return layer_idx, (ctrl, trgt)</code></pre>
 </details>
 </dd>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.to_qiskit"><code class="name flex">
+<span>def <span class="ident">to_qiskit</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the optimized circuit as a Qiskit circuit.</p>
+<p>This method relies on the <code>qiskit</code> library being available.
+Specifically, the <code>circuit</code> argument must be of type
+<code>qiskit.providers.BaseBackend</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def to_qiskit(self):
+    &#34;&#34;&#34;
+        Returns the optimized circuit as a Qiskit circuit.
+
+        This method relies on the `qiskit` library being available.
+        Specifically, the `circuit` argument must be of type
+        `qiskit.providers.BaseBackend`.
+    &#34;&#34;&#34;
+    try:
+        # pylint: disable = import-outside-toplevel
+        from qiskit.circuit import QuantumCircuit # type: ignore
+    except ModuleNotFoundError as _:
+        raise ModuleNotFoundError(&#34;You must install the &#39;qiskit&#39; library.&#34;)
+    circuit = QuantumCircuit(self.num_qubits)
+    for layer in reversed(self._cx_block):
+        for ctrl, trgt in layer.gates:
+            circuit.cx(ctrl, trgt)
+    for __ in range(self._circuit_rep):
+        for gadget in self._phase_block.gadgets:
+            gadget.on_qiskit_circuit(self._topology, circuit)
+    for layer in self._cx_block:
+        for ctrl, trgt in layer.gates:
+            circuit.cx(ctrl, trgt)
+    return circuit</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.to_svg"><code class="name flex">
+<span>def <span class="ident">to_svg</span></span>(<span>self, *, zcolor: str = '#CCFFCC', xcolor: str = '#FF8888', hscale: float = 1.0, vscale: float = 1.0, scale: float = 1.0, svg_code_only: bool = False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns an SVG representation of this optimized circuit, using
+the ZX calculus to express phase gadgets and CX gates.</p>
+<p>The keyword arguments <code>zcolor</code> and <code>xcolor</code> can be used to
+specify a colour for the Z and X basis spiders in the circuit.
+The keyword arguments <code>hscale</code> and <code>vscale</code> can be used to
+scale the circuit representation horizontally and vertically.
+The keyword argument <code>scale</code> can be used to scale the circuit
+representation isotropically.
+The keyword argument <code>svg_code_only</code> (default <code>False</code>) can be used
+to specify that the SVG code itself be returned, rather than the
+IPython <code>SVG</code> object.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def to_svg(self, *,
+           zcolor: str = &#34;#CCFFCC&#34;,
+           xcolor: str = &#34;#FF8888&#34;,
+           hscale: float = 1.0, vscale: float = 1.0,
+           scale: float = 1.0,
+           svg_code_only: bool = False
+           ):
+    &#34;&#34;&#34;
+        Returns an SVG representation of this optimized circuit, using
+        the ZX calculus to express phase gadgets and CX gates.
+
+        The keyword arguments `zcolor` and `xcolor` can be used to
+        specify a colour for the Z and X basis spiders in the circuit.
+        The keyword arguments `hscale` and `vscale` can be used to
+        scale the circuit representation horizontally and vertically.
+        The keyword argument `scale` can be used to scale the circuit
+        representation isotropically.
+        The keyword argument `svg_code_only` (default `False`) can be used
+        to specify that the SVG code itself be returned, rather than the
+        IPython `SVG` object.
+    &#34;&#34;&#34;
+    if not isinstance(zcolor, str):
+        raise TypeError(&#34;Keyword argument &#39;zcolor&#39; must be string.&#34;)
+    if not isinstance(xcolor, str):
+        raise TypeError(&#34;Keyword argument &#39;xcolor&#39; must be string.&#34;)
+    if not isinstance(hscale, (int, float)) or hscale &lt;= 0.0:
+        raise TypeError(&#34;Keyword argument &#39;hscale&#39; must be positive float.&#34;)
+    if not isinstance(vscale, (int, float)) or vscale &lt;= 0.0:
+        raise TypeError(&#34;Keyword argument &#39;vscale&#39; must be positive float.&#34;)
+    if not isinstance(scale, (int, float)) or scale &lt;= 0.0:
+        raise TypeError(&#34;Keyword argument &#39;scale&#39; must be positive float.&#34;)
+    return self._to_svg(zcolor=zcolor, xcolor=xcolor,
+                        hscale=hscale, vscale=vscale, scale=scale,
+                        svg_code_only=svg_code_only)</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 </dl>
@@ -1096,35 +1419,36 @@ flipped (e.g. in case the flip needs to be subsequently undone).</p></div>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
-<h4><code><a title="pauliopt.phase.optimizers.AnnealingCostLogger" href="#pauliopt.phase.optimizers.AnnealingCostLogger">AnnealingCostLogger</a></code></h4>
+<h4><code><a title="pauliopt.phase.optimized_circuits.AnnealingCostLogger" href="#pauliopt.phase.optimized_circuits.AnnealingCostLogger">AnnealingCostLogger</a></code></h4>
 </li>
 <li>
-<h4><code><a title="pauliopt.phase.optimizers.AnnealingIterLogger" href="#pauliopt.phase.optimizers.AnnealingIterLogger">AnnealingIterLogger</a></code></h4>
+<h4><code><a title="pauliopt.phase.optimized_circuits.AnnealingIterLogger" href="#pauliopt.phase.optimized_circuits.AnnealingIterLogger">AnnealingIterLogger</a></code></h4>
 </li>
 <li>
-<h4><code><a title="pauliopt.phase.optimizers.AnnealingLoggers" href="#pauliopt.phase.optimizers.AnnealingLoggers">AnnealingLoggers</a></code></h4>
+<h4><code><a title="pauliopt.phase.optimized_circuits.AnnealingLoggers" href="#pauliopt.phase.optimized_circuits.AnnealingLoggers">AnnealingLoggers</a></code></h4>
 <ul class="">
-<li><code><a title="pauliopt.phase.optimizers.AnnealingLoggers.log_end" href="#pauliopt.phase.optimizers.AnnealingLoggers.log_end">log_end</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.AnnealingLoggers.log_iter" href="#pauliopt.phase.optimizers.AnnealingLoggers.log_iter">log_iter</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.AnnealingLoggers.log_start" href="#pauliopt.phase.optimizers.AnnealingLoggers.log_start">log_start</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.AnnealingLoggers.log_end" href="#pauliopt.phase.optimized_circuits.AnnealingLoggers.log_end">log_end</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.AnnealingLoggers.log_iter" href="#pauliopt.phase.optimized_circuits.AnnealingLoggers.log_iter">log_iter</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.AnnealingLoggers.log_start" href="#pauliopt.phase.optimized_circuits.AnnealingLoggers.log_start">log_start</a></code></li>
 </ul>
 </li>
 <li>
-<h4><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer">PhaseCircuitOptimizer</a></code></h4>
+<h4><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit">OptimizedPhaseCircuit</a></code></h4>
 <ul class="two-column">
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.anneal" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.anneal">anneal</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.as_qiskit_circuit" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.as_qiskit_circuit">as_qiskit_circuit</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.circuit_rep" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.circuit_rep">circuit_rep</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.cx_block" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.cx_block">cx_block</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.cx_count" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.cx_count">cx_count</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.flip_cx" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.flip_cx">flip_cx</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.init_cx_count" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.init_cx_count">init_cx_count</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.is_cx_flippable" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.is_cx_flippable">is_cx_flippable</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.num_qubits" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.num_qubits">num_qubits</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.original_gadgets" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.original_gadgets">original_gadgets</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.phase_block" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.phase_block">phase_block</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.random_flip_cx" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.random_flip_cx">random_flip_cx</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.topology" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.topology">topology</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.anneal" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.anneal">anneal</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.circuit_rep" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.circuit_rep">circuit_rep</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.cx_block" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.cx_block">cx_block</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.cx_count" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.cx_count">cx_count</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.flip_cx" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.flip_cx">flip_cx</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.init_cx_count" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.init_cx_count">init_cx_count</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.is_cx_flippable" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.is_cx_flippable">is_cx_flippable</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.num_qubits" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.num_qubits">num_qubits</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.original_gadgets" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.original_gadgets">original_gadgets</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.phase_block" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.phase_block">phase_block</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.random_flip_cx" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.random_flip_cx">random_flip_cx</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.to_qiskit" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.to_qiskit">to_qiskit</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.to_svg" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.to_svg">to_svg</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.topology" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.topology">topology</a></code></li>
 </ul>
 </li>
 </ul>

@@ -8,10 +8,11 @@ from math import ceil, log10
 from typing import (Deque, Dict, Generic, List, Optional, Protocol, runtime_checkable,
                     Set, Tuple, TypedDict, Union)
 import numpy as np # type: ignore
-from pauliopt.phase.circuits import (PhaseGadget, PhaseCircuit, PhaseCircuitView,
-                                     CXCircuitLayer, CXCircuit, CXCircuitView)
+from pauliopt.phase.phase_circuits import PhaseGadget, PhaseCircuit, PhaseCircuitView
+from pauliopt.phase.cx_circuits import CXCircuitLayer, CXCircuit, CXCircuitView
 from pauliopt.topologies import Topology
-from pauliopt.utils import AngleT, TempSchedule, StandardTempSchedule, StandardTempSchedules, SVGBuilder
+from pauliopt.utils import (AngleT, TempSchedule, StandardTempSchedule,
+                            StandardTempSchedules, SVGBuilder)
 
 @runtime_checkable
 class AnnealingCostLogger(Protocol):
@@ -205,7 +206,7 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         """
         return self._cx_count
 
-    def as_qiskit_circuit(self):
+    def to_qiskit(self):
         """
             Returns the optimized circuit as a Qiskit circuit.
 
@@ -348,7 +349,6 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
                scale: float = 1.0,
                svg_code_only: bool = False
                ):
-        # pylint: disable = too-many-locals
         """
             Returns an SVG representation of this optimized circuit, using
             the ZX calculus to express phase gadgets and CX gates.
@@ -383,6 +383,7 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
                 scale: float = 1.0,
                 svg_code_only: bool = False
                 ):
+        # pylint: disable = too-many-locals, too-many-statements
         num_qubits = self.num_qubits
         vscale *= scale
         hscale *= scale
@@ -416,8 +417,9 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         pad_x += font_size*(num_digits+1)
         delta_fst = row_width//2
         delta_snd = 3*row_width//4
-        width = 2*pad_x + 2*margin_x + row_width*len(gadgets) + 2*max_cx_gates_depth * cx_row_width
-        height = 2*pad_y + line_height*(num_qubits+1)
+        width = (2*pad_x + 2*margin_x + row_width*len(gadgets)
+                 + 2*max_cx_gates_depth * cx_row_width)
+        height = pad_y + line_height*(num_qubits+1)
         builder = SVGBuilder(width, height)
         for q in range(num_qubits):
             y = pad_y + (q+1) * line_height
@@ -449,7 +451,8 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
             builder.text((x+delta_snd+2*r, pad_y), str(gadget.angle), font_size=font_size)
         for i, (ctrl, trgt) in enumerate(post_cx_gates):
             row = post_cx_gates_depths[i]
-            x = pad_x + margin_x + len(gadgets) * row_width + (row+max_cx_gates_depth) * cx_row_width
+            x = (pad_x + margin_x + len(gadgets) * row_width
+                 + (row+max_cx_gates_depth) * cx_row_width)
             y_ctrl = pad_y + (ctrl+1)*line_height
             y_trgt = pad_y + (trgt+1)*line_height
             builder.line((x, y_ctrl), (x, y_trgt))

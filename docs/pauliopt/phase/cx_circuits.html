@@ -1,0 +1,1902 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.9.1" />
+<title>pauliopt.phase.cx_circuits API documentation</title>
+<meta name="description" content="This module contains code to create CX circuits for the optimization
+of circuits of mixed phase gadgets." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS_CHTML" integrity="sha256-kZafAc6mZvK3W3v1pHOcUix30OHQN6pU/NO2oFkqZVw=" crossorigin></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>pauliopt.phase.cx_circuits</code></h1>
+</header>
+<section id="section-intro">
+<p>This module contains code to create CX circuits for the optimization
+of circuits of mixed phase gadgets.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;
+    This module contains code to create CX circuits for the optimization
+    of circuits of mixed phase gadgets.
+&#34;&#34;&#34;
+
+from typing import (cast, Dict, FrozenSet, Iterator, List,
+                    Optional, overload, Sequence, Tuple, Union)
+import numpy as np # type: ignore
+from pauliopt.topologies import Coupling, Topology, Matching
+
+
+GateLike = Union[List[int], Tuple[int, int]]
+
+
+class CXCircuitLayer:
+    &#34;&#34;&#34;
+        Container for a layer of CX gates constrained
+        by a given qubit topology.
+
+        It uses `pauliopt.topologies.Matching` to keep track of which
+        couplings in the qubit topology are currently occupied by a CX gate,
+        and to efficiently determine whether a CX gate can be added to the layer.
+    &#34;&#34;&#34;
+
+    _topology: Topology
+    _couplings_seq: Tuple[Coupling, ...]
+    _gates: Dict[Coupling, Tuple[int, int]]
+    _matching: Matching
+
+    def __init__(self, topology: Topology,
+                 gates: Sequence[GateLike] = tuple()):
+        if not isinstance(topology, Topology):
+            raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        if not isinstance(gates, Sequence):
+            raise TypeError(f&#34;Expected sequence of ordered pairs, found {gates}&#34;)
+        self._topology = topology
+        self._gates = {}
+        self._couplings_seq = tuple(sorted(topology.couplings))
+        self._matching = Matching(topology)
+        self._num_flippable_cxs = 2*len(self.topology.couplings)
+        for gate in gates:
+            if not isinstance(gate, (list, tuple)) or len(gate) != 2 or len(set(gate)) != 2:
+                raise TypeError(f&#34;Expected gates to be pairs of distinct integers, found {gate}.&#34;)
+            ctrl, trgt = gate
+            self.flip_cx(ctrl, trgt)
+
+    @property
+    def topology(self) -&gt; Topology:
+        &#34;&#34;&#34;
+            Readonly property exposing the qubit topology
+            constraining this CX circuit layer.
+        &#34;&#34;&#34;
+        return self._topology
+
+    @property
+    def num_gates(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property returning the number of gates in this
+            CX circuit layer.
+        &#34;&#34;&#34;
+        return len(self._gates)
+
+    @property
+    def gates(self) -&gt; FrozenSet[Tuple[int, int]]:
+        &#34;&#34;&#34;
+            Readonly property returning the collection of gates in this
+            CX circuit layer.
+
+            This collection is freshly generated at every call.
+        &#34;&#34;&#34;
+        return frozenset(self._gates.values())
+
+    @property
+    def num_flippable_cxs(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property returning the number of CX gates in this
+            CX circuit layer that can be flipped.
+        &#34;&#34;&#34;
+        return self._num_flippable_cxs
+
+    @property
+    def flippable_cxs(self) -&gt; FrozenSet[Tuple[int, int]]:
+        &#34;&#34;&#34;
+            Readonly property returning the collection of CX gates that
+            that can be currently flipped in this layer, namely:
+
+            - all gates currently in the layer (will be removed by flip);
+            - all gates with both qubits currently not covered by a gate
+              already in the layer (will be added by flip).
+
+            This collection is freshly generated at every call.
+        &#34;&#34;&#34;
+        return frozenset(self._iter_flippable_cxs())
+
+    def incident(self, qubit: int) -&gt; Optional[Tuple[int, int]]:
+        &#34;&#34;&#34;
+            Returns the CX gate incident to the given qubit in this layer,
+            or `None` if there is no gate incident to the qubit.
+        &#34;&#34;&#34;
+        incident_coupling = self._matching.incident(qubit)
+        if incident_coupling is None:
+            return None
+        return self._gates[incident_coupling]
+
+    def has_cx(self, ctrl: int, trgt: int) -&gt; bool:
+        &#34;&#34;&#34;
+            Checks whether the given CX gate is in the layer:
+        &#34;&#34;&#34;
+        gate = (ctrl, trgt)
+        coupling = Coupling(ctrl, trgt)
+        return self._gates.get(coupling, None) == gate
+
+    def is_cx_flippable(self, ctrl: int, trgt: int) -&gt; bool:
+        &#34;&#34;&#34;
+            Checks whether the given CX gate can be flipped in this layer.
+            This is true if:
+
+            - the gate is present (gate can be removed);
+            - the gate is not present, and neither the control nor the
+              target are already covered by some other gate (gate can be added).
+        &#34;&#34;&#34;
+        gate = (ctrl, trgt)
+        coupling = Coupling(ctrl, trgt)
+        if coupling in self._gates:
+            return self._gates[coupling] == gate
+        if (self._matching.incident(ctrl) is None
+                and self._matching.incident(trgt) is None):
+            return True
+        return False
+
+    def random_flip_cx(self, rng: np.random.Generator) -&gt; Tuple[int, int]:
+        &#34;&#34;&#34;
+            Returns a randomly selected flippable CX gate in this CX circuit layer,
+            using the given random number generator.
+        &#34;&#34;&#34;
+        cx_idx = rng.integers(self._num_flippable_cxs)
+        for i, cx in enumerate(self._iter_flippable_cxs()):
+            if i == cx_idx:
+                return cx
+        raise Exception(&#34;Cannot get here!&#34;)
+
+    def flip_cx(self, ctrl: int, trgt: int) -&gt; &#34;CXCircuitLayer&#34;:
+        &#34;&#34;&#34;
+            Adds/removes a CX gate with given control and target to/from the layer.
+            Raises `ValueError` if the gate cannot be added/removed.
+
+            The layer is modified in-place and then returned, as per the
+            [fluent API pattern](https://en.wikipedia.org/wiki/Fluent_interface).
+        &#34;&#34;&#34;
+        # pylint: disable = too-many-branches
+        if not isinstance(ctrl, int):
+            raise TypeError(f&#34;Expected integer, found {ctrl}.&#34;)
+        if not isinstance(trgt, int):
+            raise TypeError(f&#34;Expected integer, found {trgt}.&#34;)
+        gate = (ctrl, trgt)
+        if not self._matching.is_flippable(gate):
+            raise ValueError(f&#34;Cannot add CX gate {gate} to the layer: &#34;
+                             f&#34;gate is not present, but one of control or target &#34;
+                             f&#34;is already involved in some other gate.&#34;)
+        coupling = Coupling(ctrl, trgt)
+        if coupling in self._gates:
+            if self._gates[coupling] == gate:
+                # CX gate already there, gets removed from the layer:
+                del self._gates[coupling]
+                self._matching.flip(coupling)
+                self._num_flippable_cxs += 1
+                for q in self._topology.adjacent(ctrl):
+                    if q != trgt and self.incident(q) is None:
+                        self._num_flippable_cxs += 2
+                for q in self._topology.adjacent(trgt):
+                    if q != ctrl and self.incident(q) is None:
+                        self._num_flippable_cxs += 2
+                return self
+            raise ValueError(f&#34;Invalid CX gate {gate} for given topology: another gate &#34;
+                             f&#34;{self._gates[coupling]} already exists for this qubit pair.&#34;)
+        # CX gate gets added to the layer:
+        self._gates[coupling] = (ctrl, trgt)
+        self._matching.flip(coupling)
+        self._num_flippable_cxs -= 1
+        for q in self._topology.adjacent(ctrl):
+            if q != trgt and self.incident(q) is None:
+                self._num_flippable_cxs -= 2
+        for q in self._topology.adjacent(trgt):
+            if q != ctrl and self.incident(q) is None:
+                self._num_flippable_cxs -= 2
+        return self
+
+    def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
+             figsize: Optional[Tuple[int, int]] = None,
+             zcolor: str = &#34;#CCFFCC&#34;,
+             xcolor: str = &#34;#FF8888&#34;,
+             **kwargs):
+        # pylint: disable = too-many-locals
+        &#34;&#34;&#34;
+            Draws this CX circuit layer using NetworkX and Matplotlib.
+
+            The `layout` keyword argument can be used to select a NetworkX layout
+            from the available ones (exposed by `Topology.available_nx_layouts`).
+            The `figsize` keyword argument is passed to `matplotlib.pyplot.figure`:
+            if specified, it determines the width and height of the figure being drawn.
+            The `zcolor` and `xcolor` keyword arguments are used to determine the colour
+            of the Z and X dots in a CX gate (analogous to `PhaseCircuit.to_svg`).
+            Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
+        &#34;&#34;&#34;
+        try:
+            # pylint: disable = import-outside-toplevel
+            import networkx as nx # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;networkx&#39; library.&#34;)
+        try:
+            # pylint: disable = import-outside-toplevel
+            import matplotlib.pyplot as plt # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;matplotlib&#39; library.&#34;)
+        G = self.topology.to_nx
+        nodes = sorted(self.topology.qubits)
+        edges = sorted(self.topology.couplings, key=lambda c: c.as_pair)
+        kwargs = {**kwargs}
+        layouts = self.topology.available_nx_layouts
+        if &#34;pos&#34; not in kwargs:
+            if layout not in layouts:
+                raise ValueError(f&#34;Invalid layout found: {layout}. &#34;
+                                 f&#34;Valid layouts: {&#39;, &#39;.join(repr(l) for l in layouts)}&#34;)
+            kwargs[&#34;pos&#34;] = getattr(nx, layout+&#34;_layout&#34;)(G)
+        if &#34;node_color&#34; not in kwargs:
+            kwargs[&#34;node_color&#34;] = [&#34;#dddddd&#34; for _ in nodes]
+        for node_idx, node in enumerate(nodes):
+            gate = self.incident(node)
+            if gate is not None:
+                ctrl, trgt = gate
+                if node == ctrl:
+                    kwargs[&#34;node_color&#34;][node_idx] = zcolor
+                else:
+                    kwargs[&#34;node_color&#34;][node_idx] = xcolor
+        if &#34;edge_color&#34; not in kwargs:
+            kwargs[&#34;edge_color&#34;] = [&#34;#dddddd&#34; for _ in edges]
+        for ctrl, trgt in self.gates:
+            edge_idx = edges.index(Coupling(ctrl, trgt))
+            kwargs[&#34;edge_color&#34;][edge_idx] = &#34;#000000&#34;
+        plt.figure(figsize=figsize)
+        nx.draw_networkx(G, **kwargs)
+        plt.show()
+
+    def __irshift__(self, gates: Union[GateLike, Sequence[GateLike]]) -&gt; &#34;CXCircuitLayer&#34;:
+        if (isinstance(gates, (list, tuple))
+                and all(isinstance(x, int) for x in gates) and len(gates) == 2):
+            gates = [cast(Union[List[int], Tuple[int, int]], gates)]
+        if not isinstance(gates, Sequence):
+            raise TypeError(f&#34;Expected sequence of gates, found {gates}&#34;)
+        for gate in gates:
+            if not isinstance(gate, Sequence) or len(gate) != 2:
+                raise TypeError(f&#34;Expected ordered pair, found {gate}&#34;)
+            ctrl, trgt = gate
+            self.flip_cx(ctrl, trgt)
+        return self
+
+    def __eq__(self, other) -&gt; bool:
+        if self is other:
+            return True
+        if not isinstance(other, CXCircuitLayer):
+            return NotImplemented
+        if self.topology != other.topology:
+            return False
+        return self.gates == other.gates
+
+    def _iter_flippable_cxs(self) -&gt; Iterator[Tuple[int, int]]:
+        &#34;&#34;&#34;
+            Iterates over all CX gates that can be flipped.
+            The layer must not be changed while the gates are being iterated,
+            reason why this is a private method.
+
+            The private method `pauliopt.topology.Matching._iter_flippable_couplings`
+            can be called safely because `self._matching` is only accessible internally
+            to the layer and cannot be accidentally modified (subject to the layer not
+            being modified).
+        &#34;&#34;&#34;
+        # pylint: disable = protected-access
+        for coupling in self._matching._iter_flippable_couplings():
+            if coupling in self._gates:
+                yield self._gates[coupling]
+            else:
+                fst, snd = coupling
+                yield (fst, snd)
+                yield (snd, fst)
+
+CXCircuitLayerLike = Union[CXCircuitLayer, Sequence[GateLike]]
+
+class CXCircuit(Sequence[CXCircuitLayer]):
+    &#34;&#34;&#34;
+        Container for a circuit of CX gates, consisting of a given number of layers
+        and constrained by a given qubit topology.
+    &#34;&#34;&#34;
+
+    _topology: Topology
+    _layers: List[CXCircuitLayer]
+
+    def __init__(self, topology: Topology, layers: Sequence[CXCircuitLayer] = tuple()):
+        if not isinstance(topology, Topology):
+            raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        if not isinstance(layers, Sequence):
+            raise TypeError(f&#34;Expected sequence of CXCircuitLayer, found {layers}&#34;)
+        for layer in layers:
+            if not isinstance(layer, CXCircuitLayer):
+                raise TypeError(f&#34;Expected CXCircuitLayer, found {type(layer)}&#34;)
+            if layer.topology != topology:
+                raise ValueError(&#34;Layer topology different from circuit topology.&#34;)
+        self._topology = topology
+        self._layers = list(layers)
+
+    @property
+    def topology(self) -&gt; Topology:
+        &#34;&#34;&#34;
+            Readonly property exposing the qubit topology
+            constraining this CX circuit.
+        &#34;&#34;&#34;
+        return self._topology
+
+    @property
+    def num_gates(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property returning the total number of gates in this
+            CX circuit.
+        &#34;&#34;&#34;
+        return sum((layer.num_gates for layer in self), 0)
+
+    def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
+             figsize: Optional[Tuple[int, int]] = None,
+             zcolor: str = &#34;#CCFFCC&#34;,
+             xcolor: str = &#34;#FF8888&#34;,
+             **kwargs):
+        &#34;&#34;&#34;
+            Draws this CX circuit using NetworkX and Matplotlib.
+            Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
+        &#34;&#34;&#34;
+        for layer_idx, layer in enumerate(self):
+            print(f&#34;Layer {layer_idx}:&#34;)
+            layer.draw(layout=layout, figsize=figsize,
+                       zcolor=zcolor, xcolor=xcolor, **kwargs)
+
+    @overload
+    def __getitem__(self, layer_idx: int) -&gt; CXCircuitLayer:
+        ...
+
+    @overload
+    def __getitem__(self, layer_idx: slice) -&gt; Sequence[CXCircuitLayer]:
+        ...
+
+    def __getitem__(self, layer_idx):
+        return self._layers[layer_idx]
+
+    def __len__(self) -&gt; int:
+        return len(self._layers)
+
+    def __iter__(self) -&gt; Iterator[CXCircuitLayer]:
+        return iter(self._layers)
+
+    def __irshift__(self, layers: Union[CXCircuitLayerLike,
+                                        Sequence[CXCircuitLayerLike]]) -&gt; &#34;CXCircuit&#34;:
+        if isinstance(layers, CXCircuitLayer):
+            layers = [layers]
+        elif (isinstance(layers, Sequence)
+              and all(isinstance(g, (list, tuple))
+                      and all(isinstance(x, int) for x in g) # pylint: disable = C0330
+                      and len(g) == 2 for g in layers)): # pylint: disable = C0330
+            layers = [cast(Sequence[GateLike], layers)]
+        if not isinstance(layers, Sequence):
+            raise TypeError(f&#34;Expected sequence of layers, found {layers}&#34;)
+        for layer in layers:
+            if not isinstance(layer, CXCircuitLayer):
+                if not isinstance(layer, Sequence):
+                    raise TypeError(f&#34;Expected a sequence of pairs of ints, found {layer}&#34;)
+                layer = CXCircuitLayer(self.topology, cast(Sequence[GateLike], layer))
+            self._layers.append(layer)
+        return self
+
+    def __eq__(self, other) -&gt; bool:
+        if self is other:
+            return True
+        if not isinstance(other, CXCircuit):
+            return NotImplemented
+        if self.topology != other.topology:
+            return False
+        if len(self) != len(other):
+            return False
+        return all(sl == ol for sl, ol in zip(self, other))
+
+
+class CXCircuitLayerView():
+    &#34;&#34;&#34;
+        Readonly view on a CX circuit layer.
+    &#34;&#34;&#34;
+
+    _layer: CXCircuitLayer
+
+    def __init__(self, layer: CXCircuitLayer):
+        if not isinstance(layer, CXCircuitLayer):
+            raise TypeError(f&#34;Expected CXCircuitLayer, found {type(layer)}.&#34;)
+        self._layer = layer
+
+    @property
+    def topology(self) -&gt; Topology:
+        &#34;&#34;&#34;
+            Readonly property exposing the qubit topology
+            constraining this CX circuit layer.
+        &#34;&#34;&#34;
+        return self._layer.topology
+
+    @property
+    def gates(self) -&gt; FrozenSet[Tuple[int, int]]:
+        &#34;&#34;&#34;
+            Readonly property returning the collection of gates in this
+            CX circuit layer.
+
+            This collection is freshly generated at every call.
+        &#34;&#34;&#34;
+        return self._layer.gates
+
+    @property
+    def num_gates(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property returning the number of gates in this
+            CX circuit layer.
+        &#34;&#34;&#34;
+        return self._layer.num_gates
+
+    @property
+    def flippable_cxs(self) -&gt; FrozenSet[Tuple[int, int]]:
+        &#34;&#34;&#34;
+            Readonly property returning the collection of CX gates that
+            that can be currently flipped in this layer, namely:
+
+            - all gates currently in the layer (will be removed by flip);
+            - all gates with both qubits currently not covered by a gate
+              already in the layer (will be added by flip).
+
+            This collection is freshly generated at every call.
+        &#34;&#34;&#34;
+        return self._layer.flippable_cxs
+
+    def incident(self, qubit: int) -&gt; Optional[Tuple[int, int]]:
+        &#34;&#34;&#34;
+            Returns the CX gate incident to the given qubit in this layer,
+            or `None` if there is no gate incident to the qubit.
+        &#34;&#34;&#34;
+        return self._layer.incident(qubit)
+
+    def has_cx(self, ctrl: int, trgt: int) -&gt; bool:
+        &#34;&#34;&#34;
+            Checks whether the given CX gate is in the layer:
+        &#34;&#34;&#34;
+        return self._layer.has_cx(ctrl, trgt)
+
+    def is_cx_flippable(self, ctrl: int, trgt: int) -&gt; bool:
+        &#34;&#34;&#34;
+            Checks whether the given CX gate can be flipped in this layer.
+            This is true if:
+
+            - the gate is present (gate can be removed);
+            - the gate is not present, and neither the control nor the
+              target are already covered by some other gate (gate can be added).
+        &#34;&#34;&#34;
+        return self._layer.is_cx_flippable(ctrl, trgt)
+
+    def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
+             figsize: Optional[Tuple[int, int]] = None,
+             zcolor: str = &#34;#CCFFCC&#34;,
+             xcolor: str = &#34;#FF8888&#34;,
+             **kwargs):
+        &#34;&#34;&#34;
+            Draws this CX circuit layer using NetworkX and Matplotlib.
+            Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
+        &#34;&#34;&#34;
+        return self._layer.draw(layout=layout, figsize=figsize,
+                                zcolor=zcolor, xcolor=xcolor, **kwargs)
+
+    def __eq__(self, other) -&gt; bool:
+        if self is other:
+            return True
+        if isinstance(other, CXCircuitLayer):
+            return self._layer == other
+        if isinstance(other, CXCircuitLayerView):
+            return self._layer == other._layer
+        return NotImplemented
+
+
+class CXCircuitView(Sequence[CXCircuitLayerView]):
+    &#34;&#34;&#34;
+        Readonly view on a CX circuit.
+    &#34;&#34;&#34;
+
+    _circuit: CXCircuit
+
+    def __init__(self, circuit: CXCircuit):
+        if not isinstance(circuit, CXCircuit):
+            raise TypeError(f&#34;Expected CXCircuit, found {type(circuit)}.&#34;)
+        self._circuit = circuit
+
+    @property
+    def topology(self) -&gt; Topology:
+        &#34;&#34;&#34;
+            Readonly property exposing the qubit topology
+            constraining this CX circuit.
+        &#34;&#34;&#34;
+        return self._circuit.topology
+
+
+    @property
+    def num_gates(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property returning the number of gates in this
+            CX circuit.
+        &#34;&#34;&#34;
+        return self._circuit.num_gates
+
+    def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
+             figsize: Optional[Tuple[int, int]] = None,
+             zcolor: str = &#34;#CCFFCC&#34;,
+             xcolor: str = &#34;#FF8888&#34;,
+             **kwargs):
+        &#34;&#34;&#34;
+            Draws this CX circuit using NetworkX and Matplotlib.
+            Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
+        &#34;&#34;&#34;
+        return self._circuit.draw(layout=layout, figsize=figsize,
+                                  zcolor=zcolor, xcolor=xcolor, **kwargs)
+
+    @overload
+    def __getitem__(self, layer_idx: int) -&gt; CXCircuitLayerView:
+        ...
+
+    @overload
+    def __getitem__(self, layer_idx: slice) -&gt; Sequence[CXCircuitLayerView]:
+        ...
+
+    def __getitem__(self, layer_idx):
+        return CXCircuitLayerView(self._circuit[layer_idx])
+
+    def __len__(self) -&gt; int:
+        return len(self._circuit)
+
+    def __iter__(self) -&gt; Iterator[CXCircuitLayerView]:
+        return (CXCircuitLayerView(l) for l in self._circuit)
+
+    def __eq__(self, other) -&gt; bool:
+        if self is other:
+            return True
+        if isinstance(other, CXCircuit):
+            return self._circuit == other
+        if isinstance(other, CXCircuitView):
+            return self._circuit == other._circuit
+        return NotImplemented</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="pauliopt.phase.cx_circuits.CXCircuit"><code class="flex name class">
+<span>class <span class="ident">CXCircuit</span></span>
+<span>(</span><span>topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>, layers: Sequence[<a title="pauliopt.phase.cx_circuits.CXCircuitLayer" href="#pauliopt.phase.cx_circuits.CXCircuitLayer">CXCircuitLayer</a>] = ())</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Container for a circuit of CX gates, consisting of a given number of layers
+and constrained by a given qubit topology.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class CXCircuit(Sequence[CXCircuitLayer]):
+    &#34;&#34;&#34;
+        Container for a circuit of CX gates, consisting of a given number of layers
+        and constrained by a given qubit topology.
+    &#34;&#34;&#34;
+
+    _topology: Topology
+    _layers: List[CXCircuitLayer]
+
+    def __init__(self, topology: Topology, layers: Sequence[CXCircuitLayer] = tuple()):
+        if not isinstance(topology, Topology):
+            raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        if not isinstance(layers, Sequence):
+            raise TypeError(f&#34;Expected sequence of CXCircuitLayer, found {layers}&#34;)
+        for layer in layers:
+            if not isinstance(layer, CXCircuitLayer):
+                raise TypeError(f&#34;Expected CXCircuitLayer, found {type(layer)}&#34;)
+            if layer.topology != topology:
+                raise ValueError(&#34;Layer topology different from circuit topology.&#34;)
+        self._topology = topology
+        self._layers = list(layers)
+
+    @property
+    def topology(self) -&gt; Topology:
+        &#34;&#34;&#34;
+            Readonly property exposing the qubit topology
+            constraining this CX circuit.
+        &#34;&#34;&#34;
+        return self._topology
+
+    @property
+    def num_gates(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property returning the total number of gates in this
+            CX circuit.
+        &#34;&#34;&#34;
+        return sum((layer.num_gates for layer in self), 0)
+
+    def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
+             figsize: Optional[Tuple[int, int]] = None,
+             zcolor: str = &#34;#CCFFCC&#34;,
+             xcolor: str = &#34;#FF8888&#34;,
+             **kwargs):
+        &#34;&#34;&#34;
+            Draws this CX circuit using NetworkX and Matplotlib.
+            Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
+        &#34;&#34;&#34;
+        for layer_idx, layer in enumerate(self):
+            print(f&#34;Layer {layer_idx}:&#34;)
+            layer.draw(layout=layout, figsize=figsize,
+                       zcolor=zcolor, xcolor=xcolor, **kwargs)
+
+    @overload
+    def __getitem__(self, layer_idx: int) -&gt; CXCircuitLayer:
+        ...
+
+    @overload
+    def __getitem__(self, layer_idx: slice) -&gt; Sequence[CXCircuitLayer]:
+        ...
+
+    def __getitem__(self, layer_idx):
+        return self._layers[layer_idx]
+
+    def __len__(self) -&gt; int:
+        return len(self._layers)
+
+    def __iter__(self) -&gt; Iterator[CXCircuitLayer]:
+        return iter(self._layers)
+
+    def __irshift__(self, layers: Union[CXCircuitLayerLike,
+                                        Sequence[CXCircuitLayerLike]]) -&gt; &#34;CXCircuit&#34;:
+        if isinstance(layers, CXCircuitLayer):
+            layers = [layers]
+        elif (isinstance(layers, Sequence)
+              and all(isinstance(g, (list, tuple))
+                      and all(isinstance(x, int) for x in g) # pylint: disable = C0330
+                      and len(g) == 2 for g in layers)): # pylint: disable = C0330
+            layers = [cast(Sequence[GateLike], layers)]
+        if not isinstance(layers, Sequence):
+            raise TypeError(f&#34;Expected sequence of layers, found {layers}&#34;)
+        for layer in layers:
+            if not isinstance(layer, CXCircuitLayer):
+                if not isinstance(layer, Sequence):
+                    raise TypeError(f&#34;Expected a sequence of pairs of ints, found {layer}&#34;)
+                layer = CXCircuitLayer(self.topology, cast(Sequence[GateLike], layer))
+            self._layers.append(layer)
+        return self
+
+    def __eq__(self, other) -&gt; bool:
+        if self is other:
+            return True
+        if not isinstance(other, CXCircuit):
+            return NotImplemented
+        if self.topology != other.topology:
+            return False
+        if len(self) != len(other):
+            return False
+        return all(sl == ol for sl, ol in zip(self, other))</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>collections.abc.Sequence</li>
+<li>collections.abc.Reversible</li>
+<li>collections.abc.Collection</li>
+<li>collections.abc.Sized</li>
+<li>collections.abc.Iterable</li>
+<li>collections.abc.Container</li>
+<li>typing.Generic</li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="pauliopt.phase.cx_circuits.CXCircuit.num_gates"><code class="name">var <span class="ident">num_gates</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property returning the total number of gates in this
+CX circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def num_gates(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property returning the total number of gates in this
+        CX circuit.
+    &#34;&#34;&#34;
+    return sum((layer.num_gates for layer in self), 0)</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuit.topology"><code class="name">var <span class="ident">topology</span> : <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a></code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the qubit topology
+constraining this CX circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def topology(self) -&gt; Topology:
+    &#34;&#34;&#34;
+        Readonly property exposing the qubit topology
+        constraining this CX circuit.
+    &#34;&#34;&#34;
+    return self._topology</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="pauliopt.phase.cx_circuits.CXCircuit.draw"><code class="name flex">
+<span>def <span class="ident">draw</span></span>(<span>self, layout: str = 'kamada_kawai', *, figsize: Union[Tuple[int, int], NoneType] = None, zcolor: str = '#CCFFCC', xcolor: str = '#FF8888', **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Draws this CX circuit using NetworkX and Matplotlib.
+Keyword arguments <code>kwargs</code> are those of <code>networkx.draw_networkx</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
+         figsize: Optional[Tuple[int, int]] = None,
+         zcolor: str = &#34;#CCFFCC&#34;,
+         xcolor: str = &#34;#FF8888&#34;,
+         **kwargs):
+    &#34;&#34;&#34;
+        Draws this CX circuit using NetworkX and Matplotlib.
+        Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
+    &#34;&#34;&#34;
+    for layer_idx, layer in enumerate(self):
+        print(f&#34;Layer {layer_idx}:&#34;)
+        layer.draw(layout=layout, figsize=figsize,
+                   zcolor=zcolor, xcolor=xcolor, **kwargs)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayer"><code class="flex name class">
+<span>class <span class="ident">CXCircuitLayer</span></span>
+<span>(</span><span>topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>, gates: Sequence[Union[List[int], Tuple[int, int]]] = ())</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Container for a layer of CX gates constrained
+by a given qubit topology.</p>
+<p>It uses <code><a title="pauliopt.topologies.Matching" href="../topologies.html#pauliopt.topologies.Matching">Matching</a></code> to keep track of which
+couplings in the qubit topology are currently occupied by a CX gate,
+and to efficiently determine whether a CX gate can be added to the layer.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class CXCircuitLayer:
+    &#34;&#34;&#34;
+        Container for a layer of CX gates constrained
+        by a given qubit topology.
+
+        It uses `pauliopt.topologies.Matching` to keep track of which
+        couplings in the qubit topology are currently occupied by a CX gate,
+        and to efficiently determine whether a CX gate can be added to the layer.
+    &#34;&#34;&#34;
+
+    _topology: Topology
+    _couplings_seq: Tuple[Coupling, ...]
+    _gates: Dict[Coupling, Tuple[int, int]]
+    _matching: Matching
+
+    def __init__(self, topology: Topology,
+                 gates: Sequence[GateLike] = tuple()):
+        if not isinstance(topology, Topology):
+            raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        if not isinstance(gates, Sequence):
+            raise TypeError(f&#34;Expected sequence of ordered pairs, found {gates}&#34;)
+        self._topology = topology
+        self._gates = {}
+        self._couplings_seq = tuple(sorted(topology.couplings))
+        self._matching = Matching(topology)
+        self._num_flippable_cxs = 2*len(self.topology.couplings)
+        for gate in gates:
+            if not isinstance(gate, (list, tuple)) or len(gate) != 2 or len(set(gate)) != 2:
+                raise TypeError(f&#34;Expected gates to be pairs of distinct integers, found {gate}.&#34;)
+            ctrl, trgt = gate
+            self.flip_cx(ctrl, trgt)
+
+    @property
+    def topology(self) -&gt; Topology:
+        &#34;&#34;&#34;
+            Readonly property exposing the qubit topology
+            constraining this CX circuit layer.
+        &#34;&#34;&#34;
+        return self._topology
+
+    @property
+    def num_gates(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property returning the number of gates in this
+            CX circuit layer.
+        &#34;&#34;&#34;
+        return len(self._gates)
+
+    @property
+    def gates(self) -&gt; FrozenSet[Tuple[int, int]]:
+        &#34;&#34;&#34;
+            Readonly property returning the collection of gates in this
+            CX circuit layer.
+
+            This collection is freshly generated at every call.
+        &#34;&#34;&#34;
+        return frozenset(self._gates.values())
+
+    @property
+    def num_flippable_cxs(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property returning the number of CX gates in this
+            CX circuit layer that can be flipped.
+        &#34;&#34;&#34;
+        return self._num_flippable_cxs
+
+    @property
+    def flippable_cxs(self) -&gt; FrozenSet[Tuple[int, int]]:
+        &#34;&#34;&#34;
+            Readonly property returning the collection of CX gates that
+            that can be currently flipped in this layer, namely:
+
+            - all gates currently in the layer (will be removed by flip);
+            - all gates with both qubits currently not covered by a gate
+              already in the layer (will be added by flip).
+
+            This collection is freshly generated at every call.
+        &#34;&#34;&#34;
+        return frozenset(self._iter_flippable_cxs())
+
+    def incident(self, qubit: int) -&gt; Optional[Tuple[int, int]]:
+        &#34;&#34;&#34;
+            Returns the CX gate incident to the given qubit in this layer,
+            or `None` if there is no gate incident to the qubit.
+        &#34;&#34;&#34;
+        incident_coupling = self._matching.incident(qubit)
+        if incident_coupling is None:
+            return None
+        return self._gates[incident_coupling]
+
+    def has_cx(self, ctrl: int, trgt: int) -&gt; bool:
+        &#34;&#34;&#34;
+            Checks whether the given CX gate is in the layer:
+        &#34;&#34;&#34;
+        gate = (ctrl, trgt)
+        coupling = Coupling(ctrl, trgt)
+        return self._gates.get(coupling, None) == gate
+
+    def is_cx_flippable(self, ctrl: int, trgt: int) -&gt; bool:
+        &#34;&#34;&#34;
+            Checks whether the given CX gate can be flipped in this layer.
+            This is true if:
+
+            - the gate is present (gate can be removed);
+            - the gate is not present, and neither the control nor the
+              target are already covered by some other gate (gate can be added).
+        &#34;&#34;&#34;
+        gate = (ctrl, trgt)
+        coupling = Coupling(ctrl, trgt)
+        if coupling in self._gates:
+            return self._gates[coupling] == gate
+        if (self._matching.incident(ctrl) is None
+                and self._matching.incident(trgt) is None):
+            return True
+        return False
+
+    def random_flip_cx(self, rng: np.random.Generator) -&gt; Tuple[int, int]:
+        &#34;&#34;&#34;
+            Returns a randomly selected flippable CX gate in this CX circuit layer,
+            using the given random number generator.
+        &#34;&#34;&#34;
+        cx_idx = rng.integers(self._num_flippable_cxs)
+        for i, cx in enumerate(self._iter_flippable_cxs()):
+            if i == cx_idx:
+                return cx
+        raise Exception(&#34;Cannot get here!&#34;)
+
+    def flip_cx(self, ctrl: int, trgt: int) -&gt; &#34;CXCircuitLayer&#34;:
+        &#34;&#34;&#34;
+            Adds/removes a CX gate with given control and target to/from the layer.
+            Raises `ValueError` if the gate cannot be added/removed.
+
+            The layer is modified in-place and then returned, as per the
+            [fluent API pattern](https://en.wikipedia.org/wiki/Fluent_interface).
+        &#34;&#34;&#34;
+        # pylint: disable = too-many-branches
+        if not isinstance(ctrl, int):
+            raise TypeError(f&#34;Expected integer, found {ctrl}.&#34;)
+        if not isinstance(trgt, int):
+            raise TypeError(f&#34;Expected integer, found {trgt}.&#34;)
+        gate = (ctrl, trgt)
+        if not self._matching.is_flippable(gate):
+            raise ValueError(f&#34;Cannot add CX gate {gate} to the layer: &#34;
+                             f&#34;gate is not present, but one of control or target &#34;
+                             f&#34;is already involved in some other gate.&#34;)
+        coupling = Coupling(ctrl, trgt)
+        if coupling in self._gates:
+            if self._gates[coupling] == gate:
+                # CX gate already there, gets removed from the layer:
+                del self._gates[coupling]
+                self._matching.flip(coupling)
+                self._num_flippable_cxs += 1
+                for q in self._topology.adjacent(ctrl):
+                    if q != trgt and self.incident(q) is None:
+                        self._num_flippable_cxs += 2
+                for q in self._topology.adjacent(trgt):
+                    if q != ctrl and self.incident(q) is None:
+                        self._num_flippable_cxs += 2
+                return self
+            raise ValueError(f&#34;Invalid CX gate {gate} for given topology: another gate &#34;
+                             f&#34;{self._gates[coupling]} already exists for this qubit pair.&#34;)
+        # CX gate gets added to the layer:
+        self._gates[coupling] = (ctrl, trgt)
+        self._matching.flip(coupling)
+        self._num_flippable_cxs -= 1
+        for q in self._topology.adjacent(ctrl):
+            if q != trgt and self.incident(q) is None:
+                self._num_flippable_cxs -= 2
+        for q in self._topology.adjacent(trgt):
+            if q != ctrl and self.incident(q) is None:
+                self._num_flippable_cxs -= 2
+        return self
+
+    def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
+             figsize: Optional[Tuple[int, int]] = None,
+             zcolor: str = &#34;#CCFFCC&#34;,
+             xcolor: str = &#34;#FF8888&#34;,
+             **kwargs):
+        # pylint: disable = too-many-locals
+        &#34;&#34;&#34;
+            Draws this CX circuit layer using NetworkX and Matplotlib.
+
+            The `layout` keyword argument can be used to select a NetworkX layout
+            from the available ones (exposed by `Topology.available_nx_layouts`).
+            The `figsize` keyword argument is passed to `matplotlib.pyplot.figure`:
+            if specified, it determines the width and height of the figure being drawn.
+            The `zcolor` and `xcolor` keyword arguments are used to determine the colour
+            of the Z and X dots in a CX gate (analogous to `PhaseCircuit.to_svg`).
+            Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
+        &#34;&#34;&#34;
+        try:
+            # pylint: disable = import-outside-toplevel
+            import networkx as nx # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;networkx&#39; library.&#34;)
+        try:
+            # pylint: disable = import-outside-toplevel
+            import matplotlib.pyplot as plt # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;matplotlib&#39; library.&#34;)
+        G = self.topology.to_nx
+        nodes = sorted(self.topology.qubits)
+        edges = sorted(self.topology.couplings, key=lambda c: c.as_pair)
+        kwargs = {**kwargs}
+        layouts = self.topology.available_nx_layouts
+        if &#34;pos&#34; not in kwargs:
+            if layout not in layouts:
+                raise ValueError(f&#34;Invalid layout found: {layout}. &#34;
+                                 f&#34;Valid layouts: {&#39;, &#39;.join(repr(l) for l in layouts)}&#34;)
+            kwargs[&#34;pos&#34;] = getattr(nx, layout+&#34;_layout&#34;)(G)
+        if &#34;node_color&#34; not in kwargs:
+            kwargs[&#34;node_color&#34;] = [&#34;#dddddd&#34; for _ in nodes]
+        for node_idx, node in enumerate(nodes):
+            gate = self.incident(node)
+            if gate is not None:
+                ctrl, trgt = gate
+                if node == ctrl:
+                    kwargs[&#34;node_color&#34;][node_idx] = zcolor
+                else:
+                    kwargs[&#34;node_color&#34;][node_idx] = xcolor
+        if &#34;edge_color&#34; not in kwargs:
+            kwargs[&#34;edge_color&#34;] = [&#34;#dddddd&#34; for _ in edges]
+        for ctrl, trgt in self.gates:
+            edge_idx = edges.index(Coupling(ctrl, trgt))
+            kwargs[&#34;edge_color&#34;][edge_idx] = &#34;#000000&#34;
+        plt.figure(figsize=figsize)
+        nx.draw_networkx(G, **kwargs)
+        plt.show()
+
+    def __irshift__(self, gates: Union[GateLike, Sequence[GateLike]]) -&gt; &#34;CXCircuitLayer&#34;:
+        if (isinstance(gates, (list, tuple))
+                and all(isinstance(x, int) for x in gates) and len(gates) == 2):
+            gates = [cast(Union[List[int], Tuple[int, int]], gates)]
+        if not isinstance(gates, Sequence):
+            raise TypeError(f&#34;Expected sequence of gates, found {gates}&#34;)
+        for gate in gates:
+            if not isinstance(gate, Sequence) or len(gate) != 2:
+                raise TypeError(f&#34;Expected ordered pair, found {gate}&#34;)
+            ctrl, trgt = gate
+            self.flip_cx(ctrl, trgt)
+        return self
+
+    def __eq__(self, other) -&gt; bool:
+        if self is other:
+            return True
+        if not isinstance(other, CXCircuitLayer):
+            return NotImplemented
+        if self.topology != other.topology:
+            return False
+        return self.gates == other.gates
+
+    def _iter_flippable_cxs(self) -&gt; Iterator[Tuple[int, int]]:
+        &#34;&#34;&#34;
+            Iterates over all CX gates that can be flipped.
+            The layer must not be changed while the gates are being iterated,
+            reason why this is a private method.
+
+            The private method `pauliopt.topology.Matching._iter_flippable_couplings`
+            can be called safely because `self._matching` is only accessible internally
+            to the layer and cannot be accidentally modified (subject to the layer not
+            being modified).
+        &#34;&#34;&#34;
+        # pylint: disable = protected-access
+        for coupling in self._matching._iter_flippable_couplings():
+            if coupling in self._gates:
+                yield self._gates[coupling]
+            else:
+                fst, snd = coupling
+                yield (fst, snd)
+                yield (snd, fst)</code></pre>
+</details>
+<h3>Instance variables</h3>
+<dl>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayer.flippable_cxs"><code class="name">var <span class="ident">flippable_cxs</span> : FrozenSet[Tuple[int, int]]</code></dt>
+<dd>
+<div class="desc"><p>Readonly property returning the collection of CX gates that
+that can be currently flipped in this layer, namely:</p>
+<ul>
+<li>all gates currently in the layer (will be removed by flip);</li>
+<li>all gates with both qubits currently not covered by a gate
+already in the layer (will be added by flip).</li>
+</ul>
+<p>This collection is freshly generated at every call.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def flippable_cxs(self) -&gt; FrozenSet[Tuple[int, int]]:
+    &#34;&#34;&#34;
+        Readonly property returning the collection of CX gates that
+        that can be currently flipped in this layer, namely:
+
+        - all gates currently in the layer (will be removed by flip);
+        - all gates with both qubits currently not covered by a gate
+          already in the layer (will be added by flip).
+
+        This collection is freshly generated at every call.
+    &#34;&#34;&#34;
+    return frozenset(self._iter_flippable_cxs())</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayer.gates"><code class="name">var <span class="ident">gates</span> : FrozenSet[Tuple[int, int]]</code></dt>
+<dd>
+<div class="desc"><p>Readonly property returning the collection of gates in this
+CX circuit layer.</p>
+<p>This collection is freshly generated at every call.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def gates(self) -&gt; FrozenSet[Tuple[int, int]]:
+    &#34;&#34;&#34;
+        Readonly property returning the collection of gates in this
+        CX circuit layer.
+
+        This collection is freshly generated at every call.
+    &#34;&#34;&#34;
+    return frozenset(self._gates.values())</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayer.num_flippable_cxs"><code class="name">var <span class="ident">num_flippable_cxs</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property returning the number of CX gates in this
+CX circuit layer that can be flipped.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def num_flippable_cxs(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property returning the number of CX gates in this
+        CX circuit layer that can be flipped.
+    &#34;&#34;&#34;
+    return self._num_flippable_cxs</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayer.num_gates"><code class="name">var <span class="ident">num_gates</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property returning the number of gates in this
+CX circuit layer.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def num_gates(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property returning the number of gates in this
+        CX circuit layer.
+    &#34;&#34;&#34;
+    return len(self._gates)</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayer.topology"><code class="name">var <span class="ident">topology</span> : <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a></code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the qubit topology
+constraining this CX circuit layer.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def topology(self) -&gt; Topology:
+    &#34;&#34;&#34;
+        Readonly property exposing the qubit topology
+        constraining this CX circuit layer.
+    &#34;&#34;&#34;
+    return self._topology</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayer.draw"><code class="name flex">
+<span>def <span class="ident">draw</span></span>(<span>self, layout: str = 'kamada_kawai', *, figsize: Union[Tuple[int, int], NoneType] = None, zcolor: str = '#CCFFCC', xcolor: str = '#FF8888', **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Draws this CX circuit layer using NetworkX and Matplotlib.</p>
+<p>The <code>layout</code> keyword argument can be used to select a NetworkX layout
+from the available ones (exposed by <code>Topology.available_nx_layouts</code>).
+The <code>figsize</code> keyword argument is passed to <code>matplotlib.pyplot.figure</code>:
+if specified, it determines the width and height of the figure being drawn.
+The <code>zcolor</code> and <code>xcolor</code> keyword arguments are used to determine the colour
+of the Z and X dots in a CX gate (analogous to <code>PhaseCircuit.to_svg</code>).
+Keyword arguments <code>kwargs</code> are those of <code>networkx.draw_networkx</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
+         figsize: Optional[Tuple[int, int]] = None,
+         zcolor: str = &#34;#CCFFCC&#34;,
+         xcolor: str = &#34;#FF8888&#34;,
+         **kwargs):
+    # pylint: disable = too-many-locals
+    &#34;&#34;&#34;
+        Draws this CX circuit layer using NetworkX and Matplotlib.
+
+        The `layout` keyword argument can be used to select a NetworkX layout
+        from the available ones (exposed by `Topology.available_nx_layouts`).
+        The `figsize` keyword argument is passed to `matplotlib.pyplot.figure`:
+        if specified, it determines the width and height of the figure being drawn.
+        The `zcolor` and `xcolor` keyword arguments are used to determine the colour
+        of the Z and X dots in a CX gate (analogous to `PhaseCircuit.to_svg`).
+        Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
+    &#34;&#34;&#34;
+    try:
+        # pylint: disable = import-outside-toplevel
+        import networkx as nx # type: ignore
+    except ModuleNotFoundError as _:
+        raise ModuleNotFoundError(&#34;You must install the &#39;networkx&#39; library.&#34;)
+    try:
+        # pylint: disable = import-outside-toplevel
+        import matplotlib.pyplot as plt # type: ignore
+    except ModuleNotFoundError as _:
+        raise ModuleNotFoundError(&#34;You must install the &#39;matplotlib&#39; library.&#34;)
+    G = self.topology.to_nx
+    nodes = sorted(self.topology.qubits)
+    edges = sorted(self.topology.couplings, key=lambda c: c.as_pair)
+    kwargs = {**kwargs}
+    layouts = self.topology.available_nx_layouts
+    if &#34;pos&#34; not in kwargs:
+        if layout not in layouts:
+            raise ValueError(f&#34;Invalid layout found: {layout}. &#34;
+                             f&#34;Valid layouts: {&#39;, &#39;.join(repr(l) for l in layouts)}&#34;)
+        kwargs[&#34;pos&#34;] = getattr(nx, layout+&#34;_layout&#34;)(G)
+    if &#34;node_color&#34; not in kwargs:
+        kwargs[&#34;node_color&#34;] = [&#34;#dddddd&#34; for _ in nodes]
+    for node_idx, node in enumerate(nodes):
+        gate = self.incident(node)
+        if gate is not None:
+            ctrl, trgt = gate
+            if node == ctrl:
+                kwargs[&#34;node_color&#34;][node_idx] = zcolor
+            else:
+                kwargs[&#34;node_color&#34;][node_idx] = xcolor
+    if &#34;edge_color&#34; not in kwargs:
+        kwargs[&#34;edge_color&#34;] = [&#34;#dddddd&#34; for _ in edges]
+    for ctrl, trgt in self.gates:
+        edge_idx = edges.index(Coupling(ctrl, trgt))
+        kwargs[&#34;edge_color&#34;][edge_idx] = &#34;#000000&#34;
+    plt.figure(figsize=figsize)
+    nx.draw_networkx(G, **kwargs)
+    plt.show()</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayer.flip_cx"><code class="name flex">
+<span>def <span class="ident">flip_cx</span></span>(<span>self, ctrl: int, trgt: int) ‑> <a title="pauliopt.phase.cx_circuits.CXCircuitLayer" href="#pauliopt.phase.cx_circuits.CXCircuitLayer">CXCircuitLayer</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Adds/removes a CX gate with given control and target to/from the layer.
+Raises <code>ValueError</code> if the gate cannot be added/removed.</p>
+<p>The layer is modified in-place and then returned, as per the
+<a href="https://en.wikipedia.org/wiki/Fluent_interface">fluent API pattern</a>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def flip_cx(self, ctrl: int, trgt: int) -&gt; &#34;CXCircuitLayer&#34;:
+    &#34;&#34;&#34;
+        Adds/removes a CX gate with given control and target to/from the layer.
+        Raises `ValueError` if the gate cannot be added/removed.
+
+        The layer is modified in-place and then returned, as per the
+        [fluent API pattern](https://en.wikipedia.org/wiki/Fluent_interface).
+    &#34;&#34;&#34;
+    # pylint: disable = too-many-branches
+    if not isinstance(ctrl, int):
+        raise TypeError(f&#34;Expected integer, found {ctrl}.&#34;)
+    if not isinstance(trgt, int):
+        raise TypeError(f&#34;Expected integer, found {trgt}.&#34;)
+    gate = (ctrl, trgt)
+    if not self._matching.is_flippable(gate):
+        raise ValueError(f&#34;Cannot add CX gate {gate} to the layer: &#34;
+                         f&#34;gate is not present, but one of control or target &#34;
+                         f&#34;is already involved in some other gate.&#34;)
+    coupling = Coupling(ctrl, trgt)
+    if coupling in self._gates:
+        if self._gates[coupling] == gate:
+            # CX gate already there, gets removed from the layer:
+            del self._gates[coupling]
+            self._matching.flip(coupling)
+            self._num_flippable_cxs += 1
+            for q in self._topology.adjacent(ctrl):
+                if q != trgt and self.incident(q) is None:
+                    self._num_flippable_cxs += 2
+            for q in self._topology.adjacent(trgt):
+                if q != ctrl and self.incident(q) is None:
+                    self._num_flippable_cxs += 2
+            return self
+        raise ValueError(f&#34;Invalid CX gate {gate} for given topology: another gate &#34;
+                         f&#34;{self._gates[coupling]} already exists for this qubit pair.&#34;)
+    # CX gate gets added to the layer:
+    self._gates[coupling] = (ctrl, trgt)
+    self._matching.flip(coupling)
+    self._num_flippable_cxs -= 1
+    for q in self._topology.adjacent(ctrl):
+        if q != trgt and self.incident(q) is None:
+            self._num_flippable_cxs -= 2
+    for q in self._topology.adjacent(trgt):
+        if q != ctrl and self.incident(q) is None:
+            self._num_flippable_cxs -= 2
+    return self</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayer.has_cx"><code class="name flex">
+<span>def <span class="ident">has_cx</span></span>(<span>self, ctrl: int, trgt: int) ‑> bool</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Checks whether the given CX gate is in the layer:</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def has_cx(self, ctrl: int, trgt: int) -&gt; bool:
+    &#34;&#34;&#34;
+        Checks whether the given CX gate is in the layer:
+    &#34;&#34;&#34;
+    gate = (ctrl, trgt)
+    coupling = Coupling(ctrl, trgt)
+    return self._gates.get(coupling, None) == gate</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayer.incident"><code class="name flex">
+<span>def <span class="ident">incident</span></span>(<span>self, qubit: int) ‑> Union[Tuple[int, int], NoneType]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the CX gate incident to the given qubit in this layer,
+or <code>None</code> if there is no gate incident to the qubit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def incident(self, qubit: int) -&gt; Optional[Tuple[int, int]]:
+    &#34;&#34;&#34;
+        Returns the CX gate incident to the given qubit in this layer,
+        or `None` if there is no gate incident to the qubit.
+    &#34;&#34;&#34;
+    incident_coupling = self._matching.incident(qubit)
+    if incident_coupling is None:
+        return None
+    return self._gates[incident_coupling]</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayer.is_cx_flippable"><code class="name flex">
+<span>def <span class="ident">is_cx_flippable</span></span>(<span>self, ctrl: int, trgt: int) ‑> bool</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Checks whether the given CX gate can be flipped in this layer.
+This is true if:</p>
+<ul>
+<li>the gate is present (gate can be removed);</li>
+<li>the gate is not present, and neither the control nor the
+target are already covered by some other gate (gate can be added).</li>
+</ul></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def is_cx_flippable(self, ctrl: int, trgt: int) -&gt; bool:
+    &#34;&#34;&#34;
+        Checks whether the given CX gate can be flipped in this layer.
+        This is true if:
+
+        - the gate is present (gate can be removed);
+        - the gate is not present, and neither the control nor the
+          target are already covered by some other gate (gate can be added).
+    &#34;&#34;&#34;
+    gate = (ctrl, trgt)
+    coupling = Coupling(ctrl, trgt)
+    if coupling in self._gates:
+        return self._gates[coupling] == gate
+    if (self._matching.incident(ctrl) is None
+            and self._matching.incident(trgt) is None):
+        return True
+    return False</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayer.random_flip_cx"><code class="name flex">
+<span>def <span class="ident">random_flip_cx</span></span>(<span>self, rng: numpy.random._generator.Generator) ‑> Tuple[int, int]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a randomly selected flippable CX gate in this CX circuit layer,
+using the given random number generator.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def random_flip_cx(self, rng: np.random.Generator) -&gt; Tuple[int, int]:
+    &#34;&#34;&#34;
+        Returns a randomly selected flippable CX gate in this CX circuit layer,
+        using the given random number generator.
+    &#34;&#34;&#34;
+    cx_idx = rng.integers(self._num_flippable_cxs)
+    for i, cx in enumerate(self._iter_flippable_cxs()):
+        if i == cx_idx:
+            return cx
+    raise Exception(&#34;Cannot get here!&#34;)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayerView"><code class="flex name class">
+<span>class <span class="ident">CXCircuitLayerView</span></span>
+<span>(</span><span>layer: <a title="pauliopt.phase.cx_circuits.CXCircuitLayer" href="#pauliopt.phase.cx_circuits.CXCircuitLayer">CXCircuitLayer</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Readonly view on a CX circuit layer.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class CXCircuitLayerView():
+    &#34;&#34;&#34;
+        Readonly view on a CX circuit layer.
+    &#34;&#34;&#34;
+
+    _layer: CXCircuitLayer
+
+    def __init__(self, layer: CXCircuitLayer):
+        if not isinstance(layer, CXCircuitLayer):
+            raise TypeError(f&#34;Expected CXCircuitLayer, found {type(layer)}.&#34;)
+        self._layer = layer
+
+    @property
+    def topology(self) -&gt; Topology:
+        &#34;&#34;&#34;
+            Readonly property exposing the qubit topology
+            constraining this CX circuit layer.
+        &#34;&#34;&#34;
+        return self._layer.topology
+
+    @property
+    def gates(self) -&gt; FrozenSet[Tuple[int, int]]:
+        &#34;&#34;&#34;
+            Readonly property returning the collection of gates in this
+            CX circuit layer.
+
+            This collection is freshly generated at every call.
+        &#34;&#34;&#34;
+        return self._layer.gates
+
+    @property
+    def num_gates(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property returning the number of gates in this
+            CX circuit layer.
+        &#34;&#34;&#34;
+        return self._layer.num_gates
+
+    @property
+    def flippable_cxs(self) -&gt; FrozenSet[Tuple[int, int]]:
+        &#34;&#34;&#34;
+            Readonly property returning the collection of CX gates that
+            that can be currently flipped in this layer, namely:
+
+            - all gates currently in the layer (will be removed by flip);
+            - all gates with both qubits currently not covered by a gate
+              already in the layer (will be added by flip).
+
+            This collection is freshly generated at every call.
+        &#34;&#34;&#34;
+        return self._layer.flippable_cxs
+
+    def incident(self, qubit: int) -&gt; Optional[Tuple[int, int]]:
+        &#34;&#34;&#34;
+            Returns the CX gate incident to the given qubit in this layer,
+            or `None` if there is no gate incident to the qubit.
+        &#34;&#34;&#34;
+        return self._layer.incident(qubit)
+
+    def has_cx(self, ctrl: int, trgt: int) -&gt; bool:
+        &#34;&#34;&#34;
+            Checks whether the given CX gate is in the layer:
+        &#34;&#34;&#34;
+        return self._layer.has_cx(ctrl, trgt)
+
+    def is_cx_flippable(self, ctrl: int, trgt: int) -&gt; bool:
+        &#34;&#34;&#34;
+            Checks whether the given CX gate can be flipped in this layer.
+            This is true if:
+
+            - the gate is present (gate can be removed);
+            - the gate is not present, and neither the control nor the
+              target are already covered by some other gate (gate can be added).
+        &#34;&#34;&#34;
+        return self._layer.is_cx_flippable(ctrl, trgt)
+
+    def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
+             figsize: Optional[Tuple[int, int]] = None,
+             zcolor: str = &#34;#CCFFCC&#34;,
+             xcolor: str = &#34;#FF8888&#34;,
+             **kwargs):
+        &#34;&#34;&#34;
+            Draws this CX circuit layer using NetworkX and Matplotlib.
+            Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
+        &#34;&#34;&#34;
+        return self._layer.draw(layout=layout, figsize=figsize,
+                                zcolor=zcolor, xcolor=xcolor, **kwargs)
+
+    def __eq__(self, other) -&gt; bool:
+        if self is other:
+            return True
+        if isinstance(other, CXCircuitLayer):
+            return self._layer == other
+        if isinstance(other, CXCircuitLayerView):
+            return self._layer == other._layer
+        return NotImplemented</code></pre>
+</details>
+<h3>Instance variables</h3>
+<dl>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayerView.flippable_cxs"><code class="name">var <span class="ident">flippable_cxs</span> : FrozenSet[Tuple[int, int]]</code></dt>
+<dd>
+<div class="desc"><p>Readonly property returning the collection of CX gates that
+that can be currently flipped in this layer, namely:</p>
+<ul>
+<li>all gates currently in the layer (will be removed by flip);</li>
+<li>all gates with both qubits currently not covered by a gate
+already in the layer (will be added by flip).</li>
+</ul>
+<p>This collection is freshly generated at every call.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def flippable_cxs(self) -&gt; FrozenSet[Tuple[int, int]]:
+    &#34;&#34;&#34;
+        Readonly property returning the collection of CX gates that
+        that can be currently flipped in this layer, namely:
+
+        - all gates currently in the layer (will be removed by flip);
+        - all gates with both qubits currently not covered by a gate
+          already in the layer (will be added by flip).
+
+        This collection is freshly generated at every call.
+    &#34;&#34;&#34;
+    return self._layer.flippable_cxs</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayerView.gates"><code class="name">var <span class="ident">gates</span> : FrozenSet[Tuple[int, int]]</code></dt>
+<dd>
+<div class="desc"><p>Readonly property returning the collection of gates in this
+CX circuit layer.</p>
+<p>This collection is freshly generated at every call.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def gates(self) -&gt; FrozenSet[Tuple[int, int]]:
+    &#34;&#34;&#34;
+        Readonly property returning the collection of gates in this
+        CX circuit layer.
+
+        This collection is freshly generated at every call.
+    &#34;&#34;&#34;
+    return self._layer.gates</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayerView.num_gates"><code class="name">var <span class="ident">num_gates</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property returning the number of gates in this
+CX circuit layer.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def num_gates(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property returning the number of gates in this
+        CX circuit layer.
+    &#34;&#34;&#34;
+    return self._layer.num_gates</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayerView.topology"><code class="name">var <span class="ident">topology</span> : <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a></code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the qubit topology
+constraining this CX circuit layer.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def topology(self) -&gt; Topology:
+    &#34;&#34;&#34;
+        Readonly property exposing the qubit topology
+        constraining this CX circuit layer.
+    &#34;&#34;&#34;
+    return self._layer.topology</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayerView.draw"><code class="name flex">
+<span>def <span class="ident">draw</span></span>(<span>self, layout: str = 'kamada_kawai', *, figsize: Union[Tuple[int, int], NoneType] = None, zcolor: str = '#CCFFCC', xcolor: str = '#FF8888', **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Draws this CX circuit layer using NetworkX and Matplotlib.
+Keyword arguments <code>kwargs</code> are those of <code>networkx.draw_networkx</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
+         figsize: Optional[Tuple[int, int]] = None,
+         zcolor: str = &#34;#CCFFCC&#34;,
+         xcolor: str = &#34;#FF8888&#34;,
+         **kwargs):
+    &#34;&#34;&#34;
+        Draws this CX circuit layer using NetworkX and Matplotlib.
+        Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
+    &#34;&#34;&#34;
+    return self._layer.draw(layout=layout, figsize=figsize,
+                            zcolor=zcolor, xcolor=xcolor, **kwargs)</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayerView.has_cx"><code class="name flex">
+<span>def <span class="ident">has_cx</span></span>(<span>self, ctrl: int, trgt: int) ‑> bool</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Checks whether the given CX gate is in the layer:</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def has_cx(self, ctrl: int, trgt: int) -&gt; bool:
+    &#34;&#34;&#34;
+        Checks whether the given CX gate is in the layer:
+    &#34;&#34;&#34;
+    return self._layer.has_cx(ctrl, trgt)</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayerView.incident"><code class="name flex">
+<span>def <span class="ident">incident</span></span>(<span>self, qubit: int) ‑> Union[Tuple[int, int], NoneType]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the CX gate incident to the given qubit in this layer,
+or <code>None</code> if there is no gate incident to the qubit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def incident(self, qubit: int) -&gt; Optional[Tuple[int, int]]:
+    &#34;&#34;&#34;
+        Returns the CX gate incident to the given qubit in this layer,
+        or `None` if there is no gate incident to the qubit.
+    &#34;&#34;&#34;
+    return self._layer.incident(qubit)</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayerView.is_cx_flippable"><code class="name flex">
+<span>def <span class="ident">is_cx_flippable</span></span>(<span>self, ctrl: int, trgt: int) ‑> bool</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Checks whether the given CX gate can be flipped in this layer.
+This is true if:</p>
+<ul>
+<li>the gate is present (gate can be removed);</li>
+<li>the gate is not present, and neither the control nor the
+target are already covered by some other gate (gate can be added).</li>
+</ul></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def is_cx_flippable(self, ctrl: int, trgt: int) -&gt; bool:
+    &#34;&#34;&#34;
+        Checks whether the given CX gate can be flipped in this layer.
+        This is true if:
+
+        - the gate is present (gate can be removed);
+        - the gate is not present, and neither the control nor the
+          target are already covered by some other gate (gate can be added).
+    &#34;&#34;&#34;
+    return self._layer.is_cx_flippable(ctrl, trgt)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitView"><code class="flex name class">
+<span>class <span class="ident">CXCircuitView</span></span>
+<span>(</span><span>circuit: <a title="pauliopt.phase.cx_circuits.CXCircuit" href="#pauliopt.phase.cx_circuits.CXCircuit">CXCircuit</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Readonly view on a CX circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class CXCircuitView(Sequence[CXCircuitLayerView]):
+    &#34;&#34;&#34;
+        Readonly view on a CX circuit.
+    &#34;&#34;&#34;
+
+    _circuit: CXCircuit
+
+    def __init__(self, circuit: CXCircuit):
+        if not isinstance(circuit, CXCircuit):
+            raise TypeError(f&#34;Expected CXCircuit, found {type(circuit)}.&#34;)
+        self._circuit = circuit
+
+    @property
+    def topology(self) -&gt; Topology:
+        &#34;&#34;&#34;
+            Readonly property exposing the qubit topology
+            constraining this CX circuit.
+        &#34;&#34;&#34;
+        return self._circuit.topology
+
+
+    @property
+    def num_gates(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property returning the number of gates in this
+            CX circuit.
+        &#34;&#34;&#34;
+        return self._circuit.num_gates
+
+    def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
+             figsize: Optional[Tuple[int, int]] = None,
+             zcolor: str = &#34;#CCFFCC&#34;,
+             xcolor: str = &#34;#FF8888&#34;,
+             **kwargs):
+        &#34;&#34;&#34;
+            Draws this CX circuit using NetworkX and Matplotlib.
+            Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
+        &#34;&#34;&#34;
+        return self._circuit.draw(layout=layout, figsize=figsize,
+                                  zcolor=zcolor, xcolor=xcolor, **kwargs)
+
+    @overload
+    def __getitem__(self, layer_idx: int) -&gt; CXCircuitLayerView:
+        ...
+
+    @overload
+    def __getitem__(self, layer_idx: slice) -&gt; Sequence[CXCircuitLayerView]:
+        ...
+
+    def __getitem__(self, layer_idx):
+        return CXCircuitLayerView(self._circuit[layer_idx])
+
+    def __len__(self) -&gt; int:
+        return len(self._circuit)
+
+    def __iter__(self) -&gt; Iterator[CXCircuitLayerView]:
+        return (CXCircuitLayerView(l) for l in self._circuit)
+
+    def __eq__(self, other) -&gt; bool:
+        if self is other:
+            return True
+        if isinstance(other, CXCircuit):
+            return self._circuit == other
+        if isinstance(other, CXCircuitView):
+            return self._circuit == other._circuit
+        return NotImplemented</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>collections.abc.Sequence</li>
+<li>collections.abc.Reversible</li>
+<li>collections.abc.Collection</li>
+<li>collections.abc.Sized</li>
+<li>collections.abc.Iterable</li>
+<li>collections.abc.Container</li>
+<li>typing.Generic</li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitView.num_gates"><code class="name">var <span class="ident">num_gates</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property returning the number of gates in this
+CX circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def num_gates(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property returning the number of gates in this
+        CX circuit.
+    &#34;&#34;&#34;
+    return self._circuit.num_gates</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitView.topology"><code class="name">var <span class="ident">topology</span> : <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a></code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the qubit topology
+constraining this CX circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def topology(self) -&gt; Topology:
+    &#34;&#34;&#34;
+        Readonly property exposing the qubit topology
+        constraining this CX circuit.
+    &#34;&#34;&#34;
+    return self._circuit.topology</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitView.draw"><code class="name flex">
+<span>def <span class="ident">draw</span></span>(<span>self, layout: str = 'kamada_kawai', *, figsize: Union[Tuple[int, int], NoneType] = None, zcolor: str = '#CCFFCC', xcolor: str = '#FF8888', **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Draws this CX circuit using NetworkX and Matplotlib.
+Keyword arguments <code>kwargs</code> are those of <code>networkx.draw_networkx</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
+         figsize: Optional[Tuple[int, int]] = None,
+         zcolor: str = &#34;#CCFFCC&#34;,
+         xcolor: str = &#34;#FF8888&#34;,
+         **kwargs):
+    &#34;&#34;&#34;
+        Draws this CX circuit using NetworkX and Matplotlib.
+        Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
+    &#34;&#34;&#34;
+    return self._circuit.draw(layout=layout, figsize=figsize,
+                              zcolor=zcolor, xcolor=xcolor, **kwargs)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="pauliopt.phase" href="index.html">pauliopt.phase</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="pauliopt.phase.cx_circuits.CXCircuit" href="#pauliopt.phase.cx_circuits.CXCircuit">CXCircuit</a></code></h4>
+<ul class="">
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuit.draw" href="#pauliopt.phase.cx_circuits.CXCircuit.draw">draw</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuit.num_gates" href="#pauliopt.phase.cx_circuits.CXCircuit.num_gates">num_gates</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuit.topology" href="#pauliopt.phase.cx_circuits.CXCircuit.topology">topology</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer" href="#pauliopt.phase.cx_circuits.CXCircuitLayer">CXCircuitLayer</a></code></h4>
+<ul class="two-column">
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer.draw" href="#pauliopt.phase.cx_circuits.CXCircuitLayer.draw">draw</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer.flip_cx" href="#pauliopt.phase.cx_circuits.CXCircuitLayer.flip_cx">flip_cx</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer.flippable_cxs" href="#pauliopt.phase.cx_circuits.CXCircuitLayer.flippable_cxs">flippable_cxs</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer.gates" href="#pauliopt.phase.cx_circuits.CXCircuitLayer.gates">gates</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer.has_cx" href="#pauliopt.phase.cx_circuits.CXCircuitLayer.has_cx">has_cx</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer.incident" href="#pauliopt.phase.cx_circuits.CXCircuitLayer.incident">incident</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer.is_cx_flippable" href="#pauliopt.phase.cx_circuits.CXCircuitLayer.is_cx_flippable">is_cx_flippable</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer.num_flippable_cxs" href="#pauliopt.phase.cx_circuits.CXCircuitLayer.num_flippable_cxs">num_flippable_cxs</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer.num_gates" href="#pauliopt.phase.cx_circuits.CXCircuitLayer.num_gates">num_gates</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer.random_flip_cx" href="#pauliopt.phase.cx_circuits.CXCircuitLayer.random_flip_cx">random_flip_cx</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer.topology" href="#pauliopt.phase.cx_circuits.CXCircuitLayer.topology">topology</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayerView" href="#pauliopt.phase.cx_circuits.CXCircuitLayerView">CXCircuitLayerView</a></code></h4>
+<ul class="two-column">
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayerView.draw" href="#pauliopt.phase.cx_circuits.CXCircuitLayerView.draw">draw</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayerView.flippable_cxs" href="#pauliopt.phase.cx_circuits.CXCircuitLayerView.flippable_cxs">flippable_cxs</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayerView.gates" href="#pauliopt.phase.cx_circuits.CXCircuitLayerView.gates">gates</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayerView.has_cx" href="#pauliopt.phase.cx_circuits.CXCircuitLayerView.has_cx">has_cx</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayerView.incident" href="#pauliopt.phase.cx_circuits.CXCircuitLayerView.incident">incident</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayerView.is_cx_flippable" href="#pauliopt.phase.cx_circuits.CXCircuitLayerView.is_cx_flippable">is_cx_flippable</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayerView.num_gates" href="#pauliopt.phase.cx_circuits.CXCircuitLayerView.num_gates">num_gates</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayerView.topology" href="#pauliopt.phase.cx_circuits.CXCircuitLayerView.topology">topology</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="pauliopt.phase.cx_circuits.CXCircuitView" href="#pauliopt.phase.cx_circuits.CXCircuitView">CXCircuitView</a></code></h4>
+<ul class="">
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitView.draw" href="#pauliopt.phase.cx_circuits.CXCircuitView.draw">draw</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitView.num_gates" href="#pauliopt.phase.cx_circuits.CXCircuitView.num_gates">num_gates</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitView.topology" href="#pauliopt.phase.cx_circuits.CXCircuitView.topology">topology</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.1</a>.</p>
+</footer>
+</body>
+</html>

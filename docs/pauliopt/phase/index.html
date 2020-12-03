@@ -35,22 +35,28 @@ by conjugation with topologically-aware random circuits of CX gates.</p>
     by conjugation with topologically-aware random circuits of CX gates.
 &#34;&#34;&#34;
 
-from pauliopt.phase.circuits import (Z, X, PhaseGadget, PhaseCircuit, CXCircuit, CXCircuitLayer,
-                                     PhaseCircuitView, CXCircuitView, CXCircuitLayerView)
-from pauliopt.phase.optimizers import PhaseCircuitOptimizer</code></pre>
+from pauliopt.phase.phase_circuits import Z, X, PhaseGadget, PhaseCircuit, PhaseCircuitView
+from pauliopt.phase.cx_circuits import CXCircuit, CXCircuitLayer, CXCircuitView, CXCircuitLayerView
+from pauliopt.phase.optimized_circuits import OptimizedPhaseCircuit
+from pauliopt.utils import pi, π</code></pre>
 </details>
 </section>
 <section>
 <h2 class="section-title" id="header-submodules">Sub-modules</h2>
 <dl>
-<dt><code class="name"><a title="pauliopt.phase.circuits" href="circuits.html">pauliopt.phase.circuits</a></code></dt>
+<dt><code class="name"><a title="pauliopt.phase.cx_circuits" href="cx_circuits.html">pauliopt.phase.cx_circuits</a></code></dt>
 <dd>
-<div class="desc"><p>This module contains code to create circuits of mixed ZX phase gadgets.</p></div>
+<div class="desc"><p>This module contains code to create CX circuits for the optimization
+of circuits of mixed phase gadgets.</p></div>
 </dd>
-<dt><code class="name"><a title="pauliopt.phase.optimizers" href="optimizers.html">pauliopt.phase.optimizers</a></code></dt>
+<dt><code class="name"><a title="pauliopt.phase.optimized_circuits" href="optimized_circuits.html">pauliopt.phase.optimized_circuits</a></code></dt>
 <dd>
 <div class="desc"><p>This module contains code to optimize circuits of mixed ZX phase gadgets
 using topologically-aware circuits of CNOTs.</p></div>
+</dd>
+<dt><code class="name"><a title="pauliopt.phase.phase_circuits" href="phase_circuits.html">pauliopt.phase.phase_circuits</a></code></dt>
+<dd>
+<div class="desc"><p>This module contains code to create circuits of mixed ZX phase gadgets.</p></div>
 </dd>
 </dl>
 </section>
@@ -74,8 +80,9 @@ using topologically-aware circuits of CNOTs.</p></div>
 </li>
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
 <ul>
-<li><code><a title="pauliopt.phase.circuits" href="circuits.html">pauliopt.phase.circuits</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers" href="optimizers.html">pauliopt.phase.optimizers</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits" href="cx_circuits.html">pauliopt.phase.cx_circuits</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits" href="optimized_circuits.html">pauliopt.phase.optimized_circuits</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits" href="phase_circuits.html">pauliopt.phase.phase_circuits</a></code></li>
 </ul>
 </li>
 </ul>

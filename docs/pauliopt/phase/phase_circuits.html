@@ -1,0 +1,2300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.9.1" />
+<title>pauliopt.phase.phase_circuits API documentation</title>
+<meta name="description" content="This module contains code to create circuits of mixed ZX phase gadgets." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS_CHTML" integrity="sha256-kZafAc6mZvK3W3v1pHOcUix30OHQN6pU/NO2oFkqZVw=" crossorigin></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>pauliopt.phase.phase_circuits</code></h1>
+</header>
+<section id="section-intro">
+<p>This module contains code to create circuits of mixed ZX phase gadgets.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;
+    This module contains code to create circuits of mixed ZX phase gadgets.
+&#34;&#34;&#34;
+
+from collections import deque
+from math import ceil, log10
+from typing import (Callable, cast, Collection, Dict, FrozenSet, Generic, Iterator, List,
+                    Literal, Optional, Sequence, Set, Tuple, Union)
+import numpy as np # type: ignore
+from pauliopt.topologies import Topology
+from pauliopt.utils import AngleT, AngleProtocol, Angle, SVGBuilder
+
+def _prims_algorithm_weight(nodes: Collection[int], weight: Callable[[int, int], int],
+                            inf: int) -&gt; int:
+    &#34;&#34;&#34;
+        A modified version of Prim&#39;s algorithm that
+        computes the weight of the minimum spanning tree connecting
+        the given nodes, using the given weight function for branches.
+        The number `inf` should be larger than the maximum weight
+        that can be encountered in the process.
+    &#34;&#34;&#34;
+    if not nodes:
+        return 0
+    mst_length: int = 0
+    # Initialise set of nodes to visit:
+    to_visit = set(nodes)
+    n0 = next(iter(to_visit))
+    to_visit.remove(n0)
+    # Initialise dict of distances from visited set:
+    dist_from_visited: Dict[int, int] = {
+        n: weight(n0, n) for n in nodes
+    }
+    while to_visit:
+        # Look for the node to be visited which is nearest to the visited set:
+        nearest_node = 0 # dummy value
+        nearest_dist: int = inf # dummy value
+        for n in to_visit:
+            n_dist: int = dist_from_visited[n]
+            if n_dist &lt; nearest_dist:
+                nearest_node = n
+                nearest_dist = n_dist
+        # Nearest node is removed and added to the MST:
+        to_visit.remove(nearest_node)
+        mst_length += nearest_dist
+        # Update shortest distances to visited set:
+        for n in to_visit:
+            dist_nearest_n = weight(nearest_node, n)
+            if dist_nearest_n &lt; dist_from_visited[n]:
+                dist_from_visited[n] = dist_nearest_n
+    return mst_length
+
+def _prims_algorithm_branches(nodes: Collection[int], weight: Callable[[int, int], int],
+                              inf: int) -&gt; Sequence[Tuple[int, int]]:
+    # pylint: disable = too-many-locals
+    if not nodes:
+        return []
+    mst_branches = []
+    # Initialise set of nodes to visit:
+    to_visit = set(nodes)
+    n0 = next(iter(to_visit))
+    to_visit.remove(n0)
+    # Initialise dict of distances from visited set:
+    dist_from_visited: Dict[int, int] = {
+        n: weight(n0, n) for n in nodes
+    }
+    # Initialise possible edges for the MST:
+    edge_from_visited: Dict[int, Tuple[int, int]] = {
+        n: (n0, n) for n in nodes
+    }
+    while to_visit:
+        # Look for the node to be visited which is nearest to the visited set:
+        nearest_node = 0 # dummy value
+        nearest_dist: int = inf # dummy value
+        for n in to_visit:
+            n_dist: int = dist_from_visited[n]
+            if n_dist &lt; nearest_dist:
+                nearest_node = n
+                nearest_dist = n_dist
+        # Nearest node is removed and added to the MST:
+        to_visit.remove(nearest_node)
+        mst_branches.append(edge_from_visited[nearest_node])
+        # Update shortest distances/edges to visited set:
+        for n in to_visit:
+            dist_nearest_n = weight(nearest_node, n)
+            if dist_nearest_n &lt; dist_from_visited[n]:
+                dist_from_visited[n] = dist_nearest_n
+                edge_from_visited[n] = (nearest_node, n)
+    return mst_branches
+
+def _prims_algorithm_full(nodes: Collection[int], weight: Callable[[int, int], int],
+                          inf: int) -&gt; Tuple[int, Sequence[int], Sequence[Tuple[int, int]]]:
+    # pylint: disable = too-many-locals
+    if not nodes:
+        return 0, [], []
+    mst_length: int = 0
+    mst_branch_lengths = []
+    mst_branches = []
+    # Initialise set of nodes to visit:
+    to_visit = set(nodes)
+    n0 = next(iter(to_visit))
+    to_visit.remove(n0)
+    # Initialise dict of distances from visited set:
+    dist_from_visited: Dict[int, int] = {
+        n: weight(n0, n) for n in nodes
+    }
+    # Initialise possible edges for the MST:
+    edge_from_visited: Dict[int, Tuple[int, int]] = {
+        n: (n0, n) for n in nodes
+    }
+    while to_visit:
+        # Look for the node to be visited which is nearest to the visited set:
+        nearest_node = 0 # dummy value
+        nearest_dist: int = inf # dummy value
+        for n in to_visit:
+            n_dist: int = dist_from_visited[n]
+            if n_dist &lt; nearest_dist:
+                nearest_node = n
+                nearest_dist = n_dist
+        # Nearest node is removed and added to the MST:
+        to_visit.remove(nearest_node)
+        mst_length += nearest_dist
+        mst_branch_lengths.append(mst_length)
+        mst_branches.append(edge_from_visited[nearest_node])
+        # Update shortest distances/edges to visited set:
+        for n in to_visit:
+            dist_nearest_n = weight(nearest_node, n)
+            if dist_nearest_n &lt; dist_from_visited[n]:
+                dist_from_visited[n] = dist_nearest_n
+                edge_from_visited[n] = (nearest_node, n)
+    return mst_length, mst_branch_lengths, mst_branches
+
+
+class PhaseGadget(Generic[AngleT]):
+    &#34;&#34;&#34;
+        Immutable container class for a phase gadget.
+    &#34;&#34;&#34;
+
+    _qubits: FrozenSet[int]
+    _basis: Literal[&#34;Z&#34;, &#34;X&#34;]
+    _angle: AngleT
+
+    def __init__(self, basis: Literal[&#34;Z&#34;, &#34;X&#34;], angle: AngleT, qubits: Collection[int]):
+        if not isinstance(qubits, Collection) or not all(isinstance(q, int) for q in qubits):
+            raise TypeError(f&#34;Qubits should be a collection of integers, found {qubits}&#34;)
+        if not qubits:
+            raise ValueError(&#34;At least one qubit must be specified.&#34;)
+        if basis not in (&#34;Z&#34;, &#34;X&#34;):
+            raise TypeError(&#34;Basis should be &#39;Z&#39; or &#39;X&#39;.&#34;)
+        if not isinstance(angle, AngleProtocol):
+            raise TypeError(f&#34;Angle should respect the `AngleProtocol` Protocol, &#34;
+                            f&#34;found {angle} of type {type(angle)} instead.&#34;)
+        self._basis = basis
+        self._angle = angle
+        self._qubits = frozenset(qubits)
+
+    @property
+    def basis(self) -&gt; Literal[&#34;Z&#34;, &#34;X&#34;]:
+        &#34;&#34;&#34;
+            Readonly property exposing the basis for this phase gadget.
+        &#34;&#34;&#34;
+        return self._basis
+
+    @property
+    def angle(self) -&gt; AngleT:
+        &#34;&#34;&#34;
+            Readonly property exposing the angle for this phase gadget.
+        &#34;&#34;&#34;
+        return self._angle
+
+    @property
+    def qubits(self) -&gt; FrozenSet[int]:
+        &#34;&#34;&#34;
+            Readonly property exposing the qubits spanned by this phase gadget.
+        &#34;&#34;&#34;
+        return self._qubits
+
+    def cx_count(self, topology: Topology) -&gt; int:
+        &#34;&#34;&#34;
+            Returns the CX count for an implementation of this phase gadget
+            on the given topology based on minimum spanning trees (MST).
+        &#34;&#34;&#34;
+        if not isinstance(topology, Topology):
+            raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        return  _prims_algorithm_weight(self._qubits,
+                                        lambda u, v: 4*topology.dist(u, v)-2,
+                                        4*len(topology.qubits)-2)
+
+    def on_qiskit_circuit(self, topology: Topology, circuit) -&gt; None:
+        &#34;&#34;&#34;
+            Applies this phase gadget to a given qiskit quantum `circuit`,
+            using the given `topology` to determine a minimum spanning
+            tree implementation of the gadget.
+
+            This method relies on the `qiskit` library being available.
+            Specifically, the `circuit` argument must be of type
+            `qiskit.providers.BaseBackend`.
+        &#34;&#34;&#34;
+        # pylint: disable = too-many-branches, too-many-locals
+        # TODO: currently uses CX ladder, must change into balanced tree! (same CX count)
+        try:
+            # pylint: disable = import-outside-toplevel
+            from qiskit.circuit import QuantumCircuit # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;qiskit&#39; library.&#34;)
+        if not isinstance(circuit, QuantumCircuit):
+            raise TypeError(&#34;Argument &#39;circuit&#39; must be of type &#34;
+                            &#34;`qiskit.circuit.QuantumCircuit`.&#34;)
+        if not isinstance(topology, Topology):
+            raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        # Build MST data structure:
+        mst_branches = _prims_algorithm_branches(self._qubits,
+                                                 lambda u, v: 4*topology.dist(u, v)-2,
+                                                 4*len(topology.qubits)-2)
+        upper_ladder: List[Tuple[int, int]] = []
+        if len(self._qubits) == 1:
+            q0 = next(iter(self._qubits))
+        else:
+            q0 = min(*self._qubits)
+        if mst_branches:
+            incident: Dict[int, Set[Tuple[int, int]]] = {
+                q: set() for q in self._qubits
+            }
+            for fst, snd in mst_branches:
+                incident[fst].add((fst, snd))
+                incident[snd].add((snd, fst))
+            # Create ladder of CX gates:
+            visited: Set[int] = set()
+            queue = deque([q0])
+            while queue:
+                q = queue.popleft()
+                visited.add(q)
+                for tail, head in incident[q]:
+                    if head not in visited:
+                        if self.basis == &#34;Z&#34;:
+                            upper_ladder.append((head, tail))
+                        else:
+                            upper_ladder.append((tail, head))
+                        queue.append(head)
+        for ctrl, trgt in reversed(upper_ladder):
+            circuit.cx(ctrl, trgt)
+        if self.basis == &#34;Z&#34;:
+            circuit.rz(float(self.angle), q0)
+        else:
+            circuit.rx(float(self.angle), q0)
+        for ctrl, trgt in upper_ladder:
+            circuit.cx(ctrl, trgt)
+
+    def print_impl_info(self, topology: Topology):
+        &#34;&#34;&#34;
+            Prints information about an implementation of this phase gadget
+            on the given topology based on minimum spanning trees (MST).
+        &#34;&#34;&#34;
+        if not isinstance(topology, Topology):
+            raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        mst_length, mst_branch_lengths, mst_branches = \
+            _prims_algorithm_full(self._qubits,
+                                  lambda u, v: 4*topology.dist(u, v)-2,
+                                  4*len(topology.qubits)-2)
+        print(f&#34;MST implementation info for {str(self)}:&#34;)
+        print(f&#34;  - Overall CX count for gadget: {mst_length}&#34;)
+        print(f&#34;  - MST branches: {mst_branches}&#34;)
+        print(f&#34;  - CX counts for MST branches: {mst_branch_lengths}&#34;)
+        print(&#34;&#34;)
+
+    def __str__(self) -&gt; str:
+        return f&#34;{self.basis}({self.angle}) @ {set(self.qubits)}&#34;
+
+    def __repr__(self) -&gt; str:
+        return f&#34;PhaseGadget({repr(self.basis)}, {self.angle}, {set(self.qubits)})&#34;
+
+    def __hash__(self) -&gt; int:
+        return hash((self.basis, self.angle, self.qubits))
+
+    def __eq__(self, other) -&gt; bool:
+        if self is other:
+            return True
+        if not isinstance(other, PhaseGadget):
+            return NotImplemented
+        return (self.basis == other.basis
+                and self.angle == other.angle
+                and self.qubits == other.qubits)
+
+
+class Z(Generic[AngleT]):
+    &#34;&#34;&#34;
+        Constructs a Z phase gadget with the idiomatic syntax:
+
+        ```py
+            Z(angle) @ qubits
+        ```
+    &#34;&#34;&#34;
+
+    _angle: AngleT
+
+    def __init__(self, angle: AngleT):
+        if not isinstance(angle, AngleProtocol):
+            raise TypeError(f&#34;Angle should respect the `AngleProtocol` Protocol, &#34;
+                            f&#34;found {angle} of type {type(angle)} instead.&#34;)
+        self._angle = angle
+
+    def __matmul__(self, qubits: Collection[int]) -&gt; PhaseGadget[AngleT]:
+        return PhaseGadget(&#34;Z&#34;, self._angle, qubits)
+
+
+class X(Generic[AngleT]):
+    &#34;&#34;&#34;
+        Constructs an X phase gadget with the idiomatic syntax:
+
+        ```py
+            X(angle) @ qubits
+        ```
+    &#34;&#34;&#34;
+
+    _angle: AngleT
+
+    def __init__(self, angle: AngleT):
+        if not isinstance(angle, AngleProtocol):
+            raise TypeError(f&#34;Angle should respect the `AngleProtocol` Protocol, &#34;
+                            f&#34;found {angle} of type {type(angle)} instead.&#34;)
+        self._angle = angle
+
+    def __matmul__(self, qubits: Collection[int]) -&gt; PhaseGadget[AngleT]:
+        return PhaseGadget(&#34;X&#34;, self._angle, qubits)
+
+
+class PhaseCircuit(Generic[AngleT]):
+    &#34;&#34;&#34;
+        Container class for a circuit of mixed ZX phase gadgets.
+    &#34;&#34;&#34;
+
+    _matrix: Dict[Literal[&#34;Z&#34;, &#34;X&#34;], np.ndarray]
+    &#34;&#34;&#34;
+        For `basis in (&#34;Z&#34;, &#34;X&#34;)`, the matrix `self._matrix[basis]`
+        is the binary matrix encoding the qubits spanned by the
+        `basis` gadgets.
+    &#34;&#34;&#34;
+
+    _gadget_idxs: Dict[Literal[&#34;Z&#34;, &#34;X&#34;], List[int]]
+    &#34;&#34;&#34;
+        For `basis in (&#34;Z&#34;, &#34;X&#34;)`, the list `self._gadget_idxs[basis]`
+        maps each column index `c` for `self._matrix[basis]` to the
+        index `self._gadget_idxs[c]` in the global list of gadgets for
+        this circuit for the `basis` gadget corresponding to column `c`.
+    &#34;&#34;&#34;
+
+    _gadget_legs_cache: Dict[Literal[&#34;Z&#34;, &#34;X&#34;], List[Optional[Tuple[int, ...]]]]
+    &#34;&#34;&#34;
+        For `basis in (&#34;Z&#34;, &#34;X&#34;)`, the matrix `self._matrix[basis]`
+        is the binary matrix encoding the qubits spanned by the
+        `basis` gadgets.
+    &#34;&#34;&#34;
+
+    _num_qubits: int
+    &#34;&#34;&#34;
+        The number of qubits spanned by this circuit.
+    &#34;&#34;&#34;
+
+    _angles: List[AngleT]
+    &#34;&#34;&#34;
+        The global list of angles for the gadgets.
+        The angle for the `basis` gadget corresponding to column index `c`
+        of matrix `self._matrix[basis]` is given by:
+
+        ```py
+            self._angles[self._gadget_idxs[basis][c]]
+        ```
+    &#34;&#34;&#34;
+
+    def __init__(self, num_qubits: int, gadgets: Sequence[PhaseGadget[AngleT]] = tuple()):
+        if not isinstance(num_qubits, int) or num_qubits &lt;= 0:
+            raise TypeError(&#34;Number of qubits must be a positive integer.&#34;)
+        if (not isinstance(gadgets, Sequence)
+            or not all(isinstance(g, PhaseGadget) for g in gadgets)): # pylint: disable = C0330
+            raise TypeError(&#34;Gadgets should be a sequence of PhaseGadget.&#34;)
+        self._num_qubits = num_qubits
+        # Fills the lists of original indices and angles for the gadgets:
+        self._gadget_idxs = {&#34;Z&#34;: [], &#34;X&#34;: []}
+        self._angles = []
+        for i, gadget in enumerate(gadgets):
+            self._gadget_idxs[gadget.basis].append(i)
+            self._angles.append(gadget.angle)
+        self._matrix = {}
+        self._gadget_legs_cache = {}
+        for basis in cast(Sequence[Literal[&#34;Z&#34;, &#34;X&#34;]], (&#34;Z&#34;, &#34;X&#34;)):
+            # Create a zero matrix for the basis:
+            self._matrix[basis] = np.zeros(shape=(num_qubits, len(self._gadget_idxs[basis])),
+                                           dtype=np.uint8)
+            # Set matrix elements to 1 for all qubits spanned by the gadgets for the basis:
+            legs_cache: List[Optional[Tuple[int, ...]]] = []
+            self._gadget_legs_cache[basis] = legs_cache
+            for i, idx in enumerate(self._gadget_idxs[basis]):
+                for q in gadgets[idx].qubits:
+                    self._matrix[basis][q, i] = 1
+                legs_cache.append(tuple(sorted(gadgets[idx].qubits)))
+
+    @property
+    def num_qubits(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the number of qubits spanned by this phase circuit.
+        &#34;&#34;&#34;
+        return self._num_qubits
+
+    @property
+    def num_gadgets(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the number of phase gadgets in the circuit.
+        &#34;&#34;&#34;
+        return len(self._angles)
+
+    @property
+    def gadgets(self) -&gt; Sequence[PhaseGadget]:
+        &#34;&#34;&#34;
+            Readonly property returning the sequence of phase gadgets in this
+            phase circuit, in order from first to last.
+
+            This collection is freshly generated at every call.
+        &#34;&#34;&#34;
+        return tuple(self._iter_gadgets())
+
+    @property
+    def as_readonly(self) -&gt; &#34;PhaseCircuitView[AngleT]&#34;:
+        &#34;&#34;&#34;
+            Returns a readonly view on this circuit.
+        &#34;&#34;&#34;
+        return PhaseCircuitView(self)
+
+    def add_gadget(self, gadget: PhaseGadget) -&gt; &#34;PhaseCircuit&#34;:
+        &#34;&#34;&#34;
+            Adds a phase gadget to the circuit.
+            This is rather less efficient than passing the gadgets in the constructor,
+            because the internal numpy arrays have to be copied in the process.
+
+            The circuit is modified in-place and then returned, as per the
+            [fluent interface pattern](https://en.wikipedia.org/wiki/Fluent_interface).
+        &#34;&#34;&#34;
+        if not isinstance(gadget, PhaseGadget):
+            raise TypeError(f&#34;Expected PhaseGadget, found {type(gadget)}.&#34;)
+        basis = gadget.basis
+        gadget_idx = len(self._angles)
+        new_col = np.zeros(shape=(self._num_qubits, 1), dtype=np.uint64)
+        for q in gadget.qubits:
+            new_col[q] = 1
+        self._matrix[basis] = np.append(self._matrix[basis], new_col, axis=1)
+        self._gadget_idxs[basis].append(gadget_idx)
+        self._angles.append(gadget.angle)
+        return self
+
+    def cx_count(self, topology: Topology) -&gt; int:
+        &#34;&#34;&#34;
+            Returns the CX count for an implementation of this phase gadget
+            on the given topology based on minimum spanning trees (MST).
+        &#34;&#34;&#34;
+        if not isinstance(topology, Topology):
+            raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        return self._cx_count(topology, {})
+
+    def to_qiskit(self, topology: Topology):
+        &#34;&#34;&#34;
+            Returns this circuit as a Qiskit circuit.
+
+            This method relies on the `qiskit` library being available.
+            Specifically, the `circuit` argument must be of type
+            `qiskit.providers.BaseBackend`.
+        &#34;&#34;&#34;
+        if not isinstance(topology, Topology):
+            raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        try:
+            # pylint: disable = import-outside-toplevel
+            from qiskit.circuit import QuantumCircuit # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;qiskit&#39; library.&#34;)
+        circuit = QuantumCircuit(self.num_qubits)
+        for gadget in self.gadgets:
+            gadget.on_qiskit_circuit(topology, circuit)
+        return circuit
+
+    def to_svg(self, *,
+               zcolor: str = &#34;#CCFFCC&#34;,
+               xcolor: str = &#34;#FF8888&#34;,
+               hscale: float = 1.0, vscale: float = 1.0,
+               scale: float = 1.0,
+               svg_code_only: bool = False
+               ):
+        &#34;&#34;&#34;
+            Returns an SVG representation of this circuit, using
+            the ZX calculus to express phase gadgets.
+
+            The keyword arguments `zcolor` and `xcolor` can be used to
+            specify a colour for the Z and X basis spiders in the circuit.
+            The keyword arguments `hscale` and `vscale` can be used to
+            scale the circuit representation horizontally and vertically.
+            The keyword argument `scale` can be used to scale the circuit
+            representation isotropically.
+            The keyword argument `svg_code_only` (default `False`) can be used
+            to specify that the SVG code itself be returned, rather than the
+            IPython `SVG` object.
+        &#34;&#34;&#34;
+        if not isinstance(zcolor, str):
+            raise TypeError(&#34;Keyword argument &#39;zcolor&#39; must be string.&#34;)
+        if not isinstance(xcolor, str):
+            raise TypeError(&#34;Keyword argument &#39;xcolor&#39; must be string.&#34;)
+        if not isinstance(hscale, (int, float)) or hscale &lt;= 0.0:
+            raise TypeError(&#34;Keyword argument &#39;hscale&#39; must be positive float.&#34;)
+        if not isinstance(vscale, (int, float)) or vscale &lt;= 0.0:
+            raise TypeError(&#34;Keyword argument &#39;vscale&#39; must be positive float.&#34;)
+        if not isinstance(scale, (int, float)) or scale &lt;= 0.0:
+            raise TypeError(&#34;Keyword argument &#39;scale&#39; must be positive float.&#34;)
+        return self._to_svg(zcolor=zcolor, xcolor=xcolor,
+                            hscale=hscale, vscale=vscale, scale=scale,
+                            svg_code_only=svg_code_only)
+    def _to_svg(self, *,
+                zcolor: str = &#34;#CCFFCC&#34;,
+                xcolor: str = &#34;#FF8888&#34;,
+                hscale: float = 1.0, vscale: float = 1.0,
+                scale: float = 1.0,
+                svg_code_only: bool = False
+                ):
+        # pylint: disable = too-many-locals, too-many-statements
+        num_qubits = self._num_qubits
+        vscale *= scale
+        hscale *= scale
+        gadgets = self.gadgets
+        num_digits = int(ceil(log10(num_qubits)))
+        line_height = int(ceil(30*vscale))
+        row_width = int(ceil(120*hscale))
+        pad_x = int(ceil(10*hscale))
+        margin_x = int(ceil(40*hscale))
+        pad_y = int(ceil(20*vscale))
+        r = pad_y//2-2
+        font_size = 2*r
+        pad_x += font_size*(num_digits+1)
+        delta_fst = row_width//2
+        delta_snd = 3*row_width//4
+        width = 2*pad_x + 2*margin_x + row_width*len(gadgets)
+        height = pad_y + line_height*(num_qubits+1)
+        builder = SVGBuilder(width, height)
+        for q in range(num_qubits):
+            y = pad_y + (q+1) * line_height
+            builder.line((pad_x, y), (width-pad_x, y))
+            builder.text((0, y), f&#34;{str(q):&gt;{num_digits}}&#34;, font_size=font_size)
+            builder.text((width-pad_x+r, y), f&#34;{str(q):&gt;{num_digits}}&#34;, font_size=font_size)
+        for row, gadget in enumerate(gadgets):
+            fill = zcolor if gadget.basis == &#34;Z&#34; else xcolor
+            other_fill = xcolor if gadget.basis == &#34;Z&#34; else zcolor
+            x = pad_x + margin_x + row * row_width
+            for q in gadget.qubits:
+                y = pad_y + (q+1)*line_height
+                builder.line((x, y), (x+delta_fst, pad_y))
+            for q in gadget.qubits:
+                y = pad_y + (q+1)*line_height
+                builder.circle((x, y), r, fill)
+            builder.line((x+delta_fst, pad_y), (x+delta_snd, pad_y))
+            builder.circle((x+delta_fst, pad_y), r, other_fill)
+            builder.circle((x+delta_snd, pad_y), r, fill)
+            builder.text((x+delta_snd+2*r, pad_y), str(gadget.angle), font_size=font_size)
+        svg_code = repr(builder)
+        if svg_code_only:
+            return svg_code
+        try:
+            # pylint: disable = import-outside-toplevel
+            from IPython.core.display import SVG # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;IPython&#39; library.&#34;)
+        return SVG(svg_code)
+
+    def clone(self) -&gt; &#34;PhaseCircuit[AngleT]&#34;:
+        &#34;&#34;&#34;
+            Produces an exact copy of this phase circuit.
+        &#34;&#34;&#34;
+        return PhaseCircuit(self._num_qubits, tuple(self._iter_gadgets()))
+
+    def conj_by_cx(self, ctrl: int, trgt: int) -&gt; &#34;PhaseCircuit[AngleT]&#34;:
+        &#34;&#34;&#34;
+            Conjugates this circuit by a CX gate with given control/target.
+            The circuit is modified in-place and then returned, as per the
+            [fluent interface pattern](https://en.wikipedia.org/wiki/Fluent_interface).
+        &#34;&#34;&#34;
+        if not 0 &lt;= ctrl &lt; self._num_qubits:
+            raise ValueError(f&#34;Invalid control qubit {ctrl}.&#34;)
+        if not 0 &lt;= trgt &lt; self._num_qubits:
+            raise ValueError(f&#34;Invalid target qubit {trgt}.&#34;)
+        self._matrix[&#34;Z&#34;][ctrl, :] = (self._matrix[&#34;Z&#34;][ctrl, :] + self._matrix[&#34;Z&#34;][trgt, :]) % 2
+        self._matrix[&#34;X&#34;][trgt, :] = (self._matrix[&#34;X&#34;][trgt, :] + self._matrix[&#34;X&#34;][ctrl, :]) % 2
+        # Update legs caches:
+        z_gadget_legs_cache = self._gadget_legs_cache[&#34;Z&#34;]
+        for z_gadget_idx in np.where(self._matrix[&#34;Z&#34;][trgt, :] == 1)[0]:
+            z_gadget_legs_cache[z_gadget_idx] = None
+        x_gadget_legs_cache = self._gadget_legs_cache[&#34;X&#34;]
+        for x_gadget_idx in np.where(self._matrix[&#34;X&#34;][ctrl, :] == 1)[0]:
+            x_gadget_legs_cache[x_gadget_idx] = None
+        return self
+
+    def __eq__(self, other) -&gt; bool:
+        if self is other:
+            return True
+        if not isinstance(other, PhaseCircuit):
+            return NotImplemented
+        if self.num_gadgets != other.num_gadgets:
+            return NotImplemented
+        if self.num_qubits != other.num_qubits:
+            return False
+        return all(g == h for g, h in zip(self._iter_gadgets(), other._iter_gadgets()))
+
+    def __irshift__(self, gadgets: Union[PhaseGadget, Sequence[PhaseGadget]]) -&gt; &#34;PhaseCircuit&#34;:
+        if isinstance(gadgets, PhaseGadget):
+            gadgets = [gadgets]
+        if (not isinstance(gadgets, Sequence)
+                or not all(isinstance(gadget, PhaseGadget) for gadget in gadgets)):
+            raise TypeError(f&#34;Expected phase gadget or sequence of phase gadgets, found {gadgets}.&#34;)
+        for gadget in gadgets:
+            self.add_gadget(gadget)
+        return self
+
+    def _iter_gadgets(self) -&gt; Iterator[PhaseGadget]:
+        next_idx = {&#34;Z&#34;: 0, &#34;X&#34;: 0}
+        for i, angle in enumerate(self._angles):
+            Z_next = next_idx[&#34;Z&#34;]
+            X_next = next_idx[&#34;X&#34;]
+            if Z_next &lt; len(self._gadget_idxs[&#34;Z&#34;]) and i == self._gadget_idxs[&#34;Z&#34;][Z_next]:
+                basis: Literal[&#34;Z&#34;, &#34;X&#34;] = &#34;Z&#34;
+            elif X_next &lt; len(self._gadget_idxs[&#34;X&#34;]) and i == self._gadget_idxs[&#34;X&#34;][X_next]:
+                basis = &#34;X&#34;
+            else:
+                raise Exception(&#34;This should never happen. Please open an issue on GitHub.&#34;)
+            col_idx = next_idx[basis]
+            next_idx[basis] += 1
+            col = self._matrix[basis][:, col_idx]
+            yield PhaseGadget(basis, angle, {i for i, b in enumerate(col) if b % 2 == 1})
+
+    def _cx_count(self, topology: Topology, cache: Dict[int, Dict[Tuple[int, ...], int]]) -&gt; int:
+        &#34;&#34;&#34;
+            Returns the CX count for an implementation of this phase gadget
+            on the given topology based on minimum spanning trees (MST).
+        &#34;&#34;&#34;
+        num_qubits = self._num_qubits
+        weight = lambda u, v: 4*topology.dist(u, v)-2
+        inf = 4*num_qubits-2
+        count = 0
+        for basis in (&#34;Z&#34;, &#34;X&#34;):
+            basis = cast(Literal[&#34;Z&#34;, &#34;X&#34;], basis)
+            gadget_legs_cache = self._gadget_legs_cache[basis]
+            for j, col in enumerate(self._matrix[basis].T):
+                legs = gadget_legs_cache[j]
+                if legs is None:
+                    legs = tuple(int(i) for i in np.where(col == 1)[0])
+                    gadget_legs_cache[j] = legs
+                # legs = tuple(int(i) for i in np.where(col == 1)[0])
+                num_legs = len(legs)
+                _cache = cache.get(num_legs, None)
+                if _cache is None:
+                    _cache = {}
+                    cache[num_legs] = _cache
+                legs_count = _cache.get(legs, None)
+                if legs_count is None:
+                    legs_count = _prims_algorithm_weight(legs, weight, inf)
+                    _cache[legs] = legs_count
+                count += legs_count
+        return count
+
+    def _repr_svg_(self):
+        &#34;&#34;&#34;
+            Magic method for IPython/Jupyter pretty-printing.
+            See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
+        &#34;&#34;&#34;
+        return self._to_svg(svg_code_only=True)
+
+    @staticmethod
+    def random(num_qubits: int, num_gadgets: int, *,
+               angle_subdivision: int = 4,
+               min_legs: int = 1,
+               max_legs: Optional[int] = None,
+               rng_seed: Optional[int] = None) -&gt; &#34;PhaseCircuit&#34;:
+        &#34;&#34;&#34;
+            Generates a random circuit of mixed ZX phase gadgets on the given number of qubits,
+            with the given number of gadgets.
+
+            The optional argument `angle_subdivision` (default: 4) can be used to specify the
+            denominator in the random fractional multiples of pi used as values for the angles.
+
+            The optional arguments `min_legs` (default: 1, minimum: 1) and `max_legs`
+            (default: `None`, minimum `min_legs`) can be used to specify the minimum and maximum
+            number of legs for the phase gadgets. If `None`, `max_legs` is set to `len(qubits)`.
+
+            The optional argument `rng_seed` (default: `None`) is used as seed for the RNG.
+        &#34;&#34;&#34;
+        if not isinstance(num_qubits, int) or num_qubits &lt;= 0:
+            raise TypeError(&#34;Number of qubits must be a positive integer.&#34;)
+        if not isinstance(num_gadgets, int) or num_gadgets &lt; 0:
+            raise TypeError(&#34;Number of gadgets must be non-negative integer.&#34;)
+        if not isinstance(angle_subdivision, int) or angle_subdivision &lt;= 0:
+            raise TypeError(&#34;Angle subdivision must be positive integer.&#34;)
+        if not isinstance(min_legs, int) or min_legs &lt;= 0:
+            raise TypeError(&#34;Minimum legs must be positive integer or &#39;None&#39;.&#34;)
+        if min_legs is None:
+            min_legs = 1
+        if max_legs is not None and (not isinstance(max_legs, int) or max_legs &lt; min_legs):
+            raise TypeError(&#34;Maximum legs must be positive integer or &#39;None&#39;.&#34;)
+        if max_legs is None:
+            max_legs = num_qubits
+        if rng_seed is not None and not isinstance(rng_seed, int):
+            raise TypeError(&#34;RNG seed must be integer or &#39;None&#39;.&#34;)
+        rng = np.random.default_rng(seed=rng_seed)
+        angle_rng_seed = int(rng.integers(65536))
+        basis_idxs = rng.integers(2, size=num_gadgets)
+        num_legs = rng.integers(min_legs, max_legs+1, size=num_gadgets)
+        legs_list: list = [
+            rng.choice(num_qubits, num_legs[i], replace=False) for i in range(num_gadgets)
+        ]
+        _angles = Angle.random(angle_subdivision, size=num_gadgets, rng_seed=angle_rng_seed)
+        if isinstance(_angles, Angle):
+            angles: Sequence[Angle] = [_angles]
+        else:
+            angles = _angles
+        bases = cast(Sequence[Literal[&#34;Z&#34;, &#34;X&#34;]], (&#34;Z&#34;, &#34;X&#34;))
+        gadgets: List[PhaseGadget] = [
+            PhaseGadget(bases[(basis_idx+i)%2],
+                        angle,
+                        [int(x) for x in legs])
+            for i, (basis_idx, angle, legs) in enumerate(zip(basis_idxs,
+                                                             angles,
+                                                             legs_list))
+        ]
+        return PhaseCircuit(num_qubits, gadgets)
+
+
+class PhaseCircuitView(Generic[AngleT]):
+    &#34;&#34;&#34;
+        Readonly view on a phase circuit.
+    &#34;&#34;&#34;
+
+    _circuit: PhaseCircuit
+
+    def __init__(self, circuit: PhaseCircuit):
+        if not isinstance(circuit, PhaseCircuit):
+            raise TypeError(f&#34;Expected PhaseCircuit, found {type(circuit)}.&#34;)
+        self._circuit = circuit
+
+    @property
+    def num_qubits(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the number of qubits spanned by the phase circuit.
+        &#34;&#34;&#34;
+        return self._circuit.num_qubits
+
+    @property
+    def num_gadgets(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the number of phase gadgets in the circuit.
+        &#34;&#34;&#34;
+        return self._circuit.num_gadgets
+
+    @property
+    def gadgets(self) -&gt; Sequence[PhaseGadget]:
+        &#34;&#34;&#34;
+            Readonly property returning the sequence of phase gadgets in the
+            phase circuit, in order from first to last.
+
+            This collection is freshly generated at every call.
+        &#34;&#34;&#34;
+        return self._circuit.gadgets
+
+    def to_svg(self, *,
+               zcolor: str = &#34;#CCFFCC&#34;,
+               xcolor: str = &#34;#FF8888&#34;,
+               hscale: float = 1.0, vscale: float = 1.0,
+               scale: float = 1.0,
+               svg_code_only: bool = False
+               ):
+        # pylint: disable = too-many-locals
+        &#34;&#34;&#34;
+            Returns an SVG representation of this circuit, using
+            the ZX calculus to express phase gadgets.
+
+            The keyword arguments `zcolor` and `xcolor` can be used to
+            specify a colour for the Z and X basis spiders in the circuit.
+            The keyword arguments `hscale` and `vscale` can be used to
+            scale the circuit representation horizontally and vertically.
+            The keyword argument `svg_code_only` (default `False`) can be used
+            to specify that the SVG code itself be returned, rather than the
+            IPython `SVG` object.
+        &#34;&#34;&#34;
+        return self._circuit.to_svg(zcolor=zcolor, xcolor=xcolor,
+                                    hscale=hscale, vscale=vscale,
+                                    scale=scale,
+                                    svg_code_only=svg_code_only)
+
+    def clone(self) -&gt; PhaseCircuit[AngleT]:
+        &#34;&#34;&#34;
+            Produces an exact copy of the phase circuit.
+        &#34;&#34;&#34;
+        return self._circuit.clone()
+
+    def __eq__(self, other) -&gt; bool:
+        if self is other:
+            return True
+        if isinstance(other, PhaseCircuit):
+            return self._circuit == other
+        if isinstance(other, PhaseCircuitView):
+            return self._circuit == other._circuit
+        return NotImplemented
+
+    def _repr_svg_(self):
+        &#34;&#34;&#34;
+            Magic method for IPython/Jupyter pretty-printing.
+            See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
+        &#34;&#34;&#34;
+        return self._circuit._repr_svg_() # pylint: disable = protected-access</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuit"><code class="flex name class">
+<span>class <span class="ident">PhaseCircuit</span></span>
+<span>(</span><span>num_qubits: int, gadgets: Sequence[<a title="pauliopt.phase.phase_circuits.PhaseGadget" href="#pauliopt.phase.phase_circuits.PhaseGadget">PhaseGadget</a>[~AngleT]] = ())</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Container class for a circuit of mixed ZX phase gadgets.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class PhaseCircuit(Generic[AngleT]):
+    &#34;&#34;&#34;
+        Container class for a circuit of mixed ZX phase gadgets.
+    &#34;&#34;&#34;
+
+    _matrix: Dict[Literal[&#34;Z&#34;, &#34;X&#34;], np.ndarray]
+    &#34;&#34;&#34;
+        For `basis in (&#34;Z&#34;, &#34;X&#34;)`, the matrix `self._matrix[basis]`
+        is the binary matrix encoding the qubits spanned by the
+        `basis` gadgets.
+    &#34;&#34;&#34;
+
+    _gadget_idxs: Dict[Literal[&#34;Z&#34;, &#34;X&#34;], List[int]]
+    &#34;&#34;&#34;
+        For `basis in (&#34;Z&#34;, &#34;X&#34;)`, the list `self._gadget_idxs[basis]`
+        maps each column index `c` for `self._matrix[basis]` to the
+        index `self._gadget_idxs[c]` in the global list of gadgets for
+        this circuit for the `basis` gadget corresponding to column `c`.
+    &#34;&#34;&#34;
+
+    _gadget_legs_cache: Dict[Literal[&#34;Z&#34;, &#34;X&#34;], List[Optional[Tuple[int, ...]]]]
+    &#34;&#34;&#34;
+        For `basis in (&#34;Z&#34;, &#34;X&#34;)`, the matrix `self._matrix[basis]`
+        is the binary matrix encoding the qubits spanned by the
+        `basis` gadgets.
+    &#34;&#34;&#34;
+
+    _num_qubits: int
+    &#34;&#34;&#34;
+        The number of qubits spanned by this circuit.
+    &#34;&#34;&#34;
+
+    _angles: List[AngleT]
+    &#34;&#34;&#34;
+        The global list of angles for the gadgets.
+        The angle for the `basis` gadget corresponding to column index `c`
+        of matrix `self._matrix[basis]` is given by:
+
+        ```py
+            self._angles[self._gadget_idxs[basis][c]]
+        ```
+    &#34;&#34;&#34;
+
+    def __init__(self, num_qubits: int, gadgets: Sequence[PhaseGadget[AngleT]] = tuple()):
+        if not isinstance(num_qubits, int) or num_qubits &lt;= 0:
+            raise TypeError(&#34;Number of qubits must be a positive integer.&#34;)
+        if (not isinstance(gadgets, Sequence)
+            or not all(isinstance(g, PhaseGadget) for g in gadgets)): # pylint: disable = C0330
+            raise TypeError(&#34;Gadgets should be a sequence of PhaseGadget.&#34;)
+        self._num_qubits = num_qubits
+        # Fills the lists of original indices and angles for the gadgets:
+        self._gadget_idxs = {&#34;Z&#34;: [], &#34;X&#34;: []}
+        self._angles = []
+        for i, gadget in enumerate(gadgets):
+            self._gadget_idxs[gadget.basis].append(i)
+            self._angles.append(gadget.angle)
+        self._matrix = {}
+        self._gadget_legs_cache = {}
+        for basis in cast(Sequence[Literal[&#34;Z&#34;, &#34;X&#34;]], (&#34;Z&#34;, &#34;X&#34;)):
+            # Create a zero matrix for the basis:
+            self._matrix[basis] = np.zeros(shape=(num_qubits, len(self._gadget_idxs[basis])),
+                                           dtype=np.uint8)
+            # Set matrix elements to 1 for all qubits spanned by the gadgets for the basis:
+            legs_cache: List[Optional[Tuple[int, ...]]] = []
+            self._gadget_legs_cache[basis] = legs_cache
+            for i, idx in enumerate(self._gadget_idxs[basis]):
+                for q in gadgets[idx].qubits:
+                    self._matrix[basis][q, i] = 1
+                legs_cache.append(tuple(sorted(gadgets[idx].qubits)))
+
+    @property
+    def num_qubits(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the number of qubits spanned by this phase circuit.
+        &#34;&#34;&#34;
+        return self._num_qubits
+
+    @property
+    def num_gadgets(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the number of phase gadgets in the circuit.
+        &#34;&#34;&#34;
+        return len(self._angles)
+
+    @property
+    def gadgets(self) -&gt; Sequence[PhaseGadget]:
+        &#34;&#34;&#34;
+            Readonly property returning the sequence of phase gadgets in this
+            phase circuit, in order from first to last.
+
+            This collection is freshly generated at every call.
+        &#34;&#34;&#34;
+        return tuple(self._iter_gadgets())
+
+    @property
+    def as_readonly(self) -&gt; &#34;PhaseCircuitView[AngleT]&#34;:
+        &#34;&#34;&#34;
+            Returns a readonly view on this circuit.
+        &#34;&#34;&#34;
+        return PhaseCircuitView(self)
+
+    def add_gadget(self, gadget: PhaseGadget) -&gt; &#34;PhaseCircuit&#34;:
+        &#34;&#34;&#34;
+            Adds a phase gadget to the circuit.
+            This is rather less efficient than passing the gadgets in the constructor,
+            because the internal numpy arrays have to be copied in the process.
+
+            The circuit is modified in-place and then returned, as per the
+            [fluent interface pattern](https://en.wikipedia.org/wiki/Fluent_interface).
+        &#34;&#34;&#34;
+        if not isinstance(gadget, PhaseGadget):
+            raise TypeError(f&#34;Expected PhaseGadget, found {type(gadget)}.&#34;)
+        basis = gadget.basis
+        gadget_idx = len(self._angles)
+        new_col = np.zeros(shape=(self._num_qubits, 1), dtype=np.uint64)
+        for q in gadget.qubits:
+            new_col[q] = 1
+        self._matrix[basis] = np.append(self._matrix[basis], new_col, axis=1)
+        self._gadget_idxs[basis].append(gadget_idx)
+        self._angles.append(gadget.angle)
+        return self
+
+    def cx_count(self, topology: Topology) -&gt; int:
+        &#34;&#34;&#34;
+            Returns the CX count for an implementation of this phase gadget
+            on the given topology based on minimum spanning trees (MST).
+        &#34;&#34;&#34;
+        if not isinstance(topology, Topology):
+            raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        return self._cx_count(topology, {})
+
+    def to_qiskit(self, topology: Topology):
+        &#34;&#34;&#34;
+            Returns this circuit as a Qiskit circuit.
+
+            This method relies on the `qiskit` library being available.
+            Specifically, the `circuit` argument must be of type
+            `qiskit.providers.BaseBackend`.
+        &#34;&#34;&#34;
+        if not isinstance(topology, Topology):
+            raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        try:
+            # pylint: disable = import-outside-toplevel
+            from qiskit.circuit import QuantumCircuit # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;qiskit&#39; library.&#34;)
+        circuit = QuantumCircuit(self.num_qubits)
+        for gadget in self.gadgets:
+            gadget.on_qiskit_circuit(topology, circuit)
+        return circuit
+
+    def to_svg(self, *,
+               zcolor: str = &#34;#CCFFCC&#34;,
+               xcolor: str = &#34;#FF8888&#34;,
+               hscale: float = 1.0, vscale: float = 1.0,
+               scale: float = 1.0,
+               svg_code_only: bool = False
+               ):
+        &#34;&#34;&#34;
+            Returns an SVG representation of this circuit, using
+            the ZX calculus to express phase gadgets.
+
+            The keyword arguments `zcolor` and `xcolor` can be used to
+            specify a colour for the Z and X basis spiders in the circuit.
+            The keyword arguments `hscale` and `vscale` can be used to
+            scale the circuit representation horizontally and vertically.
+            The keyword argument `scale` can be used to scale the circuit
+            representation isotropically.
+            The keyword argument `svg_code_only` (default `False`) can be used
+            to specify that the SVG code itself be returned, rather than the
+            IPython `SVG` object.
+        &#34;&#34;&#34;
+        if not isinstance(zcolor, str):
+            raise TypeError(&#34;Keyword argument &#39;zcolor&#39; must be string.&#34;)
+        if not isinstance(xcolor, str):
+            raise TypeError(&#34;Keyword argument &#39;xcolor&#39; must be string.&#34;)
+        if not isinstance(hscale, (int, float)) or hscale &lt;= 0.0:
+            raise TypeError(&#34;Keyword argument &#39;hscale&#39; must be positive float.&#34;)
+        if not isinstance(vscale, (int, float)) or vscale &lt;= 0.0:
+            raise TypeError(&#34;Keyword argument &#39;vscale&#39; must be positive float.&#34;)
+        if not isinstance(scale, (int, float)) or scale &lt;= 0.0:
+            raise TypeError(&#34;Keyword argument &#39;scale&#39; must be positive float.&#34;)
+        return self._to_svg(zcolor=zcolor, xcolor=xcolor,
+                            hscale=hscale, vscale=vscale, scale=scale,
+                            svg_code_only=svg_code_only)
+    def _to_svg(self, *,
+                zcolor: str = &#34;#CCFFCC&#34;,
+                xcolor: str = &#34;#FF8888&#34;,
+                hscale: float = 1.0, vscale: float = 1.0,
+                scale: float = 1.0,
+                svg_code_only: bool = False
+                ):
+        # pylint: disable = too-many-locals, too-many-statements
+        num_qubits = self._num_qubits
+        vscale *= scale
+        hscale *= scale
+        gadgets = self.gadgets
+        num_digits = int(ceil(log10(num_qubits)))
+        line_height = int(ceil(30*vscale))
+        row_width = int(ceil(120*hscale))
+        pad_x = int(ceil(10*hscale))
+        margin_x = int(ceil(40*hscale))
+        pad_y = int(ceil(20*vscale))
+        r = pad_y//2-2
+        font_size = 2*r
+        pad_x += font_size*(num_digits+1)
+        delta_fst = row_width//2
+        delta_snd = 3*row_width//4
+        width = 2*pad_x + 2*margin_x + row_width*len(gadgets)
+        height = pad_y + line_height*(num_qubits+1)
+        builder = SVGBuilder(width, height)
+        for q in range(num_qubits):
+            y = pad_y + (q+1) * line_height
+            builder.line((pad_x, y), (width-pad_x, y))
+            builder.text((0, y), f&#34;{str(q):&gt;{num_digits}}&#34;, font_size=font_size)
+            builder.text((width-pad_x+r, y), f&#34;{str(q):&gt;{num_digits}}&#34;, font_size=font_size)
+        for row, gadget in enumerate(gadgets):
+            fill = zcolor if gadget.basis == &#34;Z&#34; else xcolor
+            other_fill = xcolor if gadget.basis == &#34;Z&#34; else zcolor
+            x = pad_x + margin_x + row * row_width
+            for q in gadget.qubits:
+                y = pad_y + (q+1)*line_height
+                builder.line((x, y), (x+delta_fst, pad_y))
+            for q in gadget.qubits:
+                y = pad_y + (q+1)*line_height
+                builder.circle((x, y), r, fill)
+            builder.line((x+delta_fst, pad_y), (x+delta_snd, pad_y))
+            builder.circle((x+delta_fst, pad_y), r, other_fill)
+            builder.circle((x+delta_snd, pad_y), r, fill)
+            builder.text((x+delta_snd+2*r, pad_y), str(gadget.angle), font_size=font_size)
+        svg_code = repr(builder)
+        if svg_code_only:
+            return svg_code
+        try:
+            # pylint: disable = import-outside-toplevel
+            from IPython.core.display import SVG # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;IPython&#39; library.&#34;)
+        return SVG(svg_code)
+
+    def clone(self) -&gt; &#34;PhaseCircuit[AngleT]&#34;:
+        &#34;&#34;&#34;
+            Produces an exact copy of this phase circuit.
+        &#34;&#34;&#34;
+        return PhaseCircuit(self._num_qubits, tuple(self._iter_gadgets()))
+
+    def conj_by_cx(self, ctrl: int, trgt: int) -&gt; &#34;PhaseCircuit[AngleT]&#34;:
+        &#34;&#34;&#34;
+            Conjugates this circuit by a CX gate with given control/target.
+            The circuit is modified in-place and then returned, as per the
+            [fluent interface pattern](https://en.wikipedia.org/wiki/Fluent_interface).
+        &#34;&#34;&#34;
+        if not 0 &lt;= ctrl &lt; self._num_qubits:
+            raise ValueError(f&#34;Invalid control qubit {ctrl}.&#34;)
+        if not 0 &lt;= trgt &lt; self._num_qubits:
+            raise ValueError(f&#34;Invalid target qubit {trgt}.&#34;)
+        self._matrix[&#34;Z&#34;][ctrl, :] = (self._matrix[&#34;Z&#34;][ctrl, :] + self._matrix[&#34;Z&#34;][trgt, :]) % 2
+        self._matrix[&#34;X&#34;][trgt, :] = (self._matrix[&#34;X&#34;][trgt, :] + self._matrix[&#34;X&#34;][ctrl, :]) % 2
+        # Update legs caches:
+        z_gadget_legs_cache = self._gadget_legs_cache[&#34;Z&#34;]
+        for z_gadget_idx in np.where(self._matrix[&#34;Z&#34;][trgt, :] == 1)[0]:
+            z_gadget_legs_cache[z_gadget_idx] = None
+        x_gadget_legs_cache = self._gadget_legs_cache[&#34;X&#34;]
+        for x_gadget_idx in np.where(self._matrix[&#34;X&#34;][ctrl, :] == 1)[0]:
+            x_gadget_legs_cache[x_gadget_idx] = None
+        return self
+
+    def __eq__(self, other) -&gt; bool:
+        if self is other:
+            return True
+        if not isinstance(other, PhaseCircuit):
+            return NotImplemented
+        if self.num_gadgets != other.num_gadgets:
+            return NotImplemented
+        if self.num_qubits != other.num_qubits:
+            return False
+        return all(g == h for g, h in zip(self._iter_gadgets(), other._iter_gadgets()))
+
+    def __irshift__(self, gadgets: Union[PhaseGadget, Sequence[PhaseGadget]]) -&gt; &#34;PhaseCircuit&#34;:
+        if isinstance(gadgets, PhaseGadget):
+            gadgets = [gadgets]
+        if (not isinstance(gadgets, Sequence)
+                or not all(isinstance(gadget, PhaseGadget) for gadget in gadgets)):
+            raise TypeError(f&#34;Expected phase gadget or sequence of phase gadgets, found {gadgets}.&#34;)
+        for gadget in gadgets:
+            self.add_gadget(gadget)
+        return self
+
+    def _iter_gadgets(self) -&gt; Iterator[PhaseGadget]:
+        next_idx = {&#34;Z&#34;: 0, &#34;X&#34;: 0}
+        for i, angle in enumerate(self._angles):
+            Z_next = next_idx[&#34;Z&#34;]
+            X_next = next_idx[&#34;X&#34;]
+            if Z_next &lt; len(self._gadget_idxs[&#34;Z&#34;]) and i == self._gadget_idxs[&#34;Z&#34;][Z_next]:
+                basis: Literal[&#34;Z&#34;, &#34;X&#34;] = &#34;Z&#34;
+            elif X_next &lt; len(self._gadget_idxs[&#34;X&#34;]) and i == self._gadget_idxs[&#34;X&#34;][X_next]:
+                basis = &#34;X&#34;
+            else:
+                raise Exception(&#34;This should never happen. Please open an issue on GitHub.&#34;)
+            col_idx = next_idx[basis]
+            next_idx[basis] += 1
+            col = self._matrix[basis][:, col_idx]
+            yield PhaseGadget(basis, angle, {i for i, b in enumerate(col) if b % 2 == 1})
+
+    def _cx_count(self, topology: Topology, cache: Dict[int, Dict[Tuple[int, ...], int]]) -&gt; int:
+        &#34;&#34;&#34;
+            Returns the CX count for an implementation of this phase gadget
+            on the given topology based on minimum spanning trees (MST).
+        &#34;&#34;&#34;
+        num_qubits = self._num_qubits
+        weight = lambda u, v: 4*topology.dist(u, v)-2
+        inf = 4*num_qubits-2
+        count = 0
+        for basis in (&#34;Z&#34;, &#34;X&#34;):
+            basis = cast(Literal[&#34;Z&#34;, &#34;X&#34;], basis)
+            gadget_legs_cache = self._gadget_legs_cache[basis]
+            for j, col in enumerate(self._matrix[basis].T):
+                legs = gadget_legs_cache[j]
+                if legs is None:
+                    legs = tuple(int(i) for i in np.where(col == 1)[0])
+                    gadget_legs_cache[j] = legs
+                # legs = tuple(int(i) for i in np.where(col == 1)[0])
+                num_legs = len(legs)
+                _cache = cache.get(num_legs, None)
+                if _cache is None:
+                    _cache = {}
+                    cache[num_legs] = _cache
+                legs_count = _cache.get(legs, None)
+                if legs_count is None:
+                    legs_count = _prims_algorithm_weight(legs, weight, inf)
+                    _cache[legs] = legs_count
+                count += legs_count
+        return count
+
+    def _repr_svg_(self):
+        &#34;&#34;&#34;
+            Magic method for IPython/Jupyter pretty-printing.
+            See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
+        &#34;&#34;&#34;
+        return self._to_svg(svg_code_only=True)
+
+    @staticmethod
+    def random(num_qubits: int, num_gadgets: int, *,
+               angle_subdivision: int = 4,
+               min_legs: int = 1,
+               max_legs: Optional[int] = None,
+               rng_seed: Optional[int] = None) -&gt; &#34;PhaseCircuit&#34;:
+        &#34;&#34;&#34;
+            Generates a random circuit of mixed ZX phase gadgets on the given number of qubits,
+            with the given number of gadgets.
+
+            The optional argument `angle_subdivision` (default: 4) can be used to specify the
+            denominator in the random fractional multiples of pi used as values for the angles.
+
+            The optional arguments `min_legs` (default: 1, minimum: 1) and `max_legs`
+            (default: `None`, minimum `min_legs`) can be used to specify the minimum and maximum
+            number of legs for the phase gadgets. If `None`, `max_legs` is set to `len(qubits)`.
+
+            The optional argument `rng_seed` (default: `None`) is used as seed for the RNG.
+        &#34;&#34;&#34;
+        if not isinstance(num_qubits, int) or num_qubits &lt;= 0:
+            raise TypeError(&#34;Number of qubits must be a positive integer.&#34;)
+        if not isinstance(num_gadgets, int) or num_gadgets &lt; 0:
+            raise TypeError(&#34;Number of gadgets must be non-negative integer.&#34;)
+        if not isinstance(angle_subdivision, int) or angle_subdivision &lt;= 0:
+            raise TypeError(&#34;Angle subdivision must be positive integer.&#34;)
+        if not isinstance(min_legs, int) or min_legs &lt;= 0:
+            raise TypeError(&#34;Minimum legs must be positive integer or &#39;None&#39;.&#34;)
+        if min_legs is None:
+            min_legs = 1
+        if max_legs is not None and (not isinstance(max_legs, int) or max_legs &lt; min_legs):
+            raise TypeError(&#34;Maximum legs must be positive integer or &#39;None&#39;.&#34;)
+        if max_legs is None:
+            max_legs = num_qubits
+        if rng_seed is not None and not isinstance(rng_seed, int):
+            raise TypeError(&#34;RNG seed must be integer or &#39;None&#39;.&#34;)
+        rng = np.random.default_rng(seed=rng_seed)
+        angle_rng_seed = int(rng.integers(65536))
+        basis_idxs = rng.integers(2, size=num_gadgets)
+        num_legs = rng.integers(min_legs, max_legs+1, size=num_gadgets)
+        legs_list: list = [
+            rng.choice(num_qubits, num_legs[i], replace=False) for i in range(num_gadgets)
+        ]
+        _angles = Angle.random(angle_subdivision, size=num_gadgets, rng_seed=angle_rng_seed)
+        if isinstance(_angles, Angle):
+            angles: Sequence[Angle] = [_angles]
+        else:
+            angles = _angles
+        bases = cast(Sequence[Literal[&#34;Z&#34;, &#34;X&#34;]], (&#34;Z&#34;, &#34;X&#34;))
+        gadgets: List[PhaseGadget] = [
+            PhaseGadget(bases[(basis_idx+i)%2],
+                        angle,
+                        [int(x) for x in legs])
+            for i, (basis_idx, angle, legs) in enumerate(zip(basis_idxs,
+                                                             angles,
+                                                             legs_list))
+        ]
+        return PhaseCircuit(num_qubits, gadgets)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>typing.Generic</li>
+</ul>
+<h3>Static methods</h3>
+<dl>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuit.random"><code class="name flex">
+<span>def <span class="ident">random</span></span>(<span>num_qubits: int, num_gadgets: int, *, angle_subdivision: int = 4, min_legs: int = 1, max_legs: Union[int, NoneType] = None, rng_seed: Union[int, NoneType] = None) ‑> <a title="pauliopt.phase.phase_circuits.PhaseCircuit" href="#pauliopt.phase.phase_circuits.PhaseCircuit">PhaseCircuit</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generates a random circuit of mixed ZX phase gadgets on the given number of qubits,
+with the given number of gadgets.</p>
+<p>The optional argument <code>angle_subdivision</code> (default: 4) can be used to specify the
+denominator in the random fractional multiples of pi used as values for the angles.</p>
+<p>The optional arguments <code>min_legs</code> (default: 1, minimum: 1) and <code>max_legs</code>
+(default: <code>None</code>, minimum <code>min_legs</code>) can be used to specify the minimum and maximum
+number of legs for the phase gadgets. If <code>None</code>, <code>max_legs</code> is set to <code>len(qubits)</code>.</p>
+<p>The optional argument <code>rng_seed</code> (default: <code>None</code>) is used as seed for the RNG.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@staticmethod
+def random(num_qubits: int, num_gadgets: int, *,
+           angle_subdivision: int = 4,
+           min_legs: int = 1,
+           max_legs: Optional[int] = None,
+           rng_seed: Optional[int] = None) -&gt; &#34;PhaseCircuit&#34;:
+    &#34;&#34;&#34;
+        Generates a random circuit of mixed ZX phase gadgets on the given number of qubits,
+        with the given number of gadgets.
+
+        The optional argument `angle_subdivision` (default: 4) can be used to specify the
+        denominator in the random fractional multiples of pi used as values for the angles.
+
+        The optional arguments `min_legs` (default: 1, minimum: 1) and `max_legs`
+        (default: `None`, minimum `min_legs`) can be used to specify the minimum and maximum
+        number of legs for the phase gadgets. If `None`, `max_legs` is set to `len(qubits)`.
+
+        The optional argument `rng_seed` (default: `None`) is used as seed for the RNG.
+    &#34;&#34;&#34;
+    if not isinstance(num_qubits, int) or num_qubits &lt;= 0:
+        raise TypeError(&#34;Number of qubits must be a positive integer.&#34;)
+    if not isinstance(num_gadgets, int) or num_gadgets &lt; 0:
+        raise TypeError(&#34;Number of gadgets must be non-negative integer.&#34;)
+    if not isinstance(angle_subdivision, int) or angle_subdivision &lt;= 0:
+        raise TypeError(&#34;Angle subdivision must be positive integer.&#34;)
+    if not isinstance(min_legs, int) or min_legs &lt;= 0:
+        raise TypeError(&#34;Minimum legs must be positive integer or &#39;None&#39;.&#34;)
+    if min_legs is None:
+        min_legs = 1
+    if max_legs is not None and (not isinstance(max_legs, int) or max_legs &lt; min_legs):
+        raise TypeError(&#34;Maximum legs must be positive integer or &#39;None&#39;.&#34;)
+    if max_legs is None:
+        max_legs = num_qubits
+    if rng_seed is not None and not isinstance(rng_seed, int):
+        raise TypeError(&#34;RNG seed must be integer or &#39;None&#39;.&#34;)
+    rng = np.random.default_rng(seed=rng_seed)
+    angle_rng_seed = int(rng.integers(65536))
+    basis_idxs = rng.integers(2, size=num_gadgets)
+    num_legs = rng.integers(min_legs, max_legs+1, size=num_gadgets)
+    legs_list: list = [
+        rng.choice(num_qubits, num_legs[i], replace=False) for i in range(num_gadgets)
+    ]
+    _angles = Angle.random(angle_subdivision, size=num_gadgets, rng_seed=angle_rng_seed)
+    if isinstance(_angles, Angle):
+        angles: Sequence[Angle] = [_angles]
+    else:
+        angles = _angles
+    bases = cast(Sequence[Literal[&#34;Z&#34;, &#34;X&#34;]], (&#34;Z&#34;, &#34;X&#34;))
+    gadgets: List[PhaseGadget] = [
+        PhaseGadget(bases[(basis_idx+i)%2],
+                    angle,
+                    [int(x) for x in legs])
+        for i, (basis_idx, angle, legs) in enumerate(zip(basis_idxs,
+                                                         angles,
+                                                         legs_list))
+    ]
+    return PhaseCircuit(num_qubits, gadgets)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Instance variables</h3>
+<dl>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuit.as_readonly"><code class="name">var <span class="ident">as_readonly</span> : <a title="pauliopt.phase.phase_circuits.PhaseCircuitView" href="#pauliopt.phase.phase_circuits.PhaseCircuitView">PhaseCircuitView</a>[~AngleT]</code></dt>
+<dd>
+<div class="desc"><p>Returns a readonly view on this circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def as_readonly(self) -&gt; &#34;PhaseCircuitView[AngleT]&#34;:
+    &#34;&#34;&#34;
+        Returns a readonly view on this circuit.
+    &#34;&#34;&#34;
+    return PhaseCircuitView(self)</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuit.gadgets"><code class="name">var <span class="ident">gadgets</span> : Sequence[<a title="pauliopt.phase.phase_circuits.PhaseGadget" href="#pauliopt.phase.phase_circuits.PhaseGadget">PhaseGadget</a>]</code></dt>
+<dd>
+<div class="desc"><p>Readonly property returning the sequence of phase gadgets in this
+phase circuit, in order from first to last.</p>
+<p>This collection is freshly generated at every call.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def gadgets(self) -&gt; Sequence[PhaseGadget]:
+    &#34;&#34;&#34;
+        Readonly property returning the sequence of phase gadgets in this
+        phase circuit, in order from first to last.
+
+        This collection is freshly generated at every call.
+    &#34;&#34;&#34;
+    return tuple(self._iter_gadgets())</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuit.num_gadgets"><code class="name">var <span class="ident">num_gadgets</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the number of phase gadgets in the circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def num_gadgets(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property exposing the number of phase gadgets in the circuit.
+    &#34;&#34;&#34;
+    return len(self._angles)</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuit.num_qubits"><code class="name">var <span class="ident">num_qubits</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the number of qubits spanned by this phase circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def num_qubits(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property exposing the number of qubits spanned by this phase circuit.
+    &#34;&#34;&#34;
+    return self._num_qubits</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuit.add_gadget"><code class="name flex">
+<span>def <span class="ident">add_gadget</span></span>(<span>self, gadget: <a title="pauliopt.phase.phase_circuits.PhaseGadget" href="#pauliopt.phase.phase_circuits.PhaseGadget">PhaseGadget</a>) ‑> <a title="pauliopt.phase.phase_circuits.PhaseCircuit" href="#pauliopt.phase.phase_circuits.PhaseCircuit">PhaseCircuit</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Adds a phase gadget to the circuit.
+This is rather less efficient than passing the gadgets in the constructor,
+because the internal numpy arrays have to be copied in the process.</p>
+<p>The circuit is modified in-place and then returned, as per the
+<a href="https://en.wikipedia.org/wiki/Fluent_interface">fluent interface pattern</a>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def add_gadget(self, gadget: PhaseGadget) -&gt; &#34;PhaseCircuit&#34;:
+    &#34;&#34;&#34;
+        Adds a phase gadget to the circuit.
+        This is rather less efficient than passing the gadgets in the constructor,
+        because the internal numpy arrays have to be copied in the process.
+
+        The circuit is modified in-place and then returned, as per the
+        [fluent interface pattern](https://en.wikipedia.org/wiki/Fluent_interface).
+    &#34;&#34;&#34;
+    if not isinstance(gadget, PhaseGadget):
+        raise TypeError(f&#34;Expected PhaseGadget, found {type(gadget)}.&#34;)
+    basis = gadget.basis
+    gadget_idx = len(self._angles)
+    new_col = np.zeros(shape=(self._num_qubits, 1), dtype=np.uint64)
+    for q in gadget.qubits:
+        new_col[q] = 1
+    self._matrix[basis] = np.append(self._matrix[basis], new_col, axis=1)
+    self._gadget_idxs[basis].append(gadget_idx)
+    self._angles.append(gadget.angle)
+    return self</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuit.clone"><code class="name flex">
+<span>def <span class="ident">clone</span></span>(<span>self) ‑> <a title="pauliopt.phase.phase_circuits.PhaseCircuit" href="#pauliopt.phase.phase_circuits.PhaseCircuit">PhaseCircuit</a>[~AngleT]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Produces an exact copy of this phase circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def clone(self) -&gt; &#34;PhaseCircuit[AngleT]&#34;:
+    &#34;&#34;&#34;
+        Produces an exact copy of this phase circuit.
+    &#34;&#34;&#34;
+    return PhaseCircuit(self._num_qubits, tuple(self._iter_gadgets()))</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuit.conj_by_cx"><code class="name flex">
+<span>def <span class="ident">conj_by_cx</span></span>(<span>self, ctrl: int, trgt: int) ‑> <a title="pauliopt.phase.phase_circuits.PhaseCircuit" href="#pauliopt.phase.phase_circuits.PhaseCircuit">PhaseCircuit</a>[~AngleT]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Conjugates this circuit by a CX gate with given control/target.
+The circuit is modified in-place and then returned, as per the
+<a href="https://en.wikipedia.org/wiki/Fluent_interface">fluent interface pattern</a>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def conj_by_cx(self, ctrl: int, trgt: int) -&gt; &#34;PhaseCircuit[AngleT]&#34;:
+    &#34;&#34;&#34;
+        Conjugates this circuit by a CX gate with given control/target.
+        The circuit is modified in-place and then returned, as per the
+        [fluent interface pattern](https://en.wikipedia.org/wiki/Fluent_interface).
+    &#34;&#34;&#34;
+    if not 0 &lt;= ctrl &lt; self._num_qubits:
+        raise ValueError(f&#34;Invalid control qubit {ctrl}.&#34;)
+    if not 0 &lt;= trgt &lt; self._num_qubits:
+        raise ValueError(f&#34;Invalid target qubit {trgt}.&#34;)
+    self._matrix[&#34;Z&#34;][ctrl, :] = (self._matrix[&#34;Z&#34;][ctrl, :] + self._matrix[&#34;Z&#34;][trgt, :]) % 2
+    self._matrix[&#34;X&#34;][trgt, :] = (self._matrix[&#34;X&#34;][trgt, :] + self._matrix[&#34;X&#34;][ctrl, :]) % 2
+    # Update legs caches:
+    z_gadget_legs_cache = self._gadget_legs_cache[&#34;Z&#34;]
+    for z_gadget_idx in np.where(self._matrix[&#34;Z&#34;][trgt, :] == 1)[0]:
+        z_gadget_legs_cache[z_gadget_idx] = None
+    x_gadget_legs_cache = self._gadget_legs_cache[&#34;X&#34;]
+    for x_gadget_idx in np.where(self._matrix[&#34;X&#34;][ctrl, :] == 1)[0]:
+        x_gadget_legs_cache[x_gadget_idx] = None
+    return self</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuit.cx_count"><code class="name flex">
+<span>def <span class="ident">cx_count</span></span>(<span>self, topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the CX count for an implementation of this phase gadget
+on the given topology based on minimum spanning trees (MST).</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def cx_count(self, topology: Topology) -&gt; int:
+    &#34;&#34;&#34;
+        Returns the CX count for an implementation of this phase gadget
+        on the given topology based on minimum spanning trees (MST).
+    &#34;&#34;&#34;
+    if not isinstance(topology, Topology):
+        raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+    return self._cx_count(topology, {})</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuit.to_qiskit"><code class="name flex">
+<span>def <span class="ident">to_qiskit</span></span>(<span>self, topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns this circuit as a Qiskit circuit.</p>
+<p>This method relies on the <code>qiskit</code> library being available.
+Specifically, the <code>circuit</code> argument must be of type
+<code>qiskit.providers.BaseBackend</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def to_qiskit(self, topology: Topology):
+    &#34;&#34;&#34;
+        Returns this circuit as a Qiskit circuit.
+
+        This method relies on the `qiskit` library being available.
+        Specifically, the `circuit` argument must be of type
+        `qiskit.providers.BaseBackend`.
+    &#34;&#34;&#34;
+    if not isinstance(topology, Topology):
+        raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+    try:
+        # pylint: disable = import-outside-toplevel
+        from qiskit.circuit import QuantumCircuit # type: ignore
+    except ModuleNotFoundError as _:
+        raise ModuleNotFoundError(&#34;You must install the &#39;qiskit&#39; library.&#34;)
+    circuit = QuantumCircuit(self.num_qubits)
+    for gadget in self.gadgets:
+        gadget.on_qiskit_circuit(topology, circuit)
+    return circuit</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuit.to_svg"><code class="name flex">
+<span>def <span class="ident">to_svg</span></span>(<span>self, *, zcolor: str = '#CCFFCC', xcolor: str = '#FF8888', hscale: float = 1.0, vscale: float = 1.0, scale: float = 1.0, svg_code_only: bool = False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns an SVG representation of this circuit, using
+the ZX calculus to express phase gadgets.</p>
+<p>The keyword arguments <code>zcolor</code> and <code>xcolor</code> can be used to
+specify a colour for the Z and X basis spiders in the circuit.
+The keyword arguments <code>hscale</code> and <code>vscale</code> can be used to
+scale the circuit representation horizontally and vertically.
+The keyword argument <code>scale</code> can be used to scale the circuit
+representation isotropically.
+The keyword argument <code>svg_code_only</code> (default <code>False</code>) can be used
+to specify that the SVG code itself be returned, rather than the
+IPython <code>SVG</code> object.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def to_svg(self, *,
+           zcolor: str = &#34;#CCFFCC&#34;,
+           xcolor: str = &#34;#FF8888&#34;,
+           hscale: float = 1.0, vscale: float = 1.0,
+           scale: float = 1.0,
+           svg_code_only: bool = False
+           ):
+    &#34;&#34;&#34;
+        Returns an SVG representation of this circuit, using
+        the ZX calculus to express phase gadgets.
+
+        The keyword arguments `zcolor` and `xcolor` can be used to
+        specify a colour for the Z and X basis spiders in the circuit.
+        The keyword arguments `hscale` and `vscale` can be used to
+        scale the circuit representation horizontally and vertically.
+        The keyword argument `scale` can be used to scale the circuit
+        representation isotropically.
+        The keyword argument `svg_code_only` (default `False`) can be used
+        to specify that the SVG code itself be returned, rather than the
+        IPython `SVG` object.
+    &#34;&#34;&#34;
+    if not isinstance(zcolor, str):
+        raise TypeError(&#34;Keyword argument &#39;zcolor&#39; must be string.&#34;)
+    if not isinstance(xcolor, str):
+        raise TypeError(&#34;Keyword argument &#39;xcolor&#39; must be string.&#34;)
+    if not isinstance(hscale, (int, float)) or hscale &lt;= 0.0:
+        raise TypeError(&#34;Keyword argument &#39;hscale&#39; must be positive float.&#34;)
+    if not isinstance(vscale, (int, float)) or vscale &lt;= 0.0:
+        raise TypeError(&#34;Keyword argument &#39;vscale&#39; must be positive float.&#34;)
+    if not isinstance(scale, (int, float)) or scale &lt;= 0.0:
+        raise TypeError(&#34;Keyword argument &#39;scale&#39; must be positive float.&#34;)
+    return self._to_svg(zcolor=zcolor, xcolor=xcolor,
+                        hscale=hscale, vscale=vscale, scale=scale,
+                        svg_code_only=svg_code_only)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuitView"><code class="flex name class">
+<span>class <span class="ident">PhaseCircuitView</span></span>
+<span>(</span><span>circuit: <a title="pauliopt.phase.phase_circuits.PhaseCircuit" href="#pauliopt.phase.phase_circuits.PhaseCircuit">PhaseCircuit</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Readonly view on a phase circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class PhaseCircuitView(Generic[AngleT]):
+    &#34;&#34;&#34;
+        Readonly view on a phase circuit.
+    &#34;&#34;&#34;
+
+    _circuit: PhaseCircuit
+
+    def __init__(self, circuit: PhaseCircuit):
+        if not isinstance(circuit, PhaseCircuit):
+            raise TypeError(f&#34;Expected PhaseCircuit, found {type(circuit)}.&#34;)
+        self._circuit = circuit
+
+    @property
+    def num_qubits(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the number of qubits spanned by the phase circuit.
+        &#34;&#34;&#34;
+        return self._circuit.num_qubits
+
+    @property
+    def num_gadgets(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the number of phase gadgets in the circuit.
+        &#34;&#34;&#34;
+        return self._circuit.num_gadgets
+
+    @property
+    def gadgets(self) -&gt; Sequence[PhaseGadget]:
+        &#34;&#34;&#34;
+            Readonly property returning the sequence of phase gadgets in the
+            phase circuit, in order from first to last.
+
+            This collection is freshly generated at every call.
+        &#34;&#34;&#34;
+        return self._circuit.gadgets
+
+    def to_svg(self, *,
+               zcolor: str = &#34;#CCFFCC&#34;,
+               xcolor: str = &#34;#FF8888&#34;,
+               hscale: float = 1.0, vscale: float = 1.0,
+               scale: float = 1.0,
+               svg_code_only: bool = False
+               ):
+        # pylint: disable = too-many-locals
+        &#34;&#34;&#34;
+            Returns an SVG representation of this circuit, using
+            the ZX calculus to express phase gadgets.
+
+            The keyword arguments `zcolor` and `xcolor` can be used to
+            specify a colour for the Z and X basis spiders in the circuit.
+            The keyword arguments `hscale` and `vscale` can be used to
+            scale the circuit representation horizontally and vertically.
+            The keyword argument `svg_code_only` (default `False`) can be used
+            to specify that the SVG code itself be returned, rather than the
+            IPython `SVG` object.
+        &#34;&#34;&#34;
+        return self._circuit.to_svg(zcolor=zcolor, xcolor=xcolor,
+                                    hscale=hscale, vscale=vscale,
+                                    scale=scale,
+                                    svg_code_only=svg_code_only)
+
+    def clone(self) -&gt; PhaseCircuit[AngleT]:
+        &#34;&#34;&#34;
+            Produces an exact copy of the phase circuit.
+        &#34;&#34;&#34;
+        return self._circuit.clone()
+
+    def __eq__(self, other) -&gt; bool:
+        if self is other:
+            return True
+        if isinstance(other, PhaseCircuit):
+            return self._circuit == other
+        if isinstance(other, PhaseCircuitView):
+            return self._circuit == other._circuit
+        return NotImplemented
+
+    def _repr_svg_(self):
+        &#34;&#34;&#34;
+            Magic method for IPython/Jupyter pretty-printing.
+            See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
+        &#34;&#34;&#34;
+        return self._circuit._repr_svg_() # pylint: disable = protected-access</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>typing.Generic</li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuitView.gadgets"><code class="name">var <span class="ident">gadgets</span> : Sequence[<a title="pauliopt.phase.phase_circuits.PhaseGadget" href="#pauliopt.phase.phase_circuits.PhaseGadget">PhaseGadget</a>]</code></dt>
+<dd>
+<div class="desc"><p>Readonly property returning the sequence of phase gadgets in the
+phase circuit, in order from first to last.</p>
+<p>This collection is freshly generated at every call.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def gadgets(self) -&gt; Sequence[PhaseGadget]:
+    &#34;&#34;&#34;
+        Readonly property returning the sequence of phase gadgets in the
+        phase circuit, in order from first to last.
+
+        This collection is freshly generated at every call.
+    &#34;&#34;&#34;
+    return self._circuit.gadgets</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuitView.num_gadgets"><code class="name">var <span class="ident">num_gadgets</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the number of phase gadgets in the circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def num_gadgets(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property exposing the number of phase gadgets in the circuit.
+    &#34;&#34;&#34;
+    return self._circuit.num_gadgets</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuitView.num_qubits"><code class="name">var <span class="ident">num_qubits</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the number of qubits spanned by the phase circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def num_qubits(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property exposing the number of qubits spanned by the phase circuit.
+    &#34;&#34;&#34;
+    return self._circuit.num_qubits</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuitView.clone"><code class="name flex">
+<span>def <span class="ident">clone</span></span>(<span>self) ‑> <a title="pauliopt.phase.phase_circuits.PhaseCircuit" href="#pauliopt.phase.phase_circuits.PhaseCircuit">PhaseCircuit</a>[~AngleT]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Produces an exact copy of the phase circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def clone(self) -&gt; PhaseCircuit[AngleT]:
+    &#34;&#34;&#34;
+        Produces an exact copy of the phase circuit.
+    &#34;&#34;&#34;
+    return self._circuit.clone()</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseCircuitView.to_svg"><code class="name flex">
+<span>def <span class="ident">to_svg</span></span>(<span>self, *, zcolor: str = '#CCFFCC', xcolor: str = '#FF8888', hscale: float = 1.0, vscale: float = 1.0, scale: float = 1.0, svg_code_only: bool = False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns an SVG representation of this circuit, using
+the ZX calculus to express phase gadgets.</p>
+<p>The keyword arguments <code>zcolor</code> and <code>xcolor</code> can be used to
+specify a colour for the Z and X basis spiders in the circuit.
+The keyword arguments <code>hscale</code> and <code>vscale</code> can be used to
+scale the circuit representation horizontally and vertically.
+The keyword argument <code>svg_code_only</code> (default <code>False</code>) can be used
+to specify that the SVG code itself be returned, rather than the
+IPython <code>SVG</code> object.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def to_svg(self, *,
+           zcolor: str = &#34;#CCFFCC&#34;,
+           xcolor: str = &#34;#FF8888&#34;,
+           hscale: float = 1.0, vscale: float = 1.0,
+           scale: float = 1.0,
+           svg_code_only: bool = False
+           ):
+    # pylint: disable = too-many-locals
+    &#34;&#34;&#34;
+        Returns an SVG representation of this circuit, using
+        the ZX calculus to express phase gadgets.
+
+        The keyword arguments `zcolor` and `xcolor` can be used to
+        specify a colour for the Z and X basis spiders in the circuit.
+        The keyword arguments `hscale` and `vscale` can be used to
+        scale the circuit representation horizontally and vertically.
+        The keyword argument `svg_code_only` (default `False`) can be used
+        to specify that the SVG code itself be returned, rather than the
+        IPython `SVG` object.
+    &#34;&#34;&#34;
+    return self._circuit.to_svg(zcolor=zcolor, xcolor=xcolor,
+                                hscale=hscale, vscale=vscale,
+                                scale=scale,
+                                svg_code_only=svg_code_only)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseGadget"><code class="flex name class">
+<span>class <span class="ident">PhaseGadget</span></span>
+<span>(</span><span>basis: Literal['<a title="pauliopt.phase.phase_circuits.Z" href="#pauliopt.phase.phase_circuits.Z">Z</a>', '<a title="pauliopt.phase.phase_circuits.X" href="#pauliopt.phase.phase_circuits.X">X</a>'], angle: ~AngleT, qubits: Collection[int])</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Immutable container class for a phase gadget.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class PhaseGadget(Generic[AngleT]):
+    &#34;&#34;&#34;
+        Immutable container class for a phase gadget.
+    &#34;&#34;&#34;
+
+    _qubits: FrozenSet[int]
+    _basis: Literal[&#34;Z&#34;, &#34;X&#34;]
+    _angle: AngleT
+
+    def __init__(self, basis: Literal[&#34;Z&#34;, &#34;X&#34;], angle: AngleT, qubits: Collection[int]):
+        if not isinstance(qubits, Collection) or not all(isinstance(q, int) for q in qubits):
+            raise TypeError(f&#34;Qubits should be a collection of integers, found {qubits}&#34;)
+        if not qubits:
+            raise ValueError(&#34;At least one qubit must be specified.&#34;)
+        if basis not in (&#34;Z&#34;, &#34;X&#34;):
+            raise TypeError(&#34;Basis should be &#39;Z&#39; or &#39;X&#39;.&#34;)
+        if not isinstance(angle, AngleProtocol):
+            raise TypeError(f&#34;Angle should respect the `AngleProtocol` Protocol, &#34;
+                            f&#34;found {angle} of type {type(angle)} instead.&#34;)
+        self._basis = basis
+        self._angle = angle
+        self._qubits = frozenset(qubits)
+
+    @property
+    def basis(self) -&gt; Literal[&#34;Z&#34;, &#34;X&#34;]:
+        &#34;&#34;&#34;
+            Readonly property exposing the basis for this phase gadget.
+        &#34;&#34;&#34;
+        return self._basis
+
+    @property
+    def angle(self) -&gt; AngleT:
+        &#34;&#34;&#34;
+            Readonly property exposing the angle for this phase gadget.
+        &#34;&#34;&#34;
+        return self._angle
+
+    @property
+    def qubits(self) -&gt; FrozenSet[int]:
+        &#34;&#34;&#34;
+            Readonly property exposing the qubits spanned by this phase gadget.
+        &#34;&#34;&#34;
+        return self._qubits
+
+    def cx_count(self, topology: Topology) -&gt; int:
+        &#34;&#34;&#34;
+            Returns the CX count for an implementation of this phase gadget
+            on the given topology based on minimum spanning trees (MST).
+        &#34;&#34;&#34;
+        if not isinstance(topology, Topology):
+            raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        return  _prims_algorithm_weight(self._qubits,
+                                        lambda u, v: 4*topology.dist(u, v)-2,
+                                        4*len(topology.qubits)-2)
+
+    def on_qiskit_circuit(self, topology: Topology, circuit) -&gt; None:
+        &#34;&#34;&#34;
+            Applies this phase gadget to a given qiskit quantum `circuit`,
+            using the given `topology` to determine a minimum spanning
+            tree implementation of the gadget.
+
+            This method relies on the `qiskit` library being available.
+            Specifically, the `circuit` argument must be of type
+            `qiskit.providers.BaseBackend`.
+        &#34;&#34;&#34;
+        # pylint: disable = too-many-branches, too-many-locals
+        # TODO: currently uses CX ladder, must change into balanced tree! (same CX count)
+        try:
+            # pylint: disable = import-outside-toplevel
+            from qiskit.circuit import QuantumCircuit # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;qiskit&#39; library.&#34;)
+        if not isinstance(circuit, QuantumCircuit):
+            raise TypeError(&#34;Argument &#39;circuit&#39; must be of type &#34;
+                            &#34;`qiskit.circuit.QuantumCircuit`.&#34;)
+        if not isinstance(topology, Topology):
+            raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        # Build MST data structure:
+        mst_branches = _prims_algorithm_branches(self._qubits,
+                                                 lambda u, v: 4*topology.dist(u, v)-2,
+                                                 4*len(topology.qubits)-2)
+        upper_ladder: List[Tuple[int, int]] = []
+        if len(self._qubits) == 1:
+            q0 = next(iter(self._qubits))
+        else:
+            q0 = min(*self._qubits)
+        if mst_branches:
+            incident: Dict[int, Set[Tuple[int, int]]] = {
+                q: set() for q in self._qubits
+            }
+            for fst, snd in mst_branches:
+                incident[fst].add((fst, snd))
+                incident[snd].add((snd, fst))
+            # Create ladder of CX gates:
+            visited: Set[int] = set()
+            queue = deque([q0])
+            while queue:
+                q = queue.popleft()
+                visited.add(q)
+                for tail, head in incident[q]:
+                    if head not in visited:
+                        if self.basis == &#34;Z&#34;:
+                            upper_ladder.append((head, tail))
+                        else:
+                            upper_ladder.append((tail, head))
+                        queue.append(head)
+        for ctrl, trgt in reversed(upper_ladder):
+            circuit.cx(ctrl, trgt)
+        if self.basis == &#34;Z&#34;:
+            circuit.rz(float(self.angle), q0)
+        else:
+            circuit.rx(float(self.angle), q0)
+        for ctrl, trgt in upper_ladder:
+            circuit.cx(ctrl, trgt)
+
+    def print_impl_info(self, topology: Topology):
+        &#34;&#34;&#34;
+            Prints information about an implementation of this phase gadget
+            on the given topology based on minimum spanning trees (MST).
+        &#34;&#34;&#34;
+        if not isinstance(topology, Topology):
+            raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        mst_length, mst_branch_lengths, mst_branches = \
+            _prims_algorithm_full(self._qubits,
+                                  lambda u, v: 4*topology.dist(u, v)-2,
+                                  4*len(topology.qubits)-2)
+        print(f&#34;MST implementation info for {str(self)}:&#34;)
+        print(f&#34;  - Overall CX count for gadget: {mst_length}&#34;)
+        print(f&#34;  - MST branches: {mst_branches}&#34;)
+        print(f&#34;  - CX counts for MST branches: {mst_branch_lengths}&#34;)
+        print(&#34;&#34;)
+
+    def __str__(self) -&gt; str:
+        return f&#34;{self.basis}({self.angle}) @ {set(self.qubits)}&#34;
+
+    def __repr__(self) -&gt; str:
+        return f&#34;PhaseGadget({repr(self.basis)}, {self.angle}, {set(self.qubits)})&#34;
+
+    def __hash__(self) -&gt; int:
+        return hash((self.basis, self.angle, self.qubits))
+
+    def __eq__(self, other) -&gt; bool:
+        if self is other:
+            return True
+        if not isinstance(other, PhaseGadget):
+            return NotImplemented
+        return (self.basis == other.basis
+                and self.angle == other.angle
+                and self.qubits == other.qubits)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>typing.Generic</li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="pauliopt.phase.phase_circuits.PhaseGadget.angle"><code class="name">var <span class="ident">angle</span> : ~AngleT</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the angle for this phase gadget.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def angle(self) -&gt; AngleT:
+    &#34;&#34;&#34;
+        Readonly property exposing the angle for this phase gadget.
+    &#34;&#34;&#34;
+    return self._angle</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseGadget.basis"><code class="name">var <span class="ident">basis</span> : Literal['<a title="pauliopt.phase.phase_circuits.Z" href="#pauliopt.phase.phase_circuits.Z">Z</a>', '<a title="pauliopt.phase.phase_circuits.X" href="#pauliopt.phase.phase_circuits.X">X</a>']</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the basis for this phase gadget.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def basis(self) -&gt; Literal[&#34;Z&#34;, &#34;X&#34;]:
+    &#34;&#34;&#34;
+        Readonly property exposing the basis for this phase gadget.
+    &#34;&#34;&#34;
+    return self._basis</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseGadget.qubits"><code class="name">var <span class="ident">qubits</span> : FrozenSet[int]</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the qubits spanned by this phase gadget.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def qubits(self) -&gt; FrozenSet[int]:
+    &#34;&#34;&#34;
+        Readonly property exposing the qubits spanned by this phase gadget.
+    &#34;&#34;&#34;
+    return self._qubits</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="pauliopt.phase.phase_circuits.PhaseGadget.cx_count"><code class="name flex">
+<span>def <span class="ident">cx_count</span></span>(<span>self, topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the CX count for an implementation of this phase gadget
+on the given topology based on minimum spanning trees (MST).</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def cx_count(self, topology: Topology) -&gt; int:
+    &#34;&#34;&#34;
+        Returns the CX count for an implementation of this phase gadget
+        on the given topology based on minimum spanning trees (MST).
+    &#34;&#34;&#34;
+    if not isinstance(topology, Topology):
+        raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+    return  _prims_algorithm_weight(self._qubits,
+                                    lambda u, v: 4*topology.dist(u, v)-2,
+                                    4*len(topology.qubits)-2)</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseGadget.on_qiskit_circuit"><code class="name flex">
+<span>def <span class="ident">on_qiskit_circuit</span></span>(<span>self, topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>, circuit) ‑> NoneType</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Applies this phase gadget to a given qiskit quantum <code>circuit</code>,
+using the given <code>topology</code> to determine a minimum spanning
+tree implementation of the gadget.</p>
+<p>This method relies on the <code>qiskit</code> library being available.
+Specifically, the <code>circuit</code> argument must be of type
+<code>qiskit.providers.BaseBackend</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def on_qiskit_circuit(self, topology: Topology, circuit) -&gt; None:
+    &#34;&#34;&#34;
+        Applies this phase gadget to a given qiskit quantum `circuit`,
+        using the given `topology` to determine a minimum spanning
+        tree implementation of the gadget.
+
+        This method relies on the `qiskit` library being available.
+        Specifically, the `circuit` argument must be of type
+        `qiskit.providers.BaseBackend`.
+    &#34;&#34;&#34;
+    # pylint: disable = too-many-branches, too-many-locals
+    # TODO: currently uses CX ladder, must change into balanced tree! (same CX count)
+    try:
+        # pylint: disable = import-outside-toplevel
+        from qiskit.circuit import QuantumCircuit # type: ignore
+    except ModuleNotFoundError as _:
+        raise ModuleNotFoundError(&#34;You must install the &#39;qiskit&#39; library.&#34;)
+    if not isinstance(circuit, QuantumCircuit):
+        raise TypeError(&#34;Argument &#39;circuit&#39; must be of type &#34;
+                        &#34;`qiskit.circuit.QuantumCircuit`.&#34;)
+    if not isinstance(topology, Topology):
+        raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+    # Build MST data structure:
+    mst_branches = _prims_algorithm_branches(self._qubits,
+                                             lambda u, v: 4*topology.dist(u, v)-2,
+                                             4*len(topology.qubits)-2)
+    upper_ladder: List[Tuple[int, int]] = []
+    if len(self._qubits) == 1:
+        q0 = next(iter(self._qubits))
+    else:
+        q0 = min(*self._qubits)
+    if mst_branches:
+        incident: Dict[int, Set[Tuple[int, int]]] = {
+            q: set() for q in self._qubits
+        }
+        for fst, snd in mst_branches:
+            incident[fst].add((fst, snd))
+            incident[snd].add((snd, fst))
+        # Create ladder of CX gates:
+        visited: Set[int] = set()
+        queue = deque([q0])
+        while queue:
+            q = queue.popleft()
+            visited.add(q)
+            for tail, head in incident[q]:
+                if head not in visited:
+                    if self.basis == &#34;Z&#34;:
+                        upper_ladder.append((head, tail))
+                    else:
+                        upper_ladder.append((tail, head))
+                    queue.append(head)
+    for ctrl, trgt in reversed(upper_ladder):
+        circuit.cx(ctrl, trgt)
+    if self.basis == &#34;Z&#34;:
+        circuit.rz(float(self.angle), q0)
+    else:
+        circuit.rx(float(self.angle), q0)
+    for ctrl, trgt in upper_ladder:
+        circuit.cx(ctrl, trgt)</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.PhaseGadget.print_impl_info"><code class="name flex">
+<span>def <span class="ident">print_impl_info</span></span>(<span>self, topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Prints information about an implementation of this phase gadget
+on the given topology based on minimum spanning trees (MST).</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def print_impl_info(self, topology: Topology):
+    &#34;&#34;&#34;
+        Prints information about an implementation of this phase gadget
+        on the given topology based on minimum spanning trees (MST).
+    &#34;&#34;&#34;
+    if not isinstance(topology, Topology):
+        raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+    mst_length, mst_branch_lengths, mst_branches = \
+        _prims_algorithm_full(self._qubits,
+                              lambda u, v: 4*topology.dist(u, v)-2,
+                              4*len(topology.qubits)-2)
+    print(f&#34;MST implementation info for {str(self)}:&#34;)
+    print(f&#34;  - Overall CX count for gadget: {mst_length}&#34;)
+    print(f&#34;  - MST branches: {mst_branches}&#34;)
+    print(f&#34;  - CX counts for MST branches: {mst_branch_lengths}&#34;)
+    print(&#34;&#34;)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.X"><code class="flex name class">
+<span>class <span class="ident">X</span></span>
+<span>(</span><span>angle: ~AngleT)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Constructs an X phase gadget with the idiomatic syntax:</p>
+<pre><code class="py">    X(angle) @ qubits
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class X(Generic[AngleT]):
+    &#34;&#34;&#34;
+        Constructs an X phase gadget with the idiomatic syntax:
+
+        ```py
+            X(angle) @ qubits
+        ```
+    &#34;&#34;&#34;
+
+    _angle: AngleT
+
+    def __init__(self, angle: AngleT):
+        if not isinstance(angle, AngleProtocol):
+            raise TypeError(f&#34;Angle should respect the `AngleProtocol` Protocol, &#34;
+                            f&#34;found {angle} of type {type(angle)} instead.&#34;)
+        self._angle = angle
+
+    def __matmul__(self, qubits: Collection[int]) -&gt; PhaseGadget[AngleT]:
+        return PhaseGadget(&#34;X&#34;, self._angle, qubits)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>typing.Generic</li>
+</ul>
+</dd>
+<dt id="pauliopt.phase.phase_circuits.Z"><code class="flex name class">
+<span>class <span class="ident">Z</span></span>
+<span>(</span><span>angle: ~AngleT)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Constructs a Z phase gadget with the idiomatic syntax:</p>
+<pre><code class="py">    Z(angle) @ qubits
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Z(Generic[AngleT]):
+    &#34;&#34;&#34;
+        Constructs a Z phase gadget with the idiomatic syntax:
+
+        ```py
+            Z(angle) @ qubits
+        ```
+    &#34;&#34;&#34;
+
+    _angle: AngleT
+
+    def __init__(self, angle: AngleT):
+        if not isinstance(angle, AngleProtocol):
+            raise TypeError(f&#34;Angle should respect the `AngleProtocol` Protocol, &#34;
+                            f&#34;found {angle} of type {type(angle)} instead.&#34;)
+        self._angle = angle
+
+    def __matmul__(self, qubits: Collection[int]) -&gt; PhaseGadget[AngleT]:
+        return PhaseGadget(&#34;Z&#34;, self._angle, qubits)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>typing.Generic</li>
+</ul>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="pauliopt.phase" href="index.html">pauliopt.phase</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="pauliopt.phase.phase_circuits.PhaseCircuit" href="#pauliopt.phase.phase_circuits.PhaseCircuit">PhaseCircuit</a></code></h4>
+<ul class="two-column">
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuit.add_gadget" href="#pauliopt.phase.phase_circuits.PhaseCircuit.add_gadget">add_gadget</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuit.as_readonly" href="#pauliopt.phase.phase_circuits.PhaseCircuit.as_readonly">as_readonly</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuit.clone" href="#pauliopt.phase.phase_circuits.PhaseCircuit.clone">clone</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuit.conj_by_cx" href="#pauliopt.phase.phase_circuits.PhaseCircuit.conj_by_cx">conj_by_cx</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuit.cx_count" href="#pauliopt.phase.phase_circuits.PhaseCircuit.cx_count">cx_count</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuit.gadgets" href="#pauliopt.phase.phase_circuits.PhaseCircuit.gadgets">gadgets</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuit.num_gadgets" href="#pauliopt.phase.phase_circuits.PhaseCircuit.num_gadgets">num_gadgets</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuit.num_qubits" href="#pauliopt.phase.phase_circuits.PhaseCircuit.num_qubits">num_qubits</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuit.random" href="#pauliopt.phase.phase_circuits.PhaseCircuit.random">random</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuit.to_qiskit" href="#pauliopt.phase.phase_circuits.PhaseCircuit.to_qiskit">to_qiskit</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuit.to_svg" href="#pauliopt.phase.phase_circuits.PhaseCircuit.to_svg">to_svg</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="pauliopt.phase.phase_circuits.PhaseCircuitView" href="#pauliopt.phase.phase_circuits.PhaseCircuitView">PhaseCircuitView</a></code></h4>
+<ul class="">
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuitView.clone" href="#pauliopt.phase.phase_circuits.PhaseCircuitView.clone">clone</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuitView.gadgets" href="#pauliopt.phase.phase_circuits.PhaseCircuitView.gadgets">gadgets</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuitView.num_gadgets" href="#pauliopt.phase.phase_circuits.PhaseCircuitView.num_gadgets">num_gadgets</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuitView.num_qubits" href="#pauliopt.phase.phase_circuits.PhaseCircuitView.num_qubits">num_qubits</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseCircuitView.to_svg" href="#pauliopt.phase.phase_circuits.PhaseCircuitView.to_svg">to_svg</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="pauliopt.phase.phase_circuits.PhaseGadget" href="#pauliopt.phase.phase_circuits.PhaseGadget">PhaseGadget</a></code></h4>
+<ul class="two-column">
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseGadget.angle" href="#pauliopt.phase.phase_circuits.PhaseGadget.angle">angle</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseGadget.basis" href="#pauliopt.phase.phase_circuits.PhaseGadget.basis">basis</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseGadget.cx_count" href="#pauliopt.phase.phase_circuits.PhaseGadget.cx_count">cx_count</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseGadget.on_qiskit_circuit" href="#pauliopt.phase.phase_circuits.PhaseGadget.on_qiskit_circuit">on_qiskit_circuit</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseGadget.print_impl_info" href="#pauliopt.phase.phase_circuits.PhaseGadget.print_impl_info">print_impl_info</a></code></li>
+<li><code><a title="pauliopt.phase.phase_circuits.PhaseGadget.qubits" href="#pauliopt.phase.phase_circuits.PhaseGadget.qubits">qubits</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="pauliopt.phase.phase_circuits.X" href="#pauliopt.phase.phase_circuits.X">X</a></code></h4>
+</li>
+<li>
+<h4><code><a title="pauliopt.phase.phase_circuits.Z" href="#pauliopt.phase.phase_circuits.Z">Z</a></code></h4>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.1</a>.</p>
+</footer>
+</body>
+</html>
