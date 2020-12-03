@@ -4,8 +4,8 @@
 
 from collections import deque
 from math import ceil, log10
-from typing import (Callable, cast, Collection, Dict, Final, FrozenSet, Generic, Iterator, List,
-                    Literal, Optional, overload, Protocol, runtime_checkable, Sequence, Set, Tuple, TypeVar,  Union)
+from typing import (Callable, cast, Collection, Dict, FrozenSet, Generic, Iterator, List,
+                    Literal, Optional, overload, Sequence, Set, Tuple, Union)
 import numpy as np # type: ignore
 from pauliopt.topologies import Coupling, Topology, Matching
 from pauliopt.utils import AngleT, AngleProtocol, Angle, SVGBuilder
@@ -141,7 +141,7 @@ class PhaseGadget(Generic[AngleT]):
 
     def __init__(self, basis: Literal["Z", "X"], angle: AngleT, qubits: Collection[int]):
         if not isinstance(qubits, Collection) or not all(isinstance(q, int) for q in qubits):
-            raise TypeError("Qubits should be a collection of integers.")
+            raise TypeError(f"Qubits should be a collection of integers, found {qubits}")
         if not qubits:
             raise ValueError("At least one qubit must be specified.")
         if basis not in ("Z", "X"):
@@ -195,6 +195,7 @@ class PhaseGadget(Generic[AngleT]):
             Specifically, the `circuit` argument must be of type
             `qiskit.providers.BaseBackend`.
         """
+        # pylint: disable = too-many-branches, too-many-locals
         # TODO: currently uses CX ladder, must change into balanced tree! (same CX count)
         try:
             # pylint: disable = import-outside-toplevel
@@ -279,6 +280,7 @@ class PhaseGadget(Generic[AngleT]):
                 and self.angle == other.angle
                 and self.qubits == other.qubits)
 
+
 class Z(Generic[AngleT]):
     """
         Constructs a Z phase gadget with the idiomatic syntax:
@@ -298,6 +300,7 @@ class Z(Generic[AngleT]):
 
     def __matmul__(self, qubits: Collection[int]) -> PhaseGadget[AngleT]:
         return PhaseGadget("Z", self._angle, qubits)
+
 
 class X(Generic[AngleT]):
     """
@@ -340,16 +343,16 @@ class PhaseCircuit(Generic[AngleT]):
         this circuit for the `basis` gadget corresponding to column `c`.
     """
 
-    _qubits: Tuple[int, ...]
+    _gadget_legs_cache: Dict[Literal["Z", "X"], List[Optional[Tuple[int, ...]]]]
     """
-        The qubits spanned by this circuit, in increasing order.
+        For `basis in ("Z", "X")`, the matrix `self._matrix[basis]`
+        is the binary matrix encoding the qubits spanned by the
+        `basis` gadgets.
     """
 
-    _qubits_idxs: Dict[int, int]
+    _num_qubits: int
     """
-        Reverse directory, mapping qubits `q in self._qubits` to the
-        corresponding row indices in the matrices `self._matrix[basis]`
-        (same row index in both matrices).
+        The number of qubits spanned by this circuit.
     """
 
     _angles: List[AngleT]
@@ -363,32 +366,32 @@ class PhaseCircuit(Generic[AngleT]):
         ```
     """
 
-    def __init__(self, qubits: Collection[int], gadgets: Sequence[PhaseGadget[AngleT]] = tuple()):
-        if not isinstance(qubits, Collection) or not all(isinstance(q, int) for q in qubits):
-            raise TypeError("Qubits should be a collection of integers.")
+    def __init__(self, num_qubits: int, gadgets: Sequence[PhaseGadget[AngleT]] = tuple()):
+        if not isinstance(num_qubits, int) or num_qubits <= 0:
+            raise TypeError("Number of qubits must be a positive integer.")
         if (not isinstance(gadgets, Sequence)
             or not all(isinstance(g, PhaseGadget) for g in gadgets)): # pylint: disable = C0330
             raise TypeError("Gadgets should be a sequence of PhaseGadget.")
-        self._qubits = tuple(sorted(set(qubits)))
-        # Create a reverse directory, mapping qubits to row indices in the matrices:
-        self._qubits_idxs = {q: i for i, q in enumerate(self._qubits)}
+        self._num_qubits = num_qubits
         # Fills the lists of original indices and angles for the gadgets:
         self._gadget_idxs = {"Z": [], "X": []}
         self._angles = []
         for i, gadget in enumerate(gadgets):
             self._gadget_idxs[gadget.basis].append(i)
             self._angles.append(gadget.angle)
-        num_qubits = len(self.qubits)
         self._matrix = {}
+        self._gadget_legs_cache = {}
         for basis in cast(Sequence[Literal["Z", "X"]], ("Z", "X")):
             # Create a zero matrix for the basis:
             self._matrix[basis] = np.zeros(shape=(num_qubits, len(self._gadget_idxs[basis])),
-                                           dtype=np.uint64)
+                                           dtype=np.uint8)
             # Set matrix elements to 1 for all qubits spanned by the gadgets for the basis:
+            legs_cache: List[Optional[Tuple[int, ...]]] = []
+            self._gadget_legs_cache[basis] = legs_cache
             for i, idx in enumerate(self._gadget_idxs[basis]):
                 for q in gadgets[idx].qubits:
-                    q_idx = self._qubits_idxs[q]
-                    self._matrix[basis][q_idx, i] = 1
+                    self._matrix[basis][q, i] = 1
+                legs_cache.append(tuple(sorted(gadgets[idx].qubits)))
 
     def add_gadget(self, gadget: PhaseGadget) -> "PhaseCircuit":
         """
@@ -403,27 +406,20 @@ class PhaseCircuit(Generic[AngleT]):
             raise TypeError(f"Expected PhaseGadget, found {type(gadget)}.")
         basis = gadget.basis
         gadget_idx = len(self._angles)
-        new_col = np.zeros(shape=(len(self._qubits), 1), dtype=np.uint64)
+        new_col = np.zeros(shape=(self._num_qubits, 1), dtype=np.uint64)
         for q in gadget.qubits:
-            new_col[self._qubits_idxs[q]] = 1
+            new_col[q] = 1
         self._matrix[basis] = np.append(self._matrix[basis], new_col, axis=1)
         self._gadget_idxs[basis].append(gadget_idx)
         self._angles.append(gadget.angle)
         return self
 
     @property
-    def qubits(self) -> FrozenSet[int]:
-        """
-            Readonly property exposing the qubits spanned by this phase circuit.
-        """
-        return frozenset(self._qubits)
-
-    @property
     def num_qubits(self) -> int:
         """
             Readonly property exposing the number of qubits spanned by this phase circuit.
         """
-        return len(self._qubits)
+        return self._num_qubits
 
     @property
     def num_gadgets(self) -> int:
@@ -449,19 +445,24 @@ class PhaseCircuit(Generic[AngleT]):
         """
         return PhaseCircuitView(self)
 
-    def _cx_count(self, topology: Topology, cache: Dict[int, Dict[FrozenSet[int], int]]) -> int:
+    def _cx_count(self, topology: Topology, cache: Dict[int, Dict[Tuple[int, ...], int]]) -> int:
         """
             Returns the CX count for an implementation of this phase gadget
             on the given topology based on minimum spanning trees (MST).
         """
-        num_qubits = len(self._qubits)
+        num_qubits = self._num_qubits
         weight = lambda u, v: 4*topology.dist(u, v)-2
         inf = 4*num_qubits-2
         count = 0
         for basis in ("Z", "X"):
-            for col in self._matrix[cast(Literal["Z", "X"], basis)].T:
-                legs = frozenset(i for i in range(num_qubits) if col[i] == 1)
-                # legs = frozenset(np.where(col == 1))
+            basis = cast(Literal["Z", "X"], basis)
+            gadget_legs_cache = self._gadget_legs_cache[basis]
+            for j, col in enumerate(self._matrix[basis].T):
+                legs = gadget_legs_cache[j]
+                if legs is None:
+                    legs = tuple(int(i) for i in np.where(col == 1)[0])
+                    gadget_legs_cache[j] = legs
+                # legs = tuple(int(i) for i in np.where(col == 1)[0])
                 num_legs = len(legs)
                 _cache = cache.get(num_legs, None)
                 if _cache is None:
@@ -515,11 +516,11 @@ class PhaseCircuit(Generic[AngleT]):
             raise TypeError("Keyword argument 'vscale' must be positive float.")
         if not isinstance(scale, (int, float)) or scale <= 0.0:
             raise TypeError("Keyword argument 'scale' must be positive float.")
+        num_qubits = self._num_qubits
         vscale *= scale
         hscale *= scale
         gadgets = self.gadgets
-        qubits = sorted(self.qubits)
-        num_digits = int(ceil(log10(len(qubits))))
+        num_digits = int(ceil(log10(num_qubits)))
         line_height = int(ceil(30*vscale))
         row_width = int(ceil(120*hscale))
         pad_x = int(ceil(10*hscale))
@@ -531,10 +532,10 @@ class PhaseCircuit(Generic[AngleT]):
         delta_fst = row_width//2
         delta_snd = 3*row_width//4
         width = 2*pad_x + 2*margin_x + row_width*len(gadgets)
-        height = 2*pad_y + line_height*(len(qubits)+1)
+        height = 2*pad_y + line_height*(num_qubits+1)
         builder = SVGBuilder(width, height)
-        for i, q in enumerate(qubits):
-            y = pad_y + (i+1) * line_height
+        for q in range(num_qubits):
+            y = pad_y + (q+1) * line_height
             builder.line((pad_x, y), (width-pad_x, y))
             builder.text((0, y), f"{str(q):>{num_digits}}", font_size=font_size)
             builder.text((width-pad_x+r, y), f"{str(q):>{num_digits}}", font_size=font_size)
@@ -543,10 +544,10 @@ class PhaseCircuit(Generic[AngleT]):
             other_fill = xcolor if gadget.basis == "Z" else zcolor
             x = pad_x + margin_x + row * row_width
             for q in gadget.qubits:
-                y = pad_y + (qubits.index(q)+1)*line_height
+                y = pad_y + (q+1)*line_height
                 builder.line((x, y), (x+delta_fst, pad_y))
             for q in gadget.qubits:
-                y = pad_y + (qubits.index(q)+1)*line_height
+                y = pad_y + (q+1)*line_height
                 builder.circle((x, y), r, fill)
             builder.line((x+delta_fst, pad_y), (x+delta_snd, pad_y))
             builder.circle((x+delta_fst, pad_y), r, other_fill)
@@ -566,7 +567,7 @@ class PhaseCircuit(Generic[AngleT]):
         """
             Produces an exact copy of this phase circuit.
         """
-        return PhaseCircuit(self.qubits, tuple(self._iter_gadgets()))
+        return PhaseCircuit(self._num_qubits, tuple(self._iter_gadgets()))
 
     def conj_by_cx(self, ctrl: int, trgt: int) -> "PhaseCircuit[AngleT]":
         """
@@ -574,13 +575,19 @@ class PhaseCircuit(Generic[AngleT]):
             The circuit is modified in-place and then returned, as per the
             [fluent interface pattern](https://en.wikipedia.org/wiki/Fluent_interface).
         """
-        qubits = self.qubits
-        if ctrl not in qubits:
+        if not 0 <= ctrl < self._num_qubits:
             raise ValueError(f"Invalid control qubit {ctrl}.")
-        if trgt not in qubits:
+        if not 0 <= trgt < self._num_qubits:
             raise ValueError(f"Invalid target qubit {trgt}.")
         self._matrix["Z"][ctrl, :] = (self._matrix["Z"][ctrl, :] + self._matrix["Z"][trgt, :]) % 2
         self._matrix["X"][trgt, :] = (self._matrix["X"][trgt, :] + self._matrix["X"][ctrl, :]) % 2
+        # Update legs caches:
+        z_gadget_legs_cache = self._gadget_legs_cache["Z"]
+        for z_gadget_idx in np.where(self._matrix["Z"][trgt, :] == 1)[0]:
+            z_gadget_legs_cache[z_gadget_idx] = None
+        x_gadget_legs_cache = self._gadget_legs_cache["X"]
+        for x_gadget_idx in np.where(self._matrix["X"][ctrl, :] == 1)[0]:
+            x_gadget_legs_cache[x_gadget_idx] = None
         return self
 
     def __eq__(self, other) -> bool:
@@ -590,7 +597,7 @@ class PhaseCircuit(Generic[AngleT]):
             return NotImplemented
         if self.num_gadgets != other.num_gadgets:
             return NotImplemented
-        if self.qubits != other.qubits:
+        if self.num_qubits != other.num_qubits:
             return False
         return all(g == h for g, h in zip(self._iter_gadgets(), other._iter_gadgets()))
 
@@ -628,13 +635,13 @@ class PhaseCircuit(Generic[AngleT]):
         return self.to_svg(svg_code_only=True)
 
     @staticmethod
-    def random(qubits: Collection[int], num_gadgets: int, *,
+    def random(num_qubits: int, num_gadgets: int, *,
                angle_subdivision: int = 4,
                min_legs: int = 1,
                max_legs: Optional[int] = None,
                rng_seed: Optional[int] = None) -> "PhaseCircuit":
         """
-            Generates a random circuit of mixed ZX phase gadgets on the given collection of qubits,
+            Generates a random circuit of mixed ZX phase gadgets on the given number of qubits,
             with the given number of gadgets.
 
             The optional argument `angle_subdivision` (default: 4) can be used to specify the
@@ -646,9 +653,8 @@ class PhaseCircuit(Generic[AngleT]):
 
             The optional argument `rng_seed` (default: `None`) is used as seed for the RNG.
         """
-        if not isinstance(qubits, Collection) or not all(isinstance(q, int) for q in qubits):
-            raise TypeError("Qubits should be a collection of integers.")
-        qubits = list(qubits)
+        if not isinstance(num_qubits, int) or num_qubits <= 0:
+            raise TypeError("Number of qubits must be a positive integer.")
         if not isinstance(num_gadgets, int) or num_gadgets < 0:
             raise TypeError("Number of gadgets must be non-negative integer.")
         if not isinstance(angle_subdivision, int) or angle_subdivision <= 0:
@@ -660,15 +666,15 @@ class PhaseCircuit(Generic[AngleT]):
         if max_legs is not None and (not isinstance(max_legs, int) or max_legs < min_legs):
             raise TypeError("Maximum legs must be positive integer or 'None'.")
         if max_legs is None:
-            max_legs = len(qubits)
+            max_legs = num_qubits
         if rng_seed is not None and not isinstance(rng_seed, int):
             raise TypeError("RNG seed must be integer or 'None'.")
         rng = np.random.default_rng(seed=rng_seed)
         angle_rng_seed = int(rng.integers(65536))
         basis_idxs = rng.integers(2, size=num_gadgets)
         num_legs = rng.integers(min_legs, max_legs+1, size=num_gadgets)
-        legs_idxs_list: list = [
-            rng.choice(len(qubits), num_legs[i], replace=False) for i in range(num_gadgets)
+        legs_list: list = [
+            rng.choice(num_qubits, num_legs[i], replace=False) for i in range(num_gadgets)
         ]
         _angles = Angle.random(angle_subdivision, size=num_gadgets, rng_seed=angle_rng_seed)
         if isinstance(_angles, Angle):
@@ -679,12 +685,12 @@ class PhaseCircuit(Generic[AngleT]):
         gadgets: List[PhaseGadget] = [
             PhaseGadget(bases[(basis_idx+i)%2],
                         angle,
-                        [qubits[leg] for leg in legs_idxs])
-            for i, (basis_idx, angle, legs_idxs) in enumerate(zip(basis_idxs,
-                                                                  angles,
-                                                                  legs_idxs_list))
+                        [int(x) for x in legs])
+            for i, (basis_idx, angle, legs) in enumerate(zip(basis_idxs,
+                                                             angles,
+                                                             legs_list))
         ]
-        return PhaseCircuit(qubits, gadgets)
+        return PhaseCircuit(num_qubits, gadgets)
 
 
 class PhaseCircuitView(Generic[AngleT]):
@@ -698,13 +704,6 @@ class PhaseCircuitView(Generic[AngleT]):
         if not isinstance(circuit, PhaseCircuit):
             raise TypeError(f"Expected PhaseCircuit, found {type(circuit)}.")
         self._circuit = circuit
-
-    @property
-    def qubits(self) -> FrozenSet[int]:
-        """
-            Readonly property exposing the qubits spanned by the phase circuit.
-        """
-        return self._circuit.qubits
 
     @property
     def num_qubits(self) -> int:
@@ -777,7 +776,9 @@ class PhaseCircuitView(Generic[AngleT]):
         """
         return self._circuit._repr_svg_() # pylint: disable = protected-access
 
+
 GateLike = Union[List[int], Tuple[int, int]]
+
 
 class CXCircuitLayer:
     """
@@ -914,6 +915,7 @@ class CXCircuitLayer:
             The layer is modified in-place and then returned, as per the
             [fluent API pattern](https://en.wikipedia.org/wiki/Fluent_interface).
         """
+        # pylint: disable = too-many-branches
         if not isinstance(ctrl, int):
             raise TypeError(f"Expected integer, found {ctrl}.")
         if not isinstance(trgt, int):

@@ -31,12 +31,12 @@
 <pre><code class="python">&#34;&#34;&#34;
     Utility classes and functions for the `pauliopt` library.
 &#34;&#34;&#34;
-# standard imports
+
 import math
 from decimal import Decimal
 from fractions import Fraction
-from typing import (Final, List, Literal, Optional, overload,
-                    Protocol,runtime_checkable, Sequence, Tuple, TypeVar, Union)
+from typing import (Final, List, Literal, Mapping, Optional, overload,
+                    Protocol, runtime_checkable, Sequence, Tuple, TypeVar, Union)
 
 AngleT = TypeVar(&#34;AngleT&#34;, bound=&#34;AngleProtocol&#34;)
 &#34;&#34;&#34;
@@ -259,7 +259,7 @@ class Angle(AngleProtocol[&#34;Angle&#34;]):
     pi: Final[&#34;Angle&#34;] # type: ignore
     &#34;&#34;&#34; A constant for the angle pi. &#34;&#34;&#34;
 
-# set static constants
+# Set static constants for Angle:
 Angle.zero = Angle(0) # type: ignore
 Angle.pi = Angle(1) # type: ignore
 
@@ -366,55 +366,65 @@ class SVGBuilder:
         return f&#39;&lt;svg width=&#34;{self.width}&#34; height=&#34;{self.height}&#34;&gt;{body}&lt;/svg&gt;&#39;
 
 
-Number = Union[int, float]
-number = (int, float)
-
 @runtime_checkable
 class TempSchedule(Protocol):
     &#34;&#34;&#34;
         Protocol for a temperature schedule.
-        The temperature is a `number` computed from the iteration number `it`
-        (starting from 0) and the total number of iterations `num_iter`
+        The temperature is a number (int or float) computed from the iteration
+        number `it` (starting from 0) and the total number of iterations `num_iter`
         (passed as a keyword argument).
     &#34;&#34;&#34;
 
-    def __call__(self, it: int, num_iters: int) -&gt; Number:
+    def __call__(self, it: int, num_iters: int) -&gt; float:
         ...
 
-def straight_temp_schedule(t_init: Number, t_final: Number) -&gt; TempSchedule:
+@runtime_checkable
+class TempScheduleProvider(Protocol):
     &#34;&#34;&#34;
-        Returns a straight temperature schedule for given initial and final temperatures,
+        Protocol for a function constructing a temperature schedule
+        from an initial and final temperatures.
+    &#34;&#34;&#34;
+
+    def __call__(self, t_init: Union[int, float], t_final: Union[int, float]) -&gt; TempSchedule:
+        ...
+
+
+def linear_temp_schedule(t_init: Union[int, float], t_final: Union[int, float]) -&gt; TempSchedule:
+    &#34;&#34;&#34;
+        Returns a straight/linear temperature schedule for given initial and final temperatures,
         from https://link.springer.com/article/10.1007/BF00143921
     &#34;&#34;&#34;
-    if not isinstance(t_init, number):
+    if not isinstance(t_init, (int, float)):
         raise TypeError(f&#34;Expected int or float, found {type(t_init)}.&#34;)
-    if not isinstance(t_final, number):
+    if not isinstance(t_final, (int, float)):
         raise TypeError(f&#34;Expected int or float, found {type(t_final)}.&#34;)
     def temp_schedule(it: int, num_iters: int) -&gt; float:
         return t_init + (t_final-t_init)*it/(num_iters-1)
     return temp_schedule
 
-def geometric_temp_schedule(t_init: Number, t_final: Number) -&gt; TempSchedule:
+
+def geometric_temp_schedule(t_init: Union[int, float], t_final: Union[int, float]) -&gt; TempSchedule:
     &#34;&#34;&#34;
         Returns a geometric temperature schedule for given initial and final temperatures,
         from https://link.springer.com/article/10.1007/BF00143921
     &#34;&#34;&#34;
-    if not isinstance(t_init, number):
+    if not isinstance(t_init, (int, float)):
         raise TypeError(f&#34;Expected int or float, found {type(t_init)}.&#34;)
-    if not isinstance(t_final, number):
+    if not isinstance(t_final, (int, float)):
         raise TypeError(f&#34;Expected int or float, found {type(t_final)}.&#34;)
     def temp_schedule(it: int, num_iters: int) -&gt; float:
         return t_init * ((t_final/t_init)**(it/(num_iters-1)))
     return temp_schedule
 
-def reciprocal_temp_schedule(t_init: Number, t_final: Number) -&gt; TempSchedule:
+
+def reciprocal_temp_schedule(t_init: Union[int, float], t_final: Union[int, float]) -&gt; TempSchedule:
     &#34;&#34;&#34;
         Returns a reciprocal temperature schedule for given initial and final temperatures,
         from https://link.springer.com/article/10.1007/BF00143921
     &#34;&#34;&#34;
-    if not isinstance(t_init, number):
+    if not isinstance(t_init, (int, float)):
         raise TypeError(f&#34;Expected int or float, found {type(t_init)}.&#34;)
-    if not isinstance(t_final, number):
+    if not isinstance(t_final, (int, float)):
         raise TypeError(f&#34;Expected int or float, found {type(t_final)}.&#34;)
     def temp_schedule(it: int, num_iters: int) -&gt; float:
         num = t_init*t_final*(num_iters-1)
@@ -422,20 +432,45 @@ def reciprocal_temp_schedule(t_init: Number, t_final: Number) -&gt; TempSchedule
         return num/denom
     return temp_schedule
 
-def log_temp_schedule(t_init: Number, t_final: Number) -&gt; TempSchedule:
+
+def log_temp_schedule(t_init: Union[int, float], t_final: Union[int, float]) -&gt; TempSchedule:
     &#34;&#34;&#34;
         Returns a logarithmic temperature schedule for given initial and final temperatures,
         from https://link.springer.com/article/10.1007/BF00143921
     &#34;&#34;&#34;
-    if not isinstance(t_init, number):
+    if not isinstance(t_init, (int, float)):
         raise TypeError(f&#34;Expected int or float, found {type(t_init)}.&#34;)
-    if not isinstance(t_final, number):
+    if not isinstance(t_final, (int, float)):
         raise TypeError(f&#34;Expected int or float, found {type(t_final)}.&#34;)
     def temp_schedule(it: int, num_iters: int) -&gt; float:
         num = t_init*t_final*(math.log(num_iters+1)-math.log(2))
         denom = (t_final*math.log(num_iters+1)-t_init*math.log(2))+(t_init-t_final)*math.log(it+2)
         return num/denom
-    return temp_schedule</code></pre>
+    return temp_schedule
+
+
+StandardTempScheduleName = Literal[&#34;linear&#34;, &#34;geometric&#34;, &#34;reciprocal&#34;, &#34;log&#34;]
+&#34;&#34;&#34;
+    Names of the standard temperature schedules.
+&#34;&#34;&#34;
+
+
+StandardTempSchedule = Tuple[StandardTempScheduleName,
+                             Union[int, float], Union[int, float]]
+&#34;&#34;&#34;
+    Type for standard temperature schedules.
+&#34;&#34;&#34;
+
+
+StandardTempSchedules: Final[Mapping[StandardTempScheduleName, TempScheduleProvider]] = {
+    &#34;linear&#34;: linear_temp_schedule,
+    &#34;geometric&#34;: geometric_temp_schedule,
+    &#34;reciprocal&#34;: reciprocal_temp_schedule,
+    &#34;log&#34;: log_temp_schedule,
+}
+&#34;&#34;&#34;
+    Dictionary of standard temperature schedule providers.
+&#34;&#34;&#34;</code></pre>
 </details>
 </section>
 <section>
@@ -446,6 +481,18 @@ def log_temp_schedule(t_init: Number, t_final: Number) -&gt; TempSchedule:
 <dt id="pauliopt.utils.AngleT"><code class="name">var <span class="ident">AngleT</span></code></dt>
 <dd>
 <div class="desc"><p>Type variable for something fitting the <code><a title="pauliopt.utils.AngleProtocol" href="#pauliopt.utils.AngleProtocol">AngleProtocol</a></code> protocol below.</p></div>
+</dd>
+<dt id="pauliopt.utils.StandardTempSchedule"><code class="name">var <span class="ident">StandardTempSchedule</span></code></dt>
+<dd>
+<div class="desc"><p>Type for standard temperature schedules.</p></div>
+</dd>
+<dt id="pauliopt.utils.StandardTempScheduleName"><code class="name">var <span class="ident">StandardTempScheduleName</span></code></dt>
+<dd>
+<div class="desc"><p>Names of the standard temperature schedules.</p></div>
+</dd>
+<dt id="pauliopt.utils.StandardTempSchedules"><code class="name">var <span class="ident">StandardTempSchedules</span> : Final[Mapping[Literal['linear', 'geometric', 'reciprocal', 'log'], <a title="pauliopt.utils.TempScheduleProvider" href="#pauliopt.utils.TempScheduleProvider">TempScheduleProvider</a>]]</code></dt>
+<dd>
+<div class="desc"><p>Dictionary of standard temperature schedule providers.</p></div>
 </dd>
 <dt id="pauliopt.utils.pi"><code class="name">var <span class="ident">pi</span> : Final[<a title="pauliopt.utils.Angle" href="#pauliopt.utils.Angle">Angle</a>]</code></dt>
 <dd>
@@ -470,17 +517,41 @@ from <a href="https://link.springer.com/article/10.1007/BF00143921">https://link
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def geometric_temp_schedule(t_init: Number, t_final: Number) -&gt; TempSchedule:
+<pre><code class="python">def geometric_temp_schedule(t_init: Union[int, float], t_final: Union[int, float]) -&gt; TempSchedule:
     &#34;&#34;&#34;
         Returns a geometric temperature schedule for given initial and final temperatures,
         from https://link.springer.com/article/10.1007/BF00143921
     &#34;&#34;&#34;
-    if not isinstance(t_init, number):
+    if not isinstance(t_init, (int, float)):
         raise TypeError(f&#34;Expected int or float, found {type(t_init)}.&#34;)
-    if not isinstance(t_final, number):
+    if not isinstance(t_final, (int, float)):
         raise TypeError(f&#34;Expected int or float, found {type(t_final)}.&#34;)
     def temp_schedule(it: int, num_iters: int) -&gt; float:
         return t_init * ((t_final/t_init)**(it/(num_iters-1)))
+    return temp_schedule</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.utils.linear_temp_schedule"><code class="name flex">
+<span>def <span class="ident">linear_temp_schedule</span></span>(<span>t_init: Union[int, float], t_final: Union[int, float]) ‑> <a title="pauliopt.utils.TempSchedule" href="#pauliopt.utils.TempSchedule">TempSchedule</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a straight/linear temperature schedule for given initial and final temperatures,
+from <a href="https://link.springer.com/article/10.1007/BF00143921">https://link.springer.com/article/10.1007/BF00143921</a></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def linear_temp_schedule(t_init: Union[int, float], t_final: Union[int, float]) -&gt; TempSchedule:
+    &#34;&#34;&#34;
+        Returns a straight/linear temperature schedule for given initial and final temperatures,
+        from https://link.springer.com/article/10.1007/BF00143921
+    &#34;&#34;&#34;
+    if not isinstance(t_init, (int, float)):
+        raise TypeError(f&#34;Expected int or float, found {type(t_init)}.&#34;)
+    if not isinstance(t_final, (int, float)):
+        raise TypeError(f&#34;Expected int or float, found {type(t_final)}.&#34;)
+    def temp_schedule(it: int, num_iters: int) -&gt; float:
+        return t_init + (t_final-t_init)*it/(num_iters-1)
     return temp_schedule</code></pre>
 </details>
 </dd>
@@ -494,14 +565,14 @@ from <a href="https://link.springer.com/article/10.1007/BF00143921">https://link
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def log_temp_schedule(t_init: Number, t_final: Number) -&gt; TempSchedule:
+<pre><code class="python">def log_temp_schedule(t_init: Union[int, float], t_final: Union[int, float]) -&gt; TempSchedule:
     &#34;&#34;&#34;
         Returns a logarithmic temperature schedule for given initial and final temperatures,
         from https://link.springer.com/article/10.1007/BF00143921
     &#34;&#34;&#34;
-    if not isinstance(t_init, number):
+    if not isinstance(t_init, (int, float)):
         raise TypeError(f&#34;Expected int or float, found {type(t_init)}.&#34;)
-    if not isinstance(t_final, number):
+    if not isinstance(t_final, (int, float)):
         raise TypeError(f&#34;Expected int or float, found {type(t_final)}.&#34;)
     def temp_schedule(it: int, num_iters: int) -&gt; float:
         num = t_init*t_final*(math.log(num_iters+1)-math.log(2))
@@ -520,43 +591,19 @@ from <a href="https://link.springer.com/article/10.1007/BF00143921">https://link
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def reciprocal_temp_schedule(t_init: Number, t_final: Number) -&gt; TempSchedule:
+<pre><code class="python">def reciprocal_temp_schedule(t_init: Union[int, float], t_final: Union[int, float]) -&gt; TempSchedule:
     &#34;&#34;&#34;
         Returns a reciprocal temperature schedule for given initial and final temperatures,
         from https://link.springer.com/article/10.1007/BF00143921
     &#34;&#34;&#34;
-    if not isinstance(t_init, number):
+    if not isinstance(t_init, (int, float)):
         raise TypeError(f&#34;Expected int or float, found {type(t_init)}.&#34;)
-    if not isinstance(t_final, number):
+    if not isinstance(t_final, (int, float)):
         raise TypeError(f&#34;Expected int or float, found {type(t_final)}.&#34;)
     def temp_schedule(it: int, num_iters: int) -&gt; float:
         num = t_init*t_final*(num_iters-1)
         denom = (t_final*num_iters-t_init)+(t_init-t_final)*(it+1)
         return num/denom
-    return temp_schedule</code></pre>
-</details>
-</dd>
-<dt id="pauliopt.utils.straight_temp_schedule"><code class="name flex">
-<span>def <span class="ident">straight_temp_schedule</span></span>(<span>t_init: Union[int, float], t_final: Union[int, float]) ‑> <a title="pauliopt.utils.TempSchedule" href="#pauliopt.utils.TempSchedule">TempSchedule</a></span>
-</code></dt>
-<dd>
-<div class="desc"><p>Returns a straight temperature schedule for given initial and final temperatures,
-from <a href="https://link.springer.com/article/10.1007/BF00143921">https://link.springer.com/article/10.1007/BF00143921</a></p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def straight_temp_schedule(t_init: Number, t_final: Number) -&gt; TempSchedule:
-    &#34;&#34;&#34;
-        Returns a straight temperature schedule for given initial and final temperatures,
-        from https://link.springer.com/article/10.1007/BF00143921
-    &#34;&#34;&#34;
-    if not isinstance(t_init, number):
-        raise TypeError(f&#34;Expected int or float, found {type(t_init)}.&#34;)
-    if not isinstance(t_final, number):
-        raise TypeError(f&#34;Expected int or float, found {type(t_final)}.&#34;)
-    def temp_schedule(it: int, num_iters: int) -&gt; float:
-        return t_init + (t_final-t_init)*it/(num_iters-1)
     return temp_schedule</code></pre>
 </details>
 </dd>
@@ -1179,8 +1226,8 @@ def width(self) -&gt; int:
 </code></dt>
 <dd>
 <div class="desc"><p>Protocol for a temperature schedule.
-The temperature is a <code>number</code> computed from the iteration number <code>it</code>
-(starting from 0) and the total number of iterations <code>num_iter</code>
+The temperature is a number (int or float) computed from the iteration
+number <code>it</code> (starting from 0) and the total number of iterations <code>num_iter</code>
 (passed as a keyword argument).</p></div>
 <details class="source">
 <summary>
@@ -1189,12 +1236,38 @@ The temperature is a <code>number</code> computed from the iteration number <cod
 <pre><code class="python">class TempSchedule(Protocol):
     &#34;&#34;&#34;
         Protocol for a temperature schedule.
-        The temperature is a `number` computed from the iteration number `it`
-        (starting from 0) and the total number of iterations `num_iter`
+        The temperature is a number (int or float) computed from the iteration
+        number `it` (starting from 0) and the total number of iterations `num_iter`
         (passed as a keyword argument).
     &#34;&#34;&#34;
 
-    def __call__(self, it: int, num_iters: int) -&gt; Number:
+    def __call__(self, it: int, num_iters: int) -&gt; float:
+        ...</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>typing.Protocol</li>
+<li>typing.Generic</li>
+</ul>
+</dd>
+<dt id="pauliopt.utils.TempScheduleProvider"><code class="flex name class">
+<span>class <span class="ident">TempScheduleProvider</span></span>
+<span>(</span><span>*args, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Protocol for a function constructing a temperature schedule
+from an initial and final temperatures.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class TempScheduleProvider(Protocol):
+    &#34;&#34;&#34;
+        Protocol for a function constructing a temperature schedule
+        from an initial and final temperatures.
+    &#34;&#34;&#34;
+
+    def __call__(self, t_init: Union[int, float], t_final: Union[int, float]) -&gt; TempSchedule:
         ...</code></pre>
 </details>
 <h3>Ancestors</h3>
@@ -1220,6 +1293,9 @@ The temperature is a <code>number</code> computed from the iteration number <cod
 <li><h3><a href="#header-variables">Global variables</a></h3>
 <ul class="">
 <li><code><a title="pauliopt.utils.AngleT" href="#pauliopt.utils.AngleT">AngleT</a></code></li>
+<li><code><a title="pauliopt.utils.StandardTempSchedule" href="#pauliopt.utils.StandardTempSchedule">StandardTempSchedule</a></code></li>
+<li><code><a title="pauliopt.utils.StandardTempScheduleName" href="#pauliopt.utils.StandardTempScheduleName">StandardTempScheduleName</a></code></li>
+<li><code><a title="pauliopt.utils.StandardTempSchedules" href="#pauliopt.utils.StandardTempSchedules">StandardTempSchedules</a></code></li>
 <li><code><a title="pauliopt.utils.pi" href="#pauliopt.utils.pi">pi</a></code></li>
 <li><code><a title="pauliopt.utils.π" href="#pauliopt.utils.π">π</a></code></li>
 </ul>
@@ -1227,9 +1303,9 @@ The temperature is a <code>number</code> computed from the iteration number <cod
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="pauliopt.utils.geometric_temp_schedule" href="#pauliopt.utils.geometric_temp_schedule">geometric_temp_schedule</a></code></li>
+<li><code><a title="pauliopt.utils.linear_temp_schedule" href="#pauliopt.utils.linear_temp_schedule">linear_temp_schedule</a></code></li>
 <li><code><a title="pauliopt.utils.log_temp_schedule" href="#pauliopt.utils.log_temp_schedule">log_temp_schedule</a></code></li>
 <li><code><a title="pauliopt.utils.reciprocal_temp_schedule" href="#pauliopt.utils.reciprocal_temp_schedule">reciprocal_temp_schedule</a></code></li>
-<li><code><a title="pauliopt.utils.straight_temp_schedule" href="#pauliopt.utils.straight_temp_schedule">straight_temp_schedule</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>
@@ -1262,6 +1338,9 @@ The temperature is a <code>number</code> computed from the iteration number <cod
 </li>
 <li>
 <h4><code><a title="pauliopt.utils.TempSchedule" href="#pauliopt.utils.TempSchedule">TempSchedule</a></code></h4>
+</li>
+<li>
+<h4><code><a title="pauliopt.utils.TempScheduleProvider" href="#pauliopt.utils.TempScheduleProvider">TempScheduleProvider</a></code></h4>
 </li>
 </ul>
 </li>

@@ -3,11 +3,9 @@
     using topologically-aware circuits of CNOTs.
 """
 
-from time import perf_counter
-
 from collections import deque
-from typing import (cast, Deque, Dict, Final, FrozenSet, Generic, List, Literal, Optional, overload, Protocol,
-                    runtime_checkable, Sequence, Set, Tuple, Type, TypedDict, Union)
+from typing import (Deque, Dict, Generic, Optional, Protocol, runtime_checkable,
+                    Set, Tuple, TypedDict, Union)
 import numpy as np # type: ignore
 from pauliopt.phase.circuits import (PhaseGadget, PhaseCircuit, PhaseCircuitView,
                                      CXCircuitLayer, CXCircuit, CXCircuitView)
@@ -109,11 +107,11 @@ class PhaseCircuitOptimizer(Generic[AngleT]):
     """
 
     _topology: Topology
-    _qubits: FrozenSet[int]
+    _num_qubits: int
     _original_gadgets: Tuple[PhaseGadget, ...]
     _circuit_rep: int
     _init_cx_count: int
-    _gadget_cx_count_cache: Dict[int, Dict[FrozenSet[int], int]]
+    _gadget_cx_count_cache: Dict[int, Dict[Tuple[int, ...], int]]
     _phase_block: PhaseCircuit[AngleT]
     _phase_block_view: PhaseCircuitView
     _cx_block: CXCircuit
@@ -135,10 +133,10 @@ class PhaseCircuitOptimizer(Generic[AngleT]):
         if rng_seed is not None and not isinstance(rng_seed, int):
             raise TypeError("RNG seed must be integer or None.")
         self._topology = topology
-        self._qubits = original_circuit.qubits
+        self._num_qubits = original_circuit.num_qubits
         self._original_gadgets = tuple(original_circuit.gadgets)
         self._circuit_rep = circuit_rep
-        self._phase_block = PhaseCircuit(self._qubits, self._original_gadgets)
+        self._phase_block = PhaseCircuit(self._num_qubits, self._original_gadgets)
         self._cx_block = CXCircuit(topology,
                                    [CXCircuitLayer(topology) for _ in range(num_layers)])
         self._rng_seed = rng_seed
@@ -157,11 +155,11 @@ class PhaseCircuitOptimizer(Generic[AngleT]):
         return self._topology
 
     @property
-    def qubits(self) -> FrozenSet[int]:
+    def num_qubits(self) -> int:
         """
-            Readonly property exposing the qubits spanned by the circuit to be optimized.
+            Readonly property exposing the number of qubits spanned by the circuit to be optimized.
         """
-        return self._qubits
+        return self._num_qubits
 
     @property
     def original_gadgets(self) -> Tuple[PhaseGadget, ...]:
@@ -219,10 +217,7 @@ class PhaseCircuitOptimizer(Generic[AngleT]):
             from qiskit.circuit import QuantumCircuit # type: ignore
         except ModuleNotFoundError as _:
             raise ModuleNotFoundError("You must install the 'qiskit' library.")
-        if any(x < 0 for x in self.qubits):
-            raise ValueError("Cannot create a Qiskit circuit when qubit IDs are negative.")
-        nqubits = max(*self.qubits)+1
-        circuit = QuantumCircuit(nqubits)
+        circuit = QuantumCircuit(self.num_qubits)
         for layer in reversed(self._cx_block):
             for ctrl, trgt in layer.gates:
                 circuit.cx(ctrl, trgt)
@@ -285,9 +280,6 @@ class PhaseCircuitOptimizer(Generic[AngleT]):
         """
         while True:
             layer_idx = int(self._rng.integers(len(self._cx_block)))
-            # flippable_gates = list(self._cx_block[layer_idx]._iter_flippable_cxs()) # pylint: disable = protected-access
-            # gate_idx = self._rng.integers(len(flippable_gates))
-            # ctrl, trgt = flippable_gates[gate_idx]
             ctrl, trgt = self._cx_block[layer_idx].random_flip_cx(self._rng)
             if layer_idx < len(self._cx_block)-1 and self._cx_block[layer_idx+1].has_cx(ctrl, trgt):
                 # Try again if CX gate already present in layer above (to avoid redundancy)

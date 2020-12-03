@@ -229,7 +229,7 @@ class Angle(AngleProtocol["Angle"]):
     pi: Final["Angle"] # type: ignore
     """ A constant for the angle pi. """
 
-# set static constants
+# Set static constants for Angle:
 Angle.zero = Angle(0) # type: ignore
 Angle.pi = Angle(1) # type: ignore
 
@@ -424,11 +424,13 @@ StandardTempScheduleName = Literal["linear", "geometric", "reciprocal", "log"]
     Names of the standard temperature schedules.
 """
 
+
 StandardTempSchedule = Tuple[StandardTempScheduleName,
                              Union[int, float], Union[int, float]]
 """
     Type for standard temperature schedules.
 """
+
 
 StandardTempSchedules: Final[Mapping[StandardTempScheduleName, TempScheduleProvider]] = {
     "linear": linear_temp_schedule,

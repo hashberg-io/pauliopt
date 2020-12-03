@@ -36,49 +36,13 @@ using topologically-aware circuits of CNOTs.</p>
 &#34;&#34;&#34;
 
 from collections import deque
-from typing import (cast, Deque, Final, FrozenSet, Literal, Optional, overload, Protocol,
-                    runtime_checkable, Sequence, Set, Tuple, Type, TypedDict)
+from typing import (Deque, Dict, Generic, Optional, Protocol, runtime_checkable,
+                    Set, Tuple, TypedDict, Union)
 import numpy as np # type: ignore
 from pauliopt.phase.circuits import (PhaseGadget, PhaseCircuit, PhaseCircuitView,
                                      CXCircuitLayer, CXCircuit, CXCircuitView)
 from pauliopt.topologies import Topology
-from pauliopt.utils import Number, TempSchedule, AngleT
-
-@runtime_checkable
-class CostFun(Protocol):
-    &#34;&#34;&#34;
-        Protocol for a cost function.
-        The cost is a `float` or `int` computed from the phase block (readonly view)
-        and CX block (readonly view) exposed by an instance of `PhaseCircuitCXBlockOptimizer`.
-    &#34;&#34;&#34;
-
-    def __call__(self, phase_block: PhaseCircuitView, cx_block: CXCircuitView) -&gt; Number:
-        ...
-
-def mst_impl_cost_fun(topology: Topology, circuit_rep: int = 1) -&gt; &#34;CostFun&#34;:
-    &#34;&#34;&#34;
-        Returns a topology-aware cost function for the optimizer, based on CX count.
-        It takes an optional `circuit_rep` argument that can be used to specify the
-        number of repetitions for the original circuit (e.g. for QML ansatz applications).
-
-        The CX count for an individual phase circuit block in the optimized circuit is
-        computed by finding a minimum spanning tree implementation of the phase gadgets.
-        The CX count for an individual block is then multiplied by `circuit_rep` and twice
-        the number of CX gates in the CX block is added (because each gate appears twice,
-        once in the first block and once in the last block of the optimized circuit.).
-        The resulting CX count is returned as the cost.
-    &#34;&#34;&#34;
-    if not isinstance(topology, Topology):
-        raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
-    if not isinstance(circuit_rep, int) or circuit_rep &lt;= 0:
-        raise TypeError(f&#34;Expected positive integer, found {circuit_rep}.&#34;)
-    def cost_fun(phase_block: PhaseCircuitView, cx_block: CXCircuitView):
-        phase_block_cost: Number = 0
-        for gadget in phase_block.gadgets:
-            phase_block_cost += gadget.mst_impl_cx_count(topology)
-        return circuit_rep*phase_block_cost + 2*cx_block.num_gates
-    return cost_fun
-
+from pauliopt.utils import AngleT, TempSchedule, StandardTempSchedule, StandardTempSchedules
 
 @runtime_checkable
 class AnnealingCostLogger(Protocol):
@@ -86,7 +50,7 @@ class AnnealingCostLogger(Protocol):
         Protocol for logger of initial/final cost in annealing.
     &#34;&#34;&#34;
 
-    def __call__(self, cost: Number, num_iters: int):
+    def __call__(self, cx_count: int, num_iters: int):
         ...
 
 
@@ -96,9 +60,9 @@ class AnnealingIterLogger(Protocol):
         Protocol for logging of iteration info in annealing.
     &#34;&#34;&#34;
 
-    def __call__(self, it: int, prev_cost: Number, new_cost: Number,
+    def __call__(self, it: int, prev_cx_count: int, new_cx_count: int,
                  accepted: bool, flip: Tuple[int, Tuple[int, int]],
-                 t: Number, num_iters: int):
+                 t: float, num_iters: int):
         # pylint: disable = too-many-arguments
         ...
 
@@ -108,15 +72,48 @@ class AnnealingLoggers(TypedDict, total=False):
         Typed dictionary of loggers for annealing.
     &#34;&#34;&#34;
 
-    log_init_cost: AnnealingCostLogger
+    log_start: AnnealingCostLogger
     log_iter: AnnealingIterLogger
-    log_final_cost: AnnealingCostLogger
+    log_end: AnnealingCostLogger
 
 
-@runtime_checkable
-class PhaseCircuitOptimizer(Protocol[AngleT]):
+def _validate_temp_schedule(schedule: Union[StandardTempSchedule, TempSchedule]) -&gt; TempSchedule:
+    if not isinstance(schedule, TempSchedule):
+        if not isinstance(schedule, tuple) or len(schedule) != 3:
+            raise TypeError(f&#34;Expected triple (schedule_name, t_init, t_final), &#34;
+                            f&#34;found {schedule}&#34;)
+        schedule_name, t_init, t_final = schedule
+        if schedule_name not in StandardTempSchedules:
+            raise TypeError(f&#34;Invalid standard temperature schedule name {schedule_name}, &#34;
+                            f&#34;allowed names are: {list(StandardTempSchedules.keys())}&#34;)
+        if not isinstance(t_init, (int, float)) or not isinstance(t_final, (int, float)):
+            raise TypeError(&#34;Expected t_init and t_final to be int or float.&#34;)
+        schedule = StandardTempSchedules[schedule_name](t_init, t_final)
+    return schedule
+
+
+def _validate_loggers(loggers: AnnealingLoggers) -&gt; Tuple[Optional[AnnealingCostLogger],
+                                                          Optional[AnnealingIterLogger],
+                                                          Optional[AnnealingCostLogger]]:
+    log_start = loggers.get(&#34;log_start&#34;, None)
+    log_iter = loggers.get(&#34;log_iter&#34;, None)
+    log_end = loggers.get(&#34;log_end&#34;, None)
+    if log_start is not None and not isinstance(log_start, AnnealingCostLogger):
+        raise TypeError(f&#34;Expected AnnealingCostLogger, found {type(log_start)}&#34;)
+    if log_iter is not None and not isinstance(log_iter, AnnealingIterLogger):
+        raise TypeError(f&#34;Expected AnnealingCostLogger, found {type(log_iter)}&#34;)
+    if log_end is not None and not isinstance(log_end, AnnealingCostLogger):
+        raise TypeError(f&#34;Expected AnnealingCostLogger, found {type(log_end)}&#34;)
+    return log_start, log_iter, log_end
+
+
+class PhaseCircuitOptimizer(Generic[AngleT]):
+    # pylint: disable = too-many-instance-attributes
     &#34;&#34;&#34;
         Optimizer for phase circuits based on simulated annealing.
+        The original phase circuit is passed to the constructor, together
+        with a qubit topology and a fixed number of layers constraining the
+        CX circuits to be used for simplification.
 
         To understand how this works, consider the following code snippet:
 
@@ -139,100 +136,48 @@ class PhaseCircuitOptimizer(Protocol[AngleT]):
         circuit is obtained by repeating the central `phase_block` alone `n` times,
         keeping the first and last CX blocks unaltered (because the intermediate
         CX blocks cancel each other out when repeating the optimized circuit `n` times).
-
-    &#34;&#34;&#34;
-
-    @property
-    def topology(self) -&gt; Topology:
-        &#34;&#34;&#34;
-            Readonly property exposing the topology constraining the circuit optimization.
-        &#34;&#34;&#34;
-        ...
-
-    @property
-    def qubits(self) -&gt; FrozenSet[int]:
-        &#34;&#34;&#34;
-            Readonly property exposing the qubits spanned by the circuit to be optimized.
-        &#34;&#34;&#34;
-        ...
-
-    @property
-    def original_gadgets(self) -&gt; Tuple[PhaseGadget, ...]:
-        &#34;&#34;&#34;
-            Readonly property exposing the gadgets in the original circuit to be optimized.
-        &#34;&#34;&#34;
-        ...
-
-    @property
-    def phase_block(self) -&gt; PhaseCircuitView[AngleT]:
-        &#34;&#34;&#34;
-            Readonly property returning a readonly view on the optimized circuit.
-        &#34;&#34;&#34;
-        ...
-
-    @property
-    def cx_block(self) -&gt; CXCircuitView:
-        &#34;&#34;&#34;
-            Readonly property returning a readonly view on the CX circuit used for optimization.
-        &#34;&#34;&#34;
-        ...
-
-    def anneal(self,
-               num_iters: int,
-               temp_schedule: TempSchedule,
-               cost_fun: CostFun, *,
-               loggers: AnnealingLoggers = {}):
-               # pylint: disable = dangerous-default-value, no-self-use
-        &#34;&#34;&#34;
-            Performs a cycle of simulated annealing optimization,
-            using the given number of iterations, temperature schedule
-            and cost function.
-        &#34;&#34;&#34;
-        ...
-
-
-class CXFlipOptimizer(PhaseCircuitOptimizer[AngleT]):
-    # pylint: disable = too-many-instance-attributes
-    &#34;&#34;&#34;
-        Optimizer for phase circuits based on simulated annealing,
-        with CX block obtained by randomly flipping CX gates.
-        The original phase circuit is passed to the constructor, together
-        with a qubit topology and a fixed number of layers constraining the
-        CX circuits to be used for simplification.
-
-        See `PhaseCircuitOptimizer` for more details about optimizers.
     &#34;&#34;&#34;
 
     _topology: Topology
-    _qubits: FrozenSet[int]
+    _num_qubits: int
     _original_gadgets: Tuple[PhaseGadget, ...]
+    _circuit_rep: int
+    _init_cx_count: int
+    _gadget_cx_count_cache: Dict[int, Dict[Tuple[int, ...], int]]
     _phase_block: PhaseCircuit[AngleT]
     _phase_block_view: PhaseCircuitView
     _cx_block: CXCircuit
     _cx_block_view: CXCircuitView
+    _cx_count: int
     _rng_seed: Optional[int]
     _rng: np.random.Generator
 
     def __init__(self, original_circuit: PhaseCircuit[AngleT], topology: Topology, num_layers: int,
-                 *, rng_seed: Optional[int] = None):
+                 *, circuit_rep: int = 1, rng_seed: Optional[int] = None):
         if not isinstance(original_circuit, PhaseCircuit):
             raise TypeError(f&#34;Expected PhaseCircuit, found {type(original_circuit)}.&#34;)
         if not isinstance(topology, Topology):
             raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
         if not isinstance(num_layers, int) or num_layers &lt;= 0:
             raise TypeError(f&#34;Expected positive integer, found {num_layers}.&#34;)
+        if not isinstance(circuit_rep, int) or circuit_rep &lt;= 0:
+            raise TypeError(f&#34;Expected positive integer, found {circuit_rep}.&#34;)
         if rng_seed is not None and not isinstance(rng_seed, int):
             raise TypeError(&#34;RNG seed must be integer or None.&#34;)
         self._topology = topology
-        self._qubits = original_circuit.qubits
+        self._num_qubits = original_circuit.num_qubits
         self._original_gadgets = tuple(original_circuit.gadgets)
-        self._phase_block = PhaseCircuit(self._qubits, self._original_gadgets)
+        self._circuit_rep = circuit_rep
+        self._phase_block = PhaseCircuit(self._num_qubits, self._original_gadgets)
         self._cx_block = CXCircuit(topology,
                                    [CXCircuitLayer(topology) for _ in range(num_layers)])
         self._rng_seed = rng_seed
         self._rng = np.random.default_rng(seed=rng_seed)
         self._phase_block_view = PhaseCircuitView(self._phase_block)
         self._cx_block_view = CXCircuitView(self._cx_block)
+        self._gadget_cx_count_cache = {}
+        self._init_cx_count = self._compute_cx_count()
+        self._cx_count = self._init_cx_count
 
     @property
     def topology(self) -&gt; Topology:
@@ -242,11 +187,11 @@ class CXFlipOptimizer(PhaseCircuitOptimizer[AngleT]):
         return self._topology
 
     @property
-    def qubits(self) -&gt; FrozenSet[int]:
+    def num_qubits(self) -&gt; int:
         &#34;&#34;&#34;
-            Readonly property exposing the qubits spanned by the circuit to be optimized.
+            Readonly property exposing the number of qubits spanned by the circuit to be optimized.
         &#34;&#34;&#34;
-        return self._qubits
+        return self._num_qubits
 
     @property
     def original_gadgets(self) -&gt; Tuple[PhaseGadget, ...]:
@@ -256,73 +201,106 @@ class CXFlipOptimizer(PhaseCircuitOptimizer[AngleT]):
         return self._original_gadgets
 
     @property
+    def circuit_rep(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the number of times that the original circuit is
+            to be repeated, for use when computing CX counts.
+        &#34;&#34;&#34;
+        return self._circuit_rep
+
+    @property
+    def init_cx_count(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the CX count for the original circuit.
+        &#34;&#34;&#34;
+        return self._init_cx_count
+
+    @property
     def phase_block(self) -&gt; PhaseCircuitView:
         &#34;&#34;&#34;
-            Readonly property returning a readonly view on the optimized circuit.
+            Readonly property exposing a readonly view on the phase block of the optimized circuit.
         &#34;&#34;&#34;
         return self._phase_block_view
 
     @property
     def cx_block(self) -&gt; CXCircuitView:
         &#34;&#34;&#34;
-            Readonly property returning a readonly view on the CX circuit used for optimization.
+            Readonly property exposing a readonly view on the CX block of the optimized circuit.
         &#34;&#34;&#34;
         return self._cx_block_view
 
+    @property
+    def cx_count(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the current CX count for the optimized circuit.
+        &#34;&#34;&#34;
+        return self._cx_count
+
+    def as_qiskit_circuit(self):
+        &#34;&#34;&#34;
+            Returns the optimized circuit as a Qiskit circuit.
+
+            This method relies on the `qiskit` library being available.
+            Specifically, the `circuit` argument must be of type
+            `qiskit.providers.BaseBackend`.
+        &#34;&#34;&#34;
+        try:
+            # pylint: disable = import-outside-toplevel
+            from qiskit.circuit import QuantumCircuit # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;qiskit&#39; library.&#34;)
+        circuit = QuantumCircuit(self.num_qubits)
+        for layer in reversed(self._cx_block):
+            for ctrl, trgt in layer.gates:
+                circuit.cx(ctrl, trgt)
+        for __ in range(self._circuit_rep):
+            for gadget in self._phase_block.gadgets:
+                gadget.on_qiskit_circuit(self._topology, circuit)
+        for layer in self._cx_block:
+            for ctrl, trgt in layer.gates:
+                circuit.cx(ctrl, trgt)
+        return circuit
+
     def anneal(self,
-               num_iters: int,
-               temp_schedule: TempSchedule,
-               cost_fun: CostFun, *,
+               num_iters: int, *,
+               schedule: Union[StandardTempSchedule, TempSchedule] = (&#34;linear&#34;, 1.0, 0.1),
                loggers: AnnealingLoggers = {}):
                # pylint: disable = dangerous-default-value
         # pylint: disable = too-many-locals
         &#34;&#34;&#34;
             Performs a cycle of simulated annealing optimization,
-            using the given number of iterations, temperature schedule
-            and cost function.
+            using the given number of iterations, temperature schedule,
+            initial/final temperatures.
         &#34;&#34;&#34;
         # Validate arguments:
         if not isinstance(num_iters, int) or num_iters &lt;= 0:
             raise TypeError(f&#34;Expected a positive integer, found {num_iters}.&#34;)
-        if not isinstance(temp_schedule, TempSchedule):
-            raise TypeError(f&#34;Expected TempSchedule, found {type(temp_schedule)}.&#34;)
-        if not isinstance(cost_fun, CostFun):
-            raise TypeError(f&#34;Expected CostFun, found {type(cost_fun)}.&#34;)
-        log_init_cost = loggers.get(&#34;log_init_cost&#34;, None)
-        log_iter = loggers.get(&#34;log_iter&#34;, None)
-        log_final_cost = loggers.get(&#34;log_final_cost&#34;, None)
-        if log_init_cost is not None and not isinstance(log_init_cost, AnnealingCostLogger):
-            raise TypeError(f&#34;Expected AnnealingCostLogger, found {type(log_init_cost)}&#34;)
-        if log_iter is not None and not isinstance(log_iter, AnnealingIterLogger):
-            raise TypeError(f&#34;Expected AnnealingCostLogger, found {type(log_iter)}&#34;)
-        if log_final_cost is not None and not isinstance(log_final_cost, AnnealingCostLogger):
-            raise TypeError(f&#34;Expected AnnealingCostLogger, found {type(log_final_cost)}&#34;)
-        # Compute and log initial cost:
-        init_cost = cost_fun(self.phase_block, self.cx_block)
-        curr_cost = init_cost
-        if log_init_cost is not None:
-            log_init_cost(init_cost, num_iters)
+        schedule = _validate_temp_schedule(schedule)
+        log_start, log_iter, log_end = _validate_loggers(loggers)
+        # Log start:
+        if log_start is not None:
+            log_start(self._cx_count, num_iters)
         # Pre-sample random numbers to use in iterations:
         rand = self._rng.uniform(size=num_iters)
         # Run iterations:
         for it in range(num_iters):
-            t = temp_schedule(it, num_iters=num_iters)
+            t = schedule(it, num_iters=num_iters)
             layer_idx, (ctrl, trgt) = self.random_flip_cx()
-            new_cost = cost_fun(self.phase_block, self.cx_block)
-            accept_step = (new_cost &lt; curr_cost
-                           or rand[it] &lt; np.exp(-(new_cost-curr_cost)/t))
+            new_cx_count = self._compute_cx_count()
+            cx_count_diff = new_cx_count-self._cx_count
+            accept_step = cx_count_diff &lt; 0 or rand[it] &lt; np.exp(-cx_count_diff/t)
             if log_iter is not None:
-                log_iter(it, curr_cost, new_cost, accept_step,
+                log_iter(it, self._cx_count, new_cx_count, accept_step,
                          (layer_idx, (ctrl, trgt)), t, num_iters)
             if accept_step:
                 # Accept changes:
-                curr_cost = new_cost
+                self._cx_count = new_cx_count
             else:
                 # Undo changes:
                 self._flip_cx(layer_idx, ctrl, trgt)
-        # Log final cost:
-        if log_final_cost is not None:
-            log_final_cost(curr_cost, num_iters)
+        # Log end:
+        if log_end is not None:
+            log_end(self._cx_count, num_iters)
 
     def random_flip_cx(self) -&gt; Tuple[int, Tuple[int, int]]:
         &#34;&#34;&#34;
@@ -334,9 +312,7 @@ class CXFlipOptimizer(PhaseCircuitOptimizer[AngleT]):
         &#34;&#34;&#34;
         while True:
             layer_idx = int(self._rng.integers(len(self._cx_block)))
-            flippable_gates = list(self._cx_block[layer_idx]._iter_flippable_cxs()) # pylint: disable = protected-access
-            gate_idx = self._rng.integers(len(flippable_gates))
-            ctrl, trgt = flippable_gates[gate_idx]
+            ctrl, trgt = self._cx_block[layer_idx].random_flip_cx(self._rng)
             if layer_idx &lt; len(self._cx_block)-1 and self._cx_block[layer_idx+1].has_cx(ctrl, trgt):
                 # Try again if CX gate already present in layer above (to avoid redundancy)
                 continue
@@ -388,59 +364,20 @@ class CXFlipOptimizer(PhaseCircuitOptimizer[AngleT]):
         self._cx_block[layer_idx].flip_cx(ctrl, trgt)
         # Conjugate the optimized phase gadget circuit by all necessary gates:
         for cx in conj_by:
-            self._phase_block.conj_by_cx(*cx)</code></pre>
-</details>
-</section>
-<section>
-</section>
-<section>
-</section>
-<section>
-<h2 class="section-title" id="header-functions">Functions</h2>
-<dl>
-<dt id="pauliopt.phase.optimizers.mst_impl_cost_fun"><code class="name flex">
-<span>def <span class="ident">mst_impl_cost_fun</span></span>(<span>topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>, circuit_rep: int = 1) ‑> <a title="pauliopt.phase.optimizers.CostFun" href="#pauliopt.phase.optimizers.CostFun">CostFun</a></span>
-</code></dt>
-<dd>
-<div class="desc"><p>Returns a topology-aware cost function for the optimizer, based on CX count.
-It takes an optional <code>circuit_rep</code> argument that can be used to specify the
-number of repetitions for the original circuit (e.g. for QML ansatz applications).</p>
-<p>The CX count for an individual phase circuit block in the optimized circuit is
-computed by finding a minimum spanning tree implementation of the phase gadgets.
-The CX count for an individual block is then multiplied by <code>circuit_rep</code> and twice
-the number of CX gates in the CX block is added (because each gate appears twice,
-once in the first block and once in the last block of the optimized circuit.).
-The resulting CX count is returned as the cost.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def mst_impl_cost_fun(topology: Topology, circuit_rep: int = 1) -&gt; &#34;CostFun&#34;:
-    &#34;&#34;&#34;
-        Returns a topology-aware cost function for the optimizer, based on CX count.
-        It takes an optional `circuit_rep` argument that can be used to specify the
-        number of repetitions for the original circuit (e.g. for QML ansatz applications).
+            self._phase_block.conj_by_cx(*cx)
 
-        The CX count for an individual phase circuit block in the optimized circuit is
-        computed by finding a minimum spanning tree implementation of the phase gadgets.
-        The CX count for an individual block is then multiplied by `circuit_rep` and twice
-        the number of CX gates in the CX block is added (because each gate appears twice,
-        once in the first block and once in the last block of the optimized circuit.).
-        The resulting CX count is returned as the cost.
-    &#34;&#34;&#34;
-    if not isinstance(topology, Topology):
-        raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
-    if not isinstance(circuit_rep, int) or circuit_rep &lt;= 0:
-        raise TypeError(f&#34;Expected positive integer, found {circuit_rep}.&#34;)
-    def cost_fun(phase_block: PhaseCircuitView, cx_block: CXCircuitView):
-        phase_block_cost: Number = 0
-        for gadget in phase_block.gadgets:
-            phase_block_cost += gadget.mst_impl_cx_count(topology)
-        return circuit_rep*phase_block_cost + 2*cx_block.num_gates
-    return cost_fun</code></pre>
+    def _compute_cx_count(self) -&gt; int:
+        # pylint: disable = protected-access
+        phase_block_cost = self._phase_block._cx_count(self._topology,
+                                                       self._gadget_cx_count_cache)
+        return self._circuit_rep*phase_block_cost + 2*self._cx_block.num_gates</code></pre>
 </details>
-</dd>
-</dl>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
 </section>
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
@@ -460,7 +397,7 @@ The resulting CX count is returned as the cost.</p></div>
         Protocol for logger of initial/final cost in annealing.
     &#34;&#34;&#34;
 
-    def __call__(self, cost: Number, num_iters: int):
+    def __call__(self, cx_count: int, num_iters: int):
         ...</code></pre>
 </details>
 <h3>Ancestors</h3>
@@ -484,9 +421,9 @@ The resulting CX count is returned as the cost.</p></div>
         Protocol for logging of iteration info in annealing.
     &#34;&#34;&#34;
 
-    def __call__(self, it: int, prev_cost: Number, new_cost: Number,
+    def __call__(self, it: int, prev_cx_count: int, new_cx_count: int,
                  accepted: bool, flip: Tuple[int, Tuple[int, int]],
-                 t: Number, num_iters: int):
+                 t: float, num_iters: int):
         # pylint: disable = too-many-arguments
         ...</code></pre>
 </details>
@@ -511,9 +448,9 @@ The resulting CX count is returned as the cost.</p></div>
         Typed dictionary of loggers for annealing.
     &#34;&#34;&#34;
 
-    log_init_cost: AnnealingCostLogger
+    log_start: AnnealingCostLogger
     log_iter: AnnealingIterLogger
-    log_final_cost: AnnealingCostLogger</code></pre>
+    log_end: AnnealingCostLogger</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -521,11 +458,7 @@ The resulting CX count is returned as the cost.</p></div>
 </ul>
 <h3>Class variables</h3>
 <dl>
-<dt id="pauliopt.phase.optimizers.AnnealingLoggers.log_final_cost"><code class="name">var <span class="ident">log_final_cost</span> : <a title="pauliopt.phase.optimizers.AnnealingCostLogger" href="#pauliopt.phase.optimizers.AnnealingCostLogger">AnnealingCostLogger</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="pauliopt.phase.optimizers.AnnealingLoggers.log_init_cost"><code class="name">var <span class="ident">log_init_cost</span> : <a title="pauliopt.phase.optimizers.AnnealingCostLogger" href="#pauliopt.phase.optimizers.AnnealingCostLogger">AnnealingCostLogger</a></code></dt>
+<dt id="pauliopt.phase.optimizers.AnnealingLoggers.log_end"><code class="name">var <span class="ident">log_end</span> : <a title="pauliopt.phase.optimizers.AnnealingCostLogger" href="#pauliopt.phase.optimizers.AnnealingCostLogger">AnnealingCostLogger</a></code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
@@ -533,65 +466,114 @@ The resulting CX count is returned as the cost.</p></div>
 <dd>
 <div class="desc"></div>
 </dd>
+<dt id="pauliopt.phase.optimizers.AnnealingLoggers.log_start"><code class="name">var <span class="ident">log_start</span> : <a title="pauliopt.phase.optimizers.AnnealingCostLogger" href="#pauliopt.phase.optimizers.AnnealingCostLogger">AnnealingCostLogger</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
 </dl>
 </dd>
-<dt id="pauliopt.phase.optimizers.CXFlipOptimizer"><code class="flex name class">
-<span>class <span class="ident">CXFlipOptimizer</span></span>
-<span>(</span><span>original_circuit: <a title="pauliopt.phase.circuits.PhaseCircuit" href="circuits.html#pauliopt.phase.circuits.PhaseCircuit">PhaseCircuit</a>[~AngleT], topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>, num_layers: int, *, rng_seed: Union[int, NoneType] = None)</span>
+<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer"><code class="flex name class">
+<span>class <span class="ident">PhaseCircuitOptimizer</span></span>
+<span>(</span><span>original_circuit: <a title="pauliopt.phase.circuits.PhaseCircuit" href="circuits.html#pauliopt.phase.circuits.PhaseCircuit">PhaseCircuit</a>[~AngleT], topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>, num_layers: int, *, circuit_rep: int = 1, rng_seed: Union[int, NoneType] = None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Optimizer for phase circuits based on simulated annealing,
-with CX block obtained by randomly flipping CX gates.
+<div class="desc"><p>Optimizer for phase circuits based on simulated annealing.
 The original phase circuit is passed to the constructor, together
 with a qubit topology and a fixed number of layers constraining the
 CX circuits to be used for simplification.</p>
-<p>See <code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer">PhaseCircuitOptimizer</a></code> for more details about optimizers.</p></div>
+<p>To understand how this works, consider the following code snippet:</p>
+<pre><code class="py">    optimizer = PhaseCircuitCXBlockOptimizer(original_circuit, topology, num_layers)
+    optimizer.anneal(num_iters, temp_schedule, cost_fun)
+    phase_block = optimizer.phase_block
+    cx_block = optimizer.cx_block
+</code></pre>
+<p>The optimized circuit is obtained by composing three blocks:</p>
+<ol>
+<li>a first block of CX gates, given by <code>cx_block.dag</code>
+(the same CX gates of <code>cx_block</code>, but in reverse order);</li>
+<li>a central block of phase gadgets, given by <code>phase_block</code>;</li>
+<li>a final block of CX gates, given by <code>cx_block</code>.</li>
+</ol>
+<p>Furthermore, if the original circuit is repeated <code>n</code> times, e.g. as part
+of a quantum machine learning ansatz, then the corresponding optimized
+circuit is obtained by repeating the central <code>phase_block</code> alone <code>n</code> times,
+keeping the first and last CX blocks unaltered (because the intermediate
+CX blocks cancel each other out when repeating the optimized circuit <code>n</code> times).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class CXFlipOptimizer(PhaseCircuitOptimizer[AngleT]):
+<pre><code class="python">class PhaseCircuitOptimizer(Generic[AngleT]):
     # pylint: disable = too-many-instance-attributes
     &#34;&#34;&#34;
-        Optimizer for phase circuits based on simulated annealing,
-        with CX block obtained by randomly flipping CX gates.
+        Optimizer for phase circuits based on simulated annealing.
         The original phase circuit is passed to the constructor, together
         with a qubit topology and a fixed number of layers constraining the
         CX circuits to be used for simplification.
 
-        See `PhaseCircuitOptimizer` for more details about optimizers.
+        To understand how this works, consider the following code snippet:
+
+        ```py
+            optimizer = PhaseCircuitCXBlockOptimizer(original_circuit, topology, num_layers)
+            optimizer.anneal(num_iters, temp_schedule, cost_fun)
+            phase_block = optimizer.phase_block
+            cx_block = optimizer.cx_block
+        ```
+
+        The optimized circuit is obtained by composing three blocks:
+
+        1. a first block of CX gates, given by `cx_block.dag`
+           (the same CX gates of `cx_block`, but in reverse order);
+        2. a central block of phase gadgets, given by `phase_block`;
+        3. a final block of CX gates, given by `cx_block`.
+
+        Furthermore, if the original circuit is repeated `n` times, e.g. as part
+        of a quantum machine learning ansatz, then the corresponding optimized
+        circuit is obtained by repeating the central `phase_block` alone `n` times,
+        keeping the first and last CX blocks unaltered (because the intermediate
+        CX blocks cancel each other out when repeating the optimized circuit `n` times).
     &#34;&#34;&#34;
 
     _topology: Topology
-    _qubits: FrozenSet[int]
+    _num_qubits: int
     _original_gadgets: Tuple[PhaseGadget, ...]
+    _circuit_rep: int
+    _init_cx_count: int
+    _gadget_cx_count_cache: Dict[int, Dict[Tuple[int, ...], int]]
     _phase_block: PhaseCircuit[AngleT]
     _phase_block_view: PhaseCircuitView
     _cx_block: CXCircuit
     _cx_block_view: CXCircuitView
+    _cx_count: int
     _rng_seed: Optional[int]
     _rng: np.random.Generator
 
     def __init__(self, original_circuit: PhaseCircuit[AngleT], topology: Topology, num_layers: int,
-                 *, rng_seed: Optional[int] = None):
+                 *, circuit_rep: int = 1, rng_seed: Optional[int] = None):
         if not isinstance(original_circuit, PhaseCircuit):
             raise TypeError(f&#34;Expected PhaseCircuit, found {type(original_circuit)}.&#34;)
         if not isinstance(topology, Topology):
             raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
         if not isinstance(num_layers, int) or num_layers &lt;= 0:
             raise TypeError(f&#34;Expected positive integer, found {num_layers}.&#34;)
+        if not isinstance(circuit_rep, int) or circuit_rep &lt;= 0:
+            raise TypeError(f&#34;Expected positive integer, found {circuit_rep}.&#34;)
         if rng_seed is not None and not isinstance(rng_seed, int):
             raise TypeError(&#34;RNG seed must be integer or None.&#34;)
         self._topology = topology
-        self._qubits = original_circuit.qubits
+        self._num_qubits = original_circuit.num_qubits
         self._original_gadgets = tuple(original_circuit.gadgets)
-        self._phase_block = PhaseCircuit(self._qubits, self._original_gadgets)
+        self._circuit_rep = circuit_rep
+        self._phase_block = PhaseCircuit(self._num_qubits, self._original_gadgets)
         self._cx_block = CXCircuit(topology,
                                    [CXCircuitLayer(topology) for _ in range(num_layers)])
         self._rng_seed = rng_seed
         self._rng = np.random.default_rng(seed=rng_seed)
         self._phase_block_view = PhaseCircuitView(self._phase_block)
         self._cx_block_view = CXCircuitView(self._cx_block)
+        self._gadget_cx_count_cache = {}
+        self._init_cx_count = self._compute_cx_count()
+        self._cx_count = self._init_cx_count
 
     @property
     def topology(self) -&gt; Topology:
@@ -601,11 +583,11 @@ CX circuits to be used for simplification.</p>
         return self._topology
 
     @property
-    def qubits(self) -&gt; FrozenSet[int]:
+    def num_qubits(self) -&gt; int:
         &#34;&#34;&#34;
-            Readonly property exposing the qubits spanned by the circuit to be optimized.
+            Readonly property exposing the number of qubits spanned by the circuit to be optimized.
         &#34;&#34;&#34;
-        return self._qubits
+        return self._num_qubits
 
     @property
     def original_gadgets(self) -&gt; Tuple[PhaseGadget, ...]:
@@ -615,73 +597,106 @@ CX circuits to be used for simplification.</p>
         return self._original_gadgets
 
     @property
+    def circuit_rep(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the number of times that the original circuit is
+            to be repeated, for use when computing CX counts.
+        &#34;&#34;&#34;
+        return self._circuit_rep
+
+    @property
+    def init_cx_count(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the CX count for the original circuit.
+        &#34;&#34;&#34;
+        return self._init_cx_count
+
+    @property
     def phase_block(self) -&gt; PhaseCircuitView:
         &#34;&#34;&#34;
-            Readonly property returning a readonly view on the optimized circuit.
+            Readonly property exposing a readonly view on the phase block of the optimized circuit.
         &#34;&#34;&#34;
         return self._phase_block_view
 
     @property
     def cx_block(self) -&gt; CXCircuitView:
         &#34;&#34;&#34;
-            Readonly property returning a readonly view on the CX circuit used for optimization.
+            Readonly property exposing a readonly view on the CX block of the optimized circuit.
         &#34;&#34;&#34;
         return self._cx_block_view
 
+    @property
+    def cx_count(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the current CX count for the optimized circuit.
+        &#34;&#34;&#34;
+        return self._cx_count
+
+    def as_qiskit_circuit(self):
+        &#34;&#34;&#34;
+            Returns the optimized circuit as a Qiskit circuit.
+
+            This method relies on the `qiskit` library being available.
+            Specifically, the `circuit` argument must be of type
+            `qiskit.providers.BaseBackend`.
+        &#34;&#34;&#34;
+        try:
+            # pylint: disable = import-outside-toplevel
+            from qiskit.circuit import QuantumCircuit # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;qiskit&#39; library.&#34;)
+        circuit = QuantumCircuit(self.num_qubits)
+        for layer in reversed(self._cx_block):
+            for ctrl, trgt in layer.gates:
+                circuit.cx(ctrl, trgt)
+        for __ in range(self._circuit_rep):
+            for gadget in self._phase_block.gadgets:
+                gadget.on_qiskit_circuit(self._topology, circuit)
+        for layer in self._cx_block:
+            for ctrl, trgt in layer.gates:
+                circuit.cx(ctrl, trgt)
+        return circuit
+
     def anneal(self,
-               num_iters: int,
-               temp_schedule: TempSchedule,
-               cost_fun: CostFun, *,
+               num_iters: int, *,
+               schedule: Union[StandardTempSchedule, TempSchedule] = (&#34;linear&#34;, 1.0, 0.1),
                loggers: AnnealingLoggers = {}):
                # pylint: disable = dangerous-default-value
         # pylint: disable = too-many-locals
         &#34;&#34;&#34;
             Performs a cycle of simulated annealing optimization,
-            using the given number of iterations, temperature schedule
-            and cost function.
+            using the given number of iterations, temperature schedule,
+            initial/final temperatures.
         &#34;&#34;&#34;
         # Validate arguments:
         if not isinstance(num_iters, int) or num_iters &lt;= 0:
             raise TypeError(f&#34;Expected a positive integer, found {num_iters}.&#34;)
-        if not isinstance(temp_schedule, TempSchedule):
-            raise TypeError(f&#34;Expected TempSchedule, found {type(temp_schedule)}.&#34;)
-        if not isinstance(cost_fun, CostFun):
-            raise TypeError(f&#34;Expected CostFun, found {type(cost_fun)}.&#34;)
-        log_init_cost = loggers.get(&#34;log_init_cost&#34;, None)
-        log_iter = loggers.get(&#34;log_iter&#34;, None)
-        log_final_cost = loggers.get(&#34;log_final_cost&#34;, None)
-        if log_init_cost is not None and not isinstance(log_init_cost, AnnealingCostLogger):
-            raise TypeError(f&#34;Expected AnnealingCostLogger, found {type(log_init_cost)}&#34;)
-        if log_iter is not None and not isinstance(log_iter, AnnealingIterLogger):
-            raise TypeError(f&#34;Expected AnnealingCostLogger, found {type(log_iter)}&#34;)
-        if log_final_cost is not None and not isinstance(log_final_cost, AnnealingCostLogger):
-            raise TypeError(f&#34;Expected AnnealingCostLogger, found {type(log_final_cost)}&#34;)
-        # Compute and log initial cost:
-        init_cost = cost_fun(self.phase_block, self.cx_block)
-        curr_cost = init_cost
-        if log_init_cost is not None:
-            log_init_cost(init_cost, num_iters)
+        schedule = _validate_temp_schedule(schedule)
+        log_start, log_iter, log_end = _validate_loggers(loggers)
+        # Log start:
+        if log_start is not None:
+            log_start(self._cx_count, num_iters)
         # Pre-sample random numbers to use in iterations:
         rand = self._rng.uniform(size=num_iters)
         # Run iterations:
         for it in range(num_iters):
-            t = temp_schedule(it, num_iters=num_iters)
+            t = schedule(it, num_iters=num_iters)
             layer_idx, (ctrl, trgt) = self.random_flip_cx()
-            new_cost = cost_fun(self.phase_block, self.cx_block)
-            accept_step = (new_cost &lt; curr_cost
-                           or rand[it] &lt; np.exp(-(new_cost-curr_cost)/t))
+            new_cx_count = self._compute_cx_count()
+            cx_count_diff = new_cx_count-self._cx_count
+            accept_step = cx_count_diff &lt; 0 or rand[it] &lt; np.exp(-cx_count_diff/t)
             if log_iter is not None:
-                log_iter(it, curr_cost, new_cost, accept_step,
+                log_iter(it, self._cx_count, new_cx_count, accept_step,
                          (layer_idx, (ctrl, trgt)), t, num_iters)
             if accept_step:
                 # Accept changes:
-                curr_cost = new_cost
+                self._cx_count = new_cx_count
             else:
                 # Undo changes:
                 self._flip_cx(layer_idx, ctrl, trgt)
-        # Log final cost:
-        if log_final_cost is not None:
-            log_final_cost(curr_cost, num_iters)
+        # Log end:
+        if log_end is not None:
+            log_end(self._cx_count, num_iters)
 
     def random_flip_cx(self) -&gt; Tuple[int, Tuple[int, int]]:
         &#34;&#34;&#34;
@@ -693,9 +708,7 @@ CX circuits to be used for simplification.</p>
         &#34;&#34;&#34;
         while True:
             layer_idx = int(self._rng.integers(len(self._cx_block)))
-            flippable_gates = list(self._cx_block[layer_idx]._iter_flippable_cxs()) # pylint: disable = protected-access
-            gate_idx = self._rng.integers(len(flippable_gates))
-            ctrl, trgt = flippable_gates[gate_idx]
+            ctrl, trgt = self._cx_block[layer_idx].random_flip_cx(self._rng)
             if layer_idx &lt; len(self._cx_block)-1 and self._cx_block[layer_idx+1].has_cx(ctrl, trgt):
                 # Try again if CX gate already present in layer above (to avoid redundancy)
                 continue
@@ -747,17 +760,237 @@ CX circuits to be used for simplification.</p>
         self._cx_block[layer_idx].flip_cx(ctrl, trgt)
         # Conjugate the optimized phase gadget circuit by all necessary gates:
         for cx in conj_by:
-            self._phase_block.conj_by_cx(*cx)</code></pre>
+            self._phase_block.conj_by_cx(*cx)
+
+    def _compute_cx_count(self) -&gt; int:
+        # pylint: disable = protected-access
+        phase_block_cost = self._phase_block._cx_count(self._topology,
+                                                       self._gadget_cx_count_cache)
+        return self._circuit_rep*phase_block_cost + 2*self._cx_block.num_gates</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
-<li><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer">PhaseCircuitOptimizer</a></li>
-<li>typing.Protocol</li>
 <li>typing.Generic</li>
 </ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.circuit_rep"><code class="name">var <span class="ident">circuit_rep</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the number of times that the original circuit is
+to be repeated, for use when computing CX counts.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def circuit_rep(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property exposing the number of times that the original circuit is
+        to be repeated, for use when computing CX counts.
+    &#34;&#34;&#34;
+    return self._circuit_rep</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.cx_block"><code class="name">var <span class="ident">cx_block</span> : <a title="pauliopt.phase.circuits.CXCircuitView" href="circuits.html#pauliopt.phase.circuits.CXCircuitView">CXCircuitView</a></code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing a readonly view on the CX block of the optimized circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def cx_block(self) -&gt; CXCircuitView:
+    &#34;&#34;&#34;
+        Readonly property exposing a readonly view on the CX block of the optimized circuit.
+    &#34;&#34;&#34;
+    return self._cx_block_view</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.cx_count"><code class="name">var <span class="ident">cx_count</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the current CX count for the optimized circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def cx_count(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property exposing the current CX count for the optimized circuit.
+    &#34;&#34;&#34;
+    return self._cx_count</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.init_cx_count"><code class="name">var <span class="ident">init_cx_count</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the CX count for the original circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def init_cx_count(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property exposing the CX count for the original circuit.
+    &#34;&#34;&#34;
+    return self._init_cx_count</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.num_qubits"><code class="name">var <span class="ident">num_qubits</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the number of qubits spanned by the circuit to be optimized.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def num_qubits(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property exposing the number of qubits spanned by the circuit to be optimized.
+    &#34;&#34;&#34;
+    return self._num_qubits</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.original_gadgets"><code class="name">var <span class="ident">original_gadgets</span> : Tuple[<a title="pauliopt.phase.circuits.PhaseGadget" href="circuits.html#pauliopt.phase.circuits.PhaseGadget">PhaseGadget</a>, ...]</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the gadgets in the original circuit to be optimized.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def original_gadgets(self) -&gt; Tuple[PhaseGadget, ...]:
+    &#34;&#34;&#34;
+        Readonly property exposing the gadgets in the original circuit to be optimized.
+    &#34;&#34;&#34;
+    return self._original_gadgets</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.phase_block"><code class="name">var <span class="ident">phase_block</span> : <a title="pauliopt.phase.circuits.PhaseCircuitView" href="circuits.html#pauliopt.phase.circuits.PhaseCircuitView">PhaseCircuitView</a></code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing a readonly view on the phase block of the optimized circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def phase_block(self) -&gt; PhaseCircuitView:
+    &#34;&#34;&#34;
+        Readonly property exposing a readonly view on the phase block of the optimized circuit.
+    &#34;&#34;&#34;
+    return self._phase_block_view</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.topology"><code class="name">var <span class="ident">topology</span> : <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a></code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the topology constraining the circuit optimization.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def topology(self) -&gt; Topology:
+    &#34;&#34;&#34;
+        Readonly property exposing the topology constraining the circuit optimization.
+    &#34;&#34;&#34;
+    return self._topology</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Methods</h3>
 <dl>
-<dt id="pauliopt.phase.optimizers.CXFlipOptimizer.flip_cx"><code class="name flex">
+<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.anneal"><code class="name flex">
+<span>def <span class="ident">anneal</span></span>(<span>self, num_iters: int, *, schedule: Union[Tuple[Literal['linear', 'geometric', 'reciprocal', 'log'], Union[int, float], Union[int, float]], <a title="pauliopt.utils.TempSchedule" href="../utils.html#pauliopt.utils.TempSchedule">TempSchedule</a>] = ('linear', 1.0, 0.1), loggers: <a title="pauliopt.phase.optimizers.AnnealingLoggers" href="#pauliopt.phase.optimizers.AnnealingLoggers">AnnealingLoggers</a> = {})</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Performs a cycle of simulated annealing optimization,
+using the given number of iterations, temperature schedule,
+initial/final temperatures.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def anneal(self,
+           num_iters: int, *,
+           schedule: Union[StandardTempSchedule, TempSchedule] = (&#34;linear&#34;, 1.0, 0.1),
+           loggers: AnnealingLoggers = {}):
+           # pylint: disable = dangerous-default-value
+    # pylint: disable = too-many-locals
+    &#34;&#34;&#34;
+        Performs a cycle of simulated annealing optimization,
+        using the given number of iterations, temperature schedule,
+        initial/final temperatures.
+    &#34;&#34;&#34;
+    # Validate arguments:
+    if not isinstance(num_iters, int) or num_iters &lt;= 0:
+        raise TypeError(f&#34;Expected a positive integer, found {num_iters}.&#34;)
+    schedule = _validate_temp_schedule(schedule)
+    log_start, log_iter, log_end = _validate_loggers(loggers)
+    # Log start:
+    if log_start is not None:
+        log_start(self._cx_count, num_iters)
+    # Pre-sample random numbers to use in iterations:
+    rand = self._rng.uniform(size=num_iters)
+    # Run iterations:
+    for it in range(num_iters):
+        t = schedule(it, num_iters=num_iters)
+        layer_idx, (ctrl, trgt) = self.random_flip_cx()
+        new_cx_count = self._compute_cx_count()
+        cx_count_diff = new_cx_count-self._cx_count
+        accept_step = cx_count_diff &lt; 0 or rand[it] &lt; np.exp(-cx_count_diff/t)
+        if log_iter is not None:
+            log_iter(it, self._cx_count, new_cx_count, accept_step,
+                     (layer_idx, (ctrl, trgt)), t, num_iters)
+        if accept_step:
+            # Accept changes:
+            self._cx_count = new_cx_count
+        else:
+            # Undo changes:
+            self._flip_cx(layer_idx, ctrl, trgt)
+    # Log end:
+    if log_end is not None:
+        log_end(self._cx_count, num_iters)</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.as_qiskit_circuit"><code class="name flex">
+<span>def <span class="ident">as_qiskit_circuit</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the optimized circuit as a Qiskit circuit.</p>
+<p>This method relies on the <code>qiskit</code> library being available.
+Specifically, the <code>circuit</code> argument must be of type
+<code>qiskit.providers.BaseBackend</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def as_qiskit_circuit(self):
+    &#34;&#34;&#34;
+        Returns the optimized circuit as a Qiskit circuit.
+
+        This method relies on the `qiskit` library being available.
+        Specifically, the `circuit` argument must be of type
+        `qiskit.providers.BaseBackend`.
+    &#34;&#34;&#34;
+    try:
+        # pylint: disable = import-outside-toplevel
+        from qiskit.circuit import QuantumCircuit # type: ignore
+    except ModuleNotFoundError as _:
+        raise ModuleNotFoundError(&#34;You must install the &#39;qiskit&#39; library.&#34;)
+    circuit = QuantumCircuit(self.num_qubits)
+    for layer in reversed(self._cx_block):
+        for ctrl, trgt in layer.gates:
+            circuit.cx(ctrl, trgt)
+    for __ in range(self._circuit_rep):
+        for gadget in self._phase_block.gadgets:
+            gadget.on_qiskit_circuit(self._topology, circuit)
+    for layer in self._cx_block:
+        for ctrl, trgt in layer.gates:
+            circuit.cx(ctrl, trgt)
+    return circuit</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.flip_cx"><code class="name flex">
 <span>def <span class="ident">flip_cx</span></span>(<span>self, layer_idx: int, ctrl: int, trgt: int) ‑> NoneType</span>
 </code></dt>
 <dd>
@@ -792,7 +1025,7 @@ working forwards towards the last layer).</li>
     self._flip_cx(layer_idx, ctrl, trgt)</code></pre>
 </details>
 </dd>
-<dt id="pauliopt.phase.optimizers.CXFlipOptimizer.is_cx_flippable"><code class="name flex">
+<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.is_cx_flippable"><code class="name flex">
 <span>def <span class="ident">is_cx_flippable</span></span>(<span>self, layer_idx: int, ctrl: int, trgt: int) ‑> bool</span>
 </code></dt>
 <dd>
@@ -811,7 +1044,7 @@ working forwards towards the last layer).</li>
     return layer.is_cx_flippable(ctrl, trgt)</code></pre>
 </details>
 </dd>
-<dt id="pauliopt.phase.optimizers.CXFlipOptimizer.random_flip_cx"><code class="name flex">
+<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.random_flip_cx"><code class="name flex">
 <span>def <span class="ident">random_flip_cx</span></span>(<span>self) ‑> Tuple[int, Tuple[int, int]]</span>
 </code></dt>
 <dd>
@@ -833,9 +1066,7 @@ flipped (e.g. in case the flip needs to be subsequently undone).</p></div>
     &#34;&#34;&#34;
     while True:
         layer_idx = int(self._rng.integers(len(self._cx_block)))
-        flippable_gates = list(self._cx_block[layer_idx]._iter_flippable_cxs()) # pylint: disable = protected-access
-        gate_idx = self._rng.integers(len(flippable_gates))
-        ctrl, trgt = flippable_gates[gate_idx]
+        ctrl, trgt = self._cx_block[layer_idx].random_flip_cx(self._rng)
         if layer_idx &lt; len(self._cx_block)-1 and self._cx_block[layer_idx+1].has_cx(ctrl, trgt):
             # Try again if CX gate already present in layer above (to avoid redundancy)
             continue
@@ -844,267 +1075,6 @@ flipped (e.g. in case the flip needs to be subsequently undone).</p></div>
             continue
         self._flip_cx(layer_idx, ctrl, trgt)
         return layer_idx, (ctrl, trgt)</code></pre>
-</details>
-</dd>
-</dl>
-<h3>Inherited members</h3>
-<ul class="hlist">
-<li><code><b><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer">PhaseCircuitOptimizer</a></b></code>:
-<ul class="hlist">
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.anneal" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.anneal">anneal</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.cx_block" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.cx_block">cx_block</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.original_gadgets" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.original_gadgets">original_gadgets</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.phase_block" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.phase_block">phase_block</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.qubits" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.qubits">qubits</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.topology" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.topology">topology</a></code></li>
-</ul>
-</li>
-</ul>
-</dd>
-<dt id="pauliopt.phase.optimizers.CostFun"><code class="flex name class">
-<span>class <span class="ident">CostFun</span></span>
-<span>(</span><span>*args, **kwargs)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Protocol for a cost function.
-The cost is a <code>float</code> or <code>int</code> computed from the phase block (readonly view)
-and CX block (readonly view) exposed by an instance of <code>PhaseCircuitCXBlockOptimizer</code>.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">class CostFun(Protocol):
-    &#34;&#34;&#34;
-        Protocol for a cost function.
-        The cost is a `float` or `int` computed from the phase block (readonly view)
-        and CX block (readonly view) exposed by an instance of `PhaseCircuitCXBlockOptimizer`.
-    &#34;&#34;&#34;
-
-    def __call__(self, phase_block: PhaseCircuitView, cx_block: CXCircuitView) -&gt; Number:
-        ...</code></pre>
-</details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li>typing.Protocol</li>
-<li>typing.Generic</li>
-</ul>
-</dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer"><code class="flex name class">
-<span>class <span class="ident">PhaseCircuitOptimizer</span></span>
-<span>(</span><span>*args, **kwargs)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Optimizer for phase circuits based on simulated annealing.</p>
-<p>To understand how this works, consider the following code snippet:</p>
-<pre><code class="py">    optimizer = PhaseCircuitCXBlockOptimizer(original_circuit, topology, num_layers)
-    optimizer.anneal(num_iters, temp_schedule, cost_fun)
-    phase_block = optimizer.phase_block
-    cx_block = optimizer.cx_block
-</code></pre>
-<p>The optimized circuit is obtained by composing three blocks:</p>
-<ol>
-<li>a first block of CX gates, given by <code>cx_block.dag</code>
-(the same CX gates of <code>cx_block</code>, but in reverse order);</li>
-<li>a central block of phase gadgets, given by <code>phase_block</code>;</li>
-<li>a final block of CX gates, given by <code>cx_block</code>.</li>
-</ol>
-<p>Furthermore, if the original circuit is repeated <code>n</code> times, e.g. as part
-of a quantum machine learning ansatz, then the corresponding optimized
-circuit is obtained by repeating the central <code>phase_block</code> alone <code>n</code> times,
-keeping the first and last CX blocks unaltered (because the intermediate
-CX blocks cancel each other out when repeating the optimized circuit <code>n</code> times).</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">class PhaseCircuitOptimizer(Protocol[AngleT]):
-    &#34;&#34;&#34;
-        Optimizer for phase circuits based on simulated annealing.
-
-        To understand how this works, consider the following code snippet:
-
-        ```py
-            optimizer = PhaseCircuitCXBlockOptimizer(original_circuit, topology, num_layers)
-            optimizer.anneal(num_iters, temp_schedule, cost_fun)
-            phase_block = optimizer.phase_block
-            cx_block = optimizer.cx_block
-        ```
-
-        The optimized circuit is obtained by composing three blocks:
-
-        1. a first block of CX gates, given by `cx_block.dag`
-           (the same CX gates of `cx_block`, but in reverse order);
-        2. a central block of phase gadgets, given by `phase_block`;
-        3. a final block of CX gates, given by `cx_block`.
-
-        Furthermore, if the original circuit is repeated `n` times, e.g. as part
-        of a quantum machine learning ansatz, then the corresponding optimized
-        circuit is obtained by repeating the central `phase_block` alone `n` times,
-        keeping the first and last CX blocks unaltered (because the intermediate
-        CX blocks cancel each other out when repeating the optimized circuit `n` times).
-
-    &#34;&#34;&#34;
-
-    @property
-    def topology(self) -&gt; Topology:
-        &#34;&#34;&#34;
-            Readonly property exposing the topology constraining the circuit optimization.
-        &#34;&#34;&#34;
-        ...
-
-    @property
-    def qubits(self) -&gt; FrozenSet[int]:
-        &#34;&#34;&#34;
-            Readonly property exposing the qubits spanned by the circuit to be optimized.
-        &#34;&#34;&#34;
-        ...
-
-    @property
-    def original_gadgets(self) -&gt; Tuple[PhaseGadget, ...]:
-        &#34;&#34;&#34;
-            Readonly property exposing the gadgets in the original circuit to be optimized.
-        &#34;&#34;&#34;
-        ...
-
-    @property
-    def phase_block(self) -&gt; PhaseCircuitView[AngleT]:
-        &#34;&#34;&#34;
-            Readonly property returning a readonly view on the optimized circuit.
-        &#34;&#34;&#34;
-        ...
-
-    @property
-    def cx_block(self) -&gt; CXCircuitView:
-        &#34;&#34;&#34;
-            Readonly property returning a readonly view on the CX circuit used for optimization.
-        &#34;&#34;&#34;
-        ...
-
-    def anneal(self,
-               num_iters: int,
-               temp_schedule: TempSchedule,
-               cost_fun: CostFun, *,
-               loggers: AnnealingLoggers = {}):
-               # pylint: disable = dangerous-default-value, no-self-use
-        &#34;&#34;&#34;
-            Performs a cycle of simulated annealing optimization,
-            using the given number of iterations, temperature schedule
-            and cost function.
-        &#34;&#34;&#34;
-        ...</code></pre>
-</details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li>typing.Protocol</li>
-<li>typing.Generic</li>
-</ul>
-<h3>Subclasses</h3>
-<ul class="hlist">
-<li><a title="pauliopt.phase.optimizers.CXFlipOptimizer" href="#pauliopt.phase.optimizers.CXFlipOptimizer">CXFlipOptimizer</a></li>
-</ul>
-<h3>Instance variables</h3>
-<dl>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.cx_block"><code class="name">var <span class="ident">cx_block</span> : <a title="pauliopt.phase.circuits.CXCircuitView" href="circuits.html#pauliopt.phase.circuits.CXCircuitView">CXCircuitView</a></code></dt>
-<dd>
-<div class="desc"><p>Readonly property returning a readonly view on the CX circuit used for optimization.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">@property
-def cx_block(self) -&gt; CXCircuitView:
-    &#34;&#34;&#34;
-        Readonly property returning a readonly view on the CX circuit used for optimization.
-    &#34;&#34;&#34;
-    ...</code></pre>
-</details>
-</dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.original_gadgets"><code class="name">var <span class="ident">original_gadgets</span> : Tuple[<a title="pauliopt.phase.circuits.PhaseGadget" href="circuits.html#pauliopt.phase.circuits.PhaseGadget">PhaseGadget</a>, ...]</code></dt>
-<dd>
-<div class="desc"><p>Readonly property exposing the gadgets in the original circuit to be optimized.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">@property
-def original_gadgets(self) -&gt; Tuple[PhaseGadget, ...]:
-    &#34;&#34;&#34;
-        Readonly property exposing the gadgets in the original circuit to be optimized.
-    &#34;&#34;&#34;
-    ...</code></pre>
-</details>
-</dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.phase_block"><code class="name">var <span class="ident">phase_block</span> : <a title="pauliopt.phase.circuits.PhaseCircuitView" href="circuits.html#pauliopt.phase.circuits.PhaseCircuitView">PhaseCircuitView</a>[~AngleT]</code></dt>
-<dd>
-<div class="desc"><p>Readonly property returning a readonly view on the optimized circuit.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">@property
-def phase_block(self) -&gt; PhaseCircuitView[AngleT]:
-    &#34;&#34;&#34;
-        Readonly property returning a readonly view on the optimized circuit.
-    &#34;&#34;&#34;
-    ...</code></pre>
-</details>
-</dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.qubits"><code class="name">var <span class="ident">qubits</span> : FrozenSet[int]</code></dt>
-<dd>
-<div class="desc"><p>Readonly property exposing the qubits spanned by the circuit to be optimized.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">@property
-def qubits(self) -&gt; FrozenSet[int]:
-    &#34;&#34;&#34;
-        Readonly property exposing the qubits spanned by the circuit to be optimized.
-    &#34;&#34;&#34;
-    ...</code></pre>
-</details>
-</dd>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.topology"><code class="name">var <span class="ident">topology</span> : <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a></code></dt>
-<dd>
-<div class="desc"><p>Readonly property exposing the topology constraining the circuit optimization.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">@property
-def topology(self) -&gt; Topology:
-    &#34;&#34;&#34;
-        Readonly property exposing the topology constraining the circuit optimization.
-    &#34;&#34;&#34;
-    ...</code></pre>
-</details>
-</dd>
-</dl>
-<h3>Methods</h3>
-<dl>
-<dt id="pauliopt.phase.optimizers.PhaseCircuitOptimizer.anneal"><code class="name flex">
-<span>def <span class="ident">anneal</span></span>(<span>self, num_iters: int, temp_schedule: <a title="pauliopt.utils.TempSchedule" href="../utils.html#pauliopt.utils.TempSchedule">TempSchedule</a>, cost_fun: <a title="pauliopt.phase.optimizers.CostFun" href="#pauliopt.phase.optimizers.CostFun">CostFun</a>, *, loggers: <a title="pauliopt.phase.optimizers.AnnealingLoggers" href="#pauliopt.phase.optimizers.AnnealingLoggers">AnnealingLoggers</a> = {})</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Performs a cycle of simulated annealing optimization,
-using the given number of iterations, temperature schedule
-and cost function.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def anneal(self,
-           num_iters: int,
-           temp_schedule: TempSchedule,
-           cost_fun: CostFun, *,
-           loggers: AnnealingLoggers = {}):
-           # pylint: disable = dangerous-default-value, no-self-use
-    &#34;&#34;&#34;
-        Performs a cycle of simulated annealing optimization,
-        using the given number of iterations, temperature schedule
-        and cost function.
-    &#34;&#34;&#34;
-    ...</code></pre>
 </details>
 </dd>
 </dl>
@@ -1123,11 +1093,6 @@ and cost function.</p></div>
 <li><code><a title="pauliopt.phase" href="index.html">pauliopt.phase</a></code></li>
 </ul>
 </li>
-<li><h3><a href="#header-functions">Functions</a></h3>
-<ul class="">
-<li><code><a title="pauliopt.phase.optimizers.mst_impl_cost_fun" href="#pauliopt.phase.optimizers.mst_impl_cost_fun">mst_impl_cost_fun</a></code></li>
-</ul>
-</li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
@@ -1139,30 +1104,26 @@ and cost function.</p></div>
 <li>
 <h4><code><a title="pauliopt.phase.optimizers.AnnealingLoggers" href="#pauliopt.phase.optimizers.AnnealingLoggers">AnnealingLoggers</a></code></h4>
 <ul class="">
-<li><code><a title="pauliopt.phase.optimizers.AnnealingLoggers.log_final_cost" href="#pauliopt.phase.optimizers.AnnealingLoggers.log_final_cost">log_final_cost</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.AnnealingLoggers.log_init_cost" href="#pauliopt.phase.optimizers.AnnealingLoggers.log_init_cost">log_init_cost</a></code></li>
+<li><code><a title="pauliopt.phase.optimizers.AnnealingLoggers.log_end" href="#pauliopt.phase.optimizers.AnnealingLoggers.log_end">log_end</a></code></li>
 <li><code><a title="pauliopt.phase.optimizers.AnnealingLoggers.log_iter" href="#pauliopt.phase.optimizers.AnnealingLoggers.log_iter">log_iter</a></code></li>
+<li><code><a title="pauliopt.phase.optimizers.AnnealingLoggers.log_start" href="#pauliopt.phase.optimizers.AnnealingLoggers.log_start">log_start</a></code></li>
 </ul>
-</li>
-<li>
-<h4><code><a title="pauliopt.phase.optimizers.CXFlipOptimizer" href="#pauliopt.phase.optimizers.CXFlipOptimizer">CXFlipOptimizer</a></code></h4>
-<ul class="">
-<li><code><a title="pauliopt.phase.optimizers.CXFlipOptimizer.flip_cx" href="#pauliopt.phase.optimizers.CXFlipOptimizer.flip_cx">flip_cx</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.CXFlipOptimizer.is_cx_flippable" href="#pauliopt.phase.optimizers.CXFlipOptimizer.is_cx_flippable">is_cx_flippable</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.CXFlipOptimizer.random_flip_cx" href="#pauliopt.phase.optimizers.CXFlipOptimizer.random_flip_cx">random_flip_cx</a></code></li>
-</ul>
-</li>
-<li>
-<h4><code><a title="pauliopt.phase.optimizers.CostFun" href="#pauliopt.phase.optimizers.CostFun">CostFun</a></code></h4>
 </li>
 <li>
 <h4><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer">PhaseCircuitOptimizer</a></code></h4>
 <ul class="two-column">
 <li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.anneal" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.anneal">anneal</a></code></li>
+<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.as_qiskit_circuit" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.as_qiskit_circuit">as_qiskit_circuit</a></code></li>
+<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.circuit_rep" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.circuit_rep">circuit_rep</a></code></li>
 <li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.cx_block" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.cx_block">cx_block</a></code></li>
+<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.cx_count" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.cx_count">cx_count</a></code></li>
+<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.flip_cx" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.flip_cx">flip_cx</a></code></li>
+<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.init_cx_count" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.init_cx_count">init_cx_count</a></code></li>
+<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.is_cx_flippable" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.is_cx_flippable">is_cx_flippable</a></code></li>
+<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.num_qubits" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.num_qubits">num_qubits</a></code></li>
 <li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.original_gadgets" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.original_gadgets">original_gadgets</a></code></li>
 <li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.phase_block" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.phase_block">phase_block</a></code></li>
-<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.qubits" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.qubits">qubits</a></code></li>
+<li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.random_flip_cx" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.random_flip_cx">random_flip_cx</a></code></li>
 <li><code><a title="pauliopt.phase.optimizers.PhaseCircuitOptimizer.topology" href="#pauliopt.phase.optimizers.PhaseCircuitOptimizer.topology">topology</a></code></li>
 </ul>
 </li>

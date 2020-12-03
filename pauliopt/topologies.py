@@ -2,9 +2,9 @@
     This module contains utility code to deal with qubit topologies.
 """
 
-from typing import (Collection, Dict, Final, FrozenSet, Iterator,
-                    List, Mapping, Optional, Set, Tuple, TypedDict)
-
+from typing import (Collection, Final, FrozenSet, Iterator, List, Optional,
+                    Set, Tuple, TypedDict, Union)
+import numpy as np # type: ignore
 
 class Coupling(FrozenSet[int]):
     """
@@ -47,14 +47,14 @@ CouplingLike = Collection[int]
 """
 
 
-def _validate_coupling(qubits: FrozenSet[int], coupling_like: CouplingLike) -> Coupling:
+def _validate_coupling(num_qubits: int, coupling_like: CouplingLike) -> Coupling:
     # Assumes `qubits` was already validated.
     if not isinstance(coupling_like, Collection) or len(coupling_like) != 2:
         raise TypeError(f"Expected a pair, found {coupling_like}.")
     fst, snd = coupling_like
-    if fst not in qubits:
+    if not 0 <= fst < num_qubits:
         raise TypeError(f"Invalid qubit {fst}.")
-    if snd not in qubits:
+    if not 0 <= snd < num_qubits:
         raise TypeError(f"Invalid qubit {snd}.")
     return Coupling(fst, snd)
 
@@ -65,9 +65,9 @@ class TopologyDict(TypedDict, total=True):
         suitable for JSON serialization.
     """
 
-    qubits: List[int]
+    num_qubits: int
     """
-        Property exposing the qubits in the topology.
+        Property exposing the number of qubits in the topology.
     """
 
     couplings: List[List[int]]
@@ -81,41 +81,33 @@ Layouts: Final[Tuple[str, ...]] = ("circular", "kamada_kawai", "random",
 
 
 
-def floyd_warshall(topology: "Topology", *,
-                   enforce_connected: bool = False) -> Mapping[Tuple[int, int], Optional[int]]:
+def _floyd_warshall(topology: "Topology") -> np.ndarray:
     """
-        Runs the Floyd–Warshall to compute a dictionary of distances between qubits in a given
-        qubit topology. If two qubits are not connected, distance is `None`.
-        If two qubits are not connected and `enforce_connected` is `True`, `ValueError` is raised.
+        Runs the Floyd–Warshall to compute a matrix of distances between all pairs
+        of qubits in a topology. Raises `ValueError` if topology is not connected.
     """
-    if not isinstance(topology, Topology):
-        raise TypeError(f"Expected Topology, found {type(topology)}.")
-    if not isinstance(enforce_connected, bool):
-        raise TypeError(f"Expected boolean, found {enforce_connected}.")
-    inf = len(topology.qubits) # a number surely larger than max dist in topology
+    num_qubits = topology.num_qubits
     def init_dist(u, v):
         if u == v:
             return 0
         coupling = Coupling(u, v)
         if coupling in topology.couplings:
             return 1
-        return inf
-    dist = {
-        (u, v): init_dist(u, v)
-        for u in topology.qubits for v in topology.qubits
-    }
+        return num_qubits # a number surely larger than max dist in topology
+    dist = np.zeros(shape=(num_qubits, num_qubits), dtype=np.uint32)
+    for u in topology.qubits:
+        for v in topology.qubits:
+            dist[u, v] = init_dist(u, v)
     for w in topology.qubits:
         for u in topology.qubits:
             for v in topology.qubits:
-                upper_bound = dist[(u, w)] + dist[(w, v)]
-                if dist[(u, v)] > upper_bound:
-                    dist[(u, v)] = upper_bound
+                upper_bound = dist[u, w] + dist[w, v]
+                if dist[u, v] > upper_bound:
+                    dist[u, v] = upper_bound
     for u in topology.qubits:
         for v in topology.qubits:
-            if dist[(u, v)] == inf:
-                if enforce_connected:
-                    raise ValueError("Topology is not connected.")
-                dist[(u, v)] = None
+            if dist[u, v] == num_qubits:
+                raise ValueError("Topology is not connected.")
     return dist
 
 
@@ -123,35 +115,38 @@ class Topology:
     """
         Container class for a qubit topology.
     """
-    _qubits: FrozenSet[int]
+    _num_qubits: int
     _couplings: FrozenSet[Coupling]
-    _adjacent: Mapping[int, FrozenSet[int]]
-    _dist: Mapping[Tuple[int, int], Optional[int]]
+    _adjacent: Tuple[FrozenSet[int], ...]
+    _dist: np.ndarray
 
-    def __init__(self, qubits: Collection[int], couplings: Collection[CouplingLike]):
-        if not isinstance(qubits, Collection) or not all(isinstance(q, int) for q in qubits):
-            raise TypeError("Qubits must be a collection of integers.")
-        if not qubits:
-            raise ValueError("Qubits must be a non-empty collection.")
+    def __init__(self, num_qubits: int, couplings: Collection[CouplingLike]):
+        if not isinstance(num_qubits, int) or num_qubits <= 0:
+            raise TypeError("Number of qubits must be a positive integer.")
         if not isinstance(couplings, Collection):
             raise TypeError("Couplings must be a collection of pairs of qubits.")
-        self._qubits = frozenset(qubits)
-        self._couplings = frozenset(_validate_coupling(self._qubits, c) for c in couplings)
-        _adjacent: Dict[int, Set[int]] = {}
-        for q in self.qubits:
-            _adjacent[q] = set()
+        self._num_qubits = num_qubits
+        self._couplings = frozenset(_validate_coupling(num_qubits, c) for c in couplings)
+        _adjacent: Tuple[Set[int], ...] = tuple(set() for _ in range(num_qubits))
         for fst, snd in self.couplings:
             _adjacent[fst].add(snd)
             _adjacent[snd].add(fst)
-        self._adjacent = {q: frozenset(n) for q, n in _adjacent.items()}
-        self._dist = floyd_warshall(self)
+        self._adjacent = tuple(frozenset(n) for n in _adjacent)
+        self._dist = _floyd_warshall(self)
 
     @property
-    def qubits(self) -> FrozenSet[int]:
+    def num_qubits(self) -> int:
         """
-            Readonly property exposing the qubits in this topology.
+            Readonly property returning the number of qubits in this topology.
         """
-        return self._qubits
+        return self._num_qubits
+
+    @property
+    def qubits(self) -> range:
+        """
+            Readonly property returning the range of qubits in this topology.
+        """
+        return range(self._num_qubits)
 
     @property
     def couplings(self) -> FrozenSet[Coupling]:
@@ -167,7 +162,7 @@ class Topology:
             a dictionary, for serialization purposes.
         """
         return {
-            "qubits": sorted(self.qubits),
+            "num_qubits": self.num_qubits,
             "couplings": sorted(list(c.as_pair) for c in self.couplings)
         }
 
@@ -253,7 +248,7 @@ class Topology:
         """
         if not isinstance(qubit, int):
             raise TypeError("Qubit should be an integer.")
-        if qubit not in self._adjacent:
+        if qubit not in self:
             raise ValueError(f"Invalid qubit {qubit}.")
         return self._adjacent[qubit]
 
@@ -269,20 +264,26 @@ class Topology:
         adjacent = self.adjacent(qubit)
         return (Coupling(qubit, q) for q in adjacent)
 
-    def dist(self, fro: int, to):
+    def dist(self, fro: int, to: int) -> int:
         """
-            Readonly property returning an iterator running over all couplings
-            incident onto the given qubit.
-
-            This is returned as an iterator, rather than a collection,
-            because the couplings are generated on the fly (i.e. this is not
-            merely exposing some internal collection).
+            Returns the distance between two given qubits in the topology.
         """
-        if not isinstance(fro, int) or fro not in self.qubits:
+        if not isinstance(fro, int) or fro not in self:
             raise TypeError(f"Expected a valid qubit, found {fro}.")
-        if not isinstance(to, int) or to not in self.qubits:
+        if not isinstance(to, int) or to not in self:
             raise TypeError(f"Expected a valid qubit, found {to}.")
-        return self._dist[(fro, to)]
+        return self._dist[fro, to]
+
+    def __contains__(self, x: Union[int, Coupling, Tuple[int, int]]) -> bool:
+        if isinstance(x, int):
+            return 0 <= x < self._num_qubits
+        if isinstance(x, Coupling):
+            return x in self._couplings
+        if isinstance(x, tuple) and len(x) == 2:
+            fst, snd = x
+            if isinstance(fst, int) and isinstance(snd, int):
+                return Coupling(fst, snd) in self
+        raise TypeError(f"Expected qubit or coupling, found {x}")
 
     def __repr__(self) -> str:
         if self.couplings:
@@ -315,7 +316,7 @@ class Topology:
             raise TypeError("Expected key 'qubits'.")
         if "couplings" not in topology:
             raise TypeError("Expected key 'couplings'.")
-        return Topology(topology["qubits"], topology["couplings"])
+        return Topology(topology["num_qubits"], topology["couplings"])
 
     @staticmethod
     def line(num_qubits: int) -> "Topology":
@@ -324,9 +325,8 @@ class Topology:
         """
         if not isinstance(num_qubits, int) or num_qubits <= 0:
             raise TypeError("Number of qubits must be positive integer.")
-        qubits = range(num_qubits)
         couplings = [[i, i+1] for i in range(num_qubits-1)]
-        return Topology(qubits, couplings)
+        return Topology(num_qubits, couplings)
 
     @staticmethod
     def cycle(num_qubits: int) -> "Topology":
@@ -335,9 +335,8 @@ class Topology:
         """
         if not isinstance(num_qubits, int) or num_qubits <= 0:
             raise TypeError("Number of qubits must be positive integer.")
-        qubits = range(num_qubits)
         couplings = [[i, (i+1)%num_qubits] for i in range(num_qubits)]
-        return Topology(qubits, couplings)
+        return Topology(num_qubits, couplings)
 
     @staticmethod
     def complete(num_qubits: int) -> "Topology":
@@ -346,9 +345,8 @@ class Topology:
         """
         if not isinstance(num_qubits, int) or num_qubits <= 0:
             raise TypeError("Number of qubits must be positive integer.")
-        qubits = range(num_qubits)
         couplings = [[i, j] for i in range(num_qubits) for j in range(i+1, num_qubits)]
-        return Topology(qubits, couplings)
+        return Topology(num_qubits, couplings)
 
     @staticmethod
     def grid(num_rows: int, num_cols: int) -> "Topology":
@@ -360,7 +358,7 @@ class Topology:
             raise TypeError("Number of rows must be positive integer.")
         if not isinstance(num_cols, int) or num_cols <= 0:
             raise TypeError("Number of cols must be positive integer.")
-        qubits = range(num_rows * num_cols)
+        num_qubits = num_rows * num_cols
         def qubit(r, c):
             return num_cols*r + c
         couplings: List[List[int]] = []
@@ -370,7 +368,7 @@ class Topology:
                     couplings.append([qubit(r, c), qubit(r+1, c)])
                 if c < num_cols-1:
                     couplings.append([qubit(r, c), qubit(r, c+1)])
-        return Topology(qubits, couplings)
+        return Topology(num_qubits, couplings)
 
     @staticmethod
     def periodic_grid(num_rows: int, num_cols: int) -> "Topology":
@@ -382,7 +380,7 @@ class Topology:
             raise TypeError("Number of rows must be positive integer.")
         if not isinstance(num_cols, int) or num_cols <= 0:
             raise TypeError("Number of cols must be positive integer.")
-        qubits = range(num_rows * num_cols)
+        num_qubits = num_rows * num_cols
         def qubit(r, c):
             return num_cols*r + c
         couplings: List[List[int]] = []
@@ -390,7 +388,7 @@ class Topology:
             for c in range(num_cols):
                 couplings.append([qubit(r, c), qubit((r+1)%num_rows, c)])
                 couplings.append([qubit(r, c), qubit(r, (c+1)%num_cols)])
-        return Topology(qubits, couplings)
+        return Topology(num_qubits, couplings)
 
     @staticmethod
     def from_qiskit_config(config) -> "Topology":
@@ -412,9 +410,9 @@ class Topology:
                             "`qiskit.providers.models.QasmBackendConfiguration`, "
                             f"found {type(config)}.")
         config_dict = config.to_dict()
-        n_qubits: int = config_dict["n_qubits"]
+        num_qubits: int = config_dict["n_qubits"]
         coupling_map: List[List[int]] = config_dict["coupling_map"]
-        return Topology(range(n_qubits), coupling_map)
+        return Topology(num_qubits, coupling_map)
 
     @staticmethod
     def from_qiskit_backend(backend) -> "Topology":
@@ -444,7 +442,7 @@ class Matching:
     _topology: Topology
     _matched_couplings: Set[Coupling]
     _matched_qubits: Set[int]
-    _incident_coupling: Dict[int, Coupling]
+    _incident_coupling: List[Optional[Coupling]]
 
     def __init__(self, topology: Topology):
         if not isinstance(topology, Topology):
@@ -452,7 +450,7 @@ class Matching:
         self._topology = topology
         self._matched_couplings = set()
         self._matched_qubits = set()
-        self._incident_coupling = {}
+        self._incident_coupling = [None for _ in topology.qubits]
 
     @property
     def topology(self) -> Topology:
@@ -501,7 +499,7 @@ class Matching:
             Returns the coupling incident to the given qubit in this matching,
             or `None` if the qubit is not matched.
         """
-        return self._incident_coupling.get(qubit, None)
+        return self._incident_coupling[qubit]
 
     def is_flippable(self, coupling: CouplingLike) -> bool:
         """
@@ -510,7 +508,7 @@ class Matching:
             - always true if the coupling is already present in the matching;
             - otherwise true only if neither qubit in the coupling is currently matched.
         """
-        coupling = _validate_coupling(self.topology.qubits, coupling)
+        coupling = _validate_coupling(self.topology.num_qubits, coupling)
         if coupling not in self.topology.couplings:
             raise ValueError(f"Invalid coupling {coupling} for the given topology.")
         return self._is_flippable(coupling)
@@ -524,7 +522,7 @@ class Matching:
             The matching is modified in-place and then returned, as per the
             [fluent API pattern](https://en.wikipedia.org/wiki/Fluent_interface).
         """
-        coupling = _validate_coupling(self.topology.qubits, coupling)
+        coupling = _validate_coupling(self.topology.num_qubits, coupling)
         return self._flip(coupling)
 
     def _is_flippable(self, coupling: Coupling) -> bool:
@@ -546,8 +544,8 @@ class Matching:
             self._matched_couplings.remove(coupling)
             self._matched_qubits.remove(fst)
             self._matched_qubits.remove(snd)
-            del self._incident_coupling[fst]
-            del self._incident_coupling[snd]
+            self._incident_coupling[fst] = None
+            self._incident_coupling[snd] = None
         else:
             self._matched_couplings.add(coupling)
             self._matched_qubits.add(fst)
