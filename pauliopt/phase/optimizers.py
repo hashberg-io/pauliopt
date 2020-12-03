@@ -4,13 +4,14 @@
 """
 
 from collections import deque
-from typing import (Deque, Dict, Generic, Optional, Protocol, runtime_checkable,
+from math import ceil, log10
+from typing import (Deque, Dict, Generic, List, Optional, Protocol, runtime_checkable,
                     Set, Tuple, TypedDict, Union)
 import numpy as np # type: ignore
 from pauliopt.phase.circuits import (PhaseGadget, PhaseCircuit, PhaseCircuitView,
                                      CXCircuitLayer, CXCircuit, CXCircuitView)
 from pauliopt.topologies import Topology
-from pauliopt.utils import AngleT, TempSchedule, StandardTempSchedule, StandardTempSchedules
+from pauliopt.utils import AngleT, TempSchedule, StandardTempSchedule, StandardTempSchedules, SVGBuilder
 
 @runtime_checkable
 class AnnealingCostLogger(Protocol):
@@ -75,7 +76,7 @@ def _validate_loggers(loggers: AnnealingLoggers) -> Tuple[Optional[AnnealingCost
     return log_start, log_iter, log_end
 
 
-class PhaseCircuitOptimizer(Generic[AngleT]):
+class OptimizedPhaseCircuit(Generic[AngleT]):
     # pylint: disable = too-many-instance-attributes
     """
         Optimizer for phase circuits based on simulated annealing.
@@ -339,3 +340,134 @@ class PhaseCircuitOptimizer(Generic[AngleT]):
         phase_block_cost = self._phase_block._cx_count(self._topology,
                                                        self._gadget_cx_count_cache)
         return self._circuit_rep*phase_block_cost + 2*self._cx_block.num_gates
+
+    def to_svg(self, *,
+               zcolor: str = "#CCFFCC",
+               xcolor: str = "#FF8888",
+               hscale: float = 1.0, vscale: float = 1.0,
+               scale: float = 1.0,
+               svg_code_only: bool = False
+               ):
+        # pylint: disable = too-many-locals
+        """
+            Returns an SVG representation of this optimized circuit, using
+            the ZX calculus to express phase gadgets and CX gates.
+
+            The keyword arguments `zcolor` and `xcolor` can be used to
+            specify a colour for the Z and X basis spiders in the circuit.
+            The keyword arguments `hscale` and `vscale` can be used to
+            scale the circuit representation horizontally and vertically.
+            The keyword argument `scale` can be used to scale the circuit
+            representation isotropically.
+            The keyword argument `svg_code_only` (default `False`) can be used
+            to specify that the SVG code itself be returned, rather than the
+            IPython `SVG` object.
+        """
+        if not isinstance(zcolor, str):
+            raise TypeError("Keyword argument 'zcolor' must be string.")
+        if not isinstance(xcolor, str):
+            raise TypeError("Keyword argument 'xcolor' must be string.")
+        if not isinstance(hscale, (int, float)) or hscale <= 0.0:
+            raise TypeError("Keyword argument 'hscale' must be positive float.")
+        if not isinstance(vscale, (int, float)) or vscale <= 0.0:
+            raise TypeError("Keyword argument 'vscale' must be positive float.")
+        if not isinstance(scale, (int, float)) or scale <= 0.0:
+            raise TypeError("Keyword argument 'scale' must be positive float.")
+        return self._to_svg(zcolor=zcolor, xcolor=xcolor,
+                            hscale=hscale, vscale=vscale, scale=scale,
+                            svg_code_only=svg_code_only)
+    def _to_svg(self, *,
+                zcolor: str = "#CCFFCC",
+                xcolor: str = "#FF8888",
+                hscale: float = 1.0, vscale: float = 1.0,
+                scale: float = 1.0,
+                svg_code_only: bool = False
+                ):
+        num_qubits = self.num_qubits
+        vscale *= scale
+        hscale *= scale
+        cx_block = self._cx_block
+        phase_block = self._phase_block
+        pre_cx_gates = [gate for layer in reversed(cx_block) for gate in layer.gates]
+        gadgets = list(phase_block.gadgets)*self._circuit_rep
+        post_cx_gates = list(reversed(pre_cx_gates))
+        _layers: List[int] = [0 for _ in range(num_qubits)]
+        pre_cx_gates_depths: List[int] = []
+        max_cx_gates_depth: int = 0
+        for gate in pre_cx_gates:
+            m = min(gate)
+            M = max(gate)
+            d = max(_layers[q] for q in range(m, M+1))
+            max_cx_gates_depth = max(max_cx_gates_depth, d+1)
+            pre_cx_gates_depths.append(d)
+            for q in range(m, M+1):
+                _layers[q] = d+1
+        post_cx_gates_depths: List[int] = [max_cx_gates_depth - d
+                                           for d in reversed(pre_cx_gates_depths)]
+        num_digits = int(ceil(log10(num_qubits)))
+        line_height = int(ceil(30*vscale))
+        row_width = int(ceil(100*hscale))
+        cx_row_width = int(ceil(40*hscale))
+        pad_x = int(ceil(10*hscale))
+        margin_x = int(ceil(40*hscale))
+        pad_y = int(ceil(20*vscale))
+        r = pad_y//2-2
+        font_size = 2*r
+        pad_x += font_size*(num_digits+1)
+        delta_fst = row_width//2
+        delta_snd = 3*row_width//4
+        width = 2*pad_x + 2*margin_x + row_width*len(gadgets) + 2*max_cx_gates_depth * cx_row_width
+        height = 2*pad_y + line_height*(num_qubits+1)
+        builder = SVGBuilder(width, height)
+        for q in range(num_qubits):
+            y = pad_y + (q+1) * line_height
+            builder.line((pad_x, y), (width-pad_x, y))
+            builder.text((0, y), f"{str(q):>{num_digits}}", font_size=font_size)
+            builder.text((width-pad_x+r, y), f"{str(q):>{num_digits}}", font_size=font_size)
+        for i, (ctrl, trgt) in enumerate(pre_cx_gates):
+            row = pre_cx_gates_depths[i]
+            x = pad_x + margin_x + row * cx_row_width
+            y_ctrl = pad_y + (ctrl+1)*line_height
+            y_trgt = pad_y + (trgt+1)*line_height
+            builder.line((x, y_ctrl), (x, y_trgt))
+            builder.circle((x, y_ctrl), r, zcolor)
+            builder.circle((x, y_trgt), r, xcolor)
+        for _row, gadget in enumerate(gadgets):
+            fill = zcolor if gadget.basis == "Z" else xcolor
+            other_fill = xcolor if gadget.basis == "Z" else zcolor
+            row = _row
+            x = pad_x + margin_x + row * row_width + max_cx_gates_depth * cx_row_width
+            for q in gadget.qubits:
+                y = pad_y + (q+1)*line_height
+                builder.line((x, y), (x+delta_fst, pad_y))
+            for q in gadget.qubits:
+                y = pad_y + (q+1)*line_height
+                builder.circle((x, y), r, fill)
+            builder.line((x+delta_fst, pad_y), (x+delta_snd, pad_y))
+            builder.circle((x+delta_fst, pad_y), r, other_fill)
+            builder.circle((x+delta_snd, pad_y), r, fill)
+            builder.text((x+delta_snd+2*r, pad_y), str(gadget.angle), font_size=font_size)
+        for i, (ctrl, trgt) in enumerate(post_cx_gates):
+            row = post_cx_gates_depths[i]
+            x = pad_x + margin_x + len(gadgets) * row_width + (row+max_cx_gates_depth) * cx_row_width
+            y_ctrl = pad_y + (ctrl+1)*line_height
+            y_trgt = pad_y + (trgt+1)*line_height
+            builder.line((x, y_ctrl), (x, y_trgt))
+            builder.circle((x, y_ctrl), r, zcolor)
+            builder.circle((x, y_trgt), r, xcolor)
+        svg_code = repr(builder)
+        if svg_code_only:
+            return svg_code
+        try:
+            # pylint: disable = import-outside-toplevel
+            from IPython.core.display import SVG # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError("You must install the 'IPython' library.")
+        return SVG(svg_code)
+
+    def _repr_svg_(self):
+        """
+            Magic method for IPython/Jupyter pretty-printing.
+            See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
+        """
+        return self._to_svg(svg_code_only=True)

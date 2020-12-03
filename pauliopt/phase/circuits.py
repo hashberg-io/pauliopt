@@ -516,6 +516,16 @@ class PhaseCircuit(Generic[AngleT]):
             raise TypeError("Keyword argument 'vscale' must be positive float.")
         if not isinstance(scale, (int, float)) or scale <= 0.0:
             raise TypeError("Keyword argument 'scale' must be positive float.")
+        return self._to_svg(zcolor=zcolor, xcolor=xcolor,
+                            hscale=hscale, vscale=vscale, scale=scale,
+                            svg_code_only=svg_code_only)
+    def _to_svg(self, *,
+                zcolor: str = "#CCFFCC",
+                xcolor: str = "#FF8888",
+                hscale: float = 1.0, vscale: float = 1.0,
+                scale: float = 1.0,
+                svg_code_only: bool = False
+                ):
         num_qubits = self._num_qubits
         vscale *= scale
         hscale *= scale
@@ -632,7 +642,7 @@ class PhaseCircuit(Generic[AngleT]):
             Magic method for IPython/Jupyter pretty-printing.
             See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
         """
-        return self.to_svg(svg_code_only=True)
+        return self._to_svg(svg_code_only=True)
 
     @staticmethod
     def random(num_qubits: int, num_gadgets: int, *,
