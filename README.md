@@ -7,13 +7,7 @@
 
 PauliOpt is a Python library to simplify quantum circuits composed of phase and Pauli gadgets.
 
-## Pre-alpha Development
-
-This software library is currently in a pre-alpha development stage.
-It is not currently suitable for use by the public.
-
-
-## Installation
+The [documentation](https://sg495.github.io/pauliopt/pauliopt/index.html) for this library was generated with [pdoc](https://pdoc3.github.io/pdoc/).
 
 You can install the library with `pip`:
 
@@ -26,3 +20,8 @@ If you already have the library installed and would like the latest version, you
 ```
 pip install --upgrade pauliopt
 ```
+
+## Pre-alpha Development
+
+This software library is in a pre-alpha development stage.
+It is not currently suitable for use by the public.
