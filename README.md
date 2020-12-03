@@ -27,3 +27,4 @@ pip install --upgrade pauliopt
 
 This software library is in a pre-alpha development stage.
 It is not currently suitable for use by the public.
+
