@@ -29,16 +29,16 @@ pip install --upgrade pauliopt
 
 **Step 1.** Create a circuit of Z and X phase gadgets.
 
-<img src="readme-example-1.png" width="640" title="Creation of a circuit of phase gadgets.">
+<img src="readme-example-1.png" width="800" title="Creation of a circuit of phase gadgets.">
 
 **Step 2.** Select the desired qubit topology.
 
-<img src="readme-example-2.png" width="640" title="Selection of a topology.">
+<img src="readme-example-2.png" width="800" title="Selection of a topology.">
 
 **Step 3.** Instantiate an optimizer for the desired circuit and topology.
 
-<img src="readme-example-3.png" width="640" title="Instantiation of an optimizer.">
+<img src="readme-example-3.png" width="800" title="Instantiation of an optimizer.">
 
 **Step 4.** Run a few iterations of simulated annealing and look at the simplified circuit.
 
-<img src="readme-example-4.png" width="640" title="Annealing.">
+<img src="readme-example-4.png" width="800" title="Annealing.">
