@@ -2,54 +2,40 @@
     This module contains code to create circuits of mixed ZX phase gadgets.
 """
 
+from collections import deque
 from math import ceil, log10
 from typing import (Callable, cast, Collection, Dict, Final, FrozenSet, Generic, Iterator, List,
-                    Literal, Optional, overload, Protocol, runtime_checkable, Sequence, Tuple,TypeVar,  Union)
+                    Literal, Optional, overload, Protocol, runtime_checkable, Sequence, Set, Tuple, TypeVar,  Union)
 import numpy as np # type: ignore
 from pauliopt.topologies import Coupling, Topology, Matching
-from pauliopt.utils import AngleT, AngleProtocol, Angle, SVGBuilder, Number
+from pauliopt.utils import AngleT, AngleProtocol, Angle, SVGBuilder
 
-
-
-
-
-_WeightT = TypeVar("_WeightT", bound="_Weight")
-
-class _Weight(Protocol[_WeightT]):
-
-    def __add__(self, other: _WeightT) -> _WeightT:
-        ...
-
-    def __lt__(self, other: _WeightT) -> bool:
-        ...
-
-def _prims_algorithm(nodes: Collection[int], weight: Callable[[int, int], _WeightT],
-                     zero: _WeightT, inf: _WeightT) -> _WeightT:
+def _prims_algorithm_weight(nodes: Collection[int], weight: Callable[[int, int], int],
+                            inf: int) -> int:
     """
         A modified version of Prim's algorithm that
         computes the weight of the minimum spanning tree connecting
         the given nodes, using the given weight function for branches.
         The number `inf` should be larger than the maximum weight
         that can be encountered in the process.
-        The number `zero` should be `zero` for the given number type.
     """
     if not nodes:
-        return zero
-    mst_length: _WeightT = zero
+        return 0
+    mst_length: int = 0
     # Initialise set of nodes to visit:
     to_visit = set(nodes)
     n0 = next(iter(to_visit))
     to_visit.remove(n0)
     # Initialise dict of distances from visited set:
-    dist_from_visited: Dict[int, _WeightT] = {
+    dist_from_visited: Dict[int, int] = {
         n: weight(n0, n) for n in nodes
     }
     while to_visit:
         # Look for the node to be visited which is nearest to the visited set:
         nearest_node = 0 # dummy value
-        nearest_dist: _WeightT = inf # dummy value
+        nearest_dist: int = inf # dummy value
         for n in to_visit:
-            n_dist: _WeightT = dist_from_visited[n]
+            n_dist: int = dist_from_visited[n]
             if n_dist < nearest_dist:
                 nearest_node = n
                 nearest_dist = n_dist
@@ -63,21 +49,18 @@ def _prims_algorithm(nodes: Collection[int], weight: Callable[[int, int], _Weigh
                 dist_from_visited[n] = dist_nearest_n
     return mst_length
 
-def _prims_algorithm_debug(nodes: Collection[int], weight: Callable[[int, int], _WeightT],
-                           zero: _WeightT, inf: _WeightT) -> Tuple[_Weight,
-                                                                   Sequence[_Weight],
-                                                                   Sequence[Tuple[int, int]]]:
+def _prims_algorithm_branches(nodes: Collection[int], weight: Callable[[int, int], int],
+                              inf: int) -> Sequence[Tuple[int, int]]:
+    # pylint: disable = too-many-locals
     if not nodes:
-        return zero, [], []
-    mst_length: _WeightT = zero
-    mst_branch_lengths = []
+        return []
     mst_branches = []
     # Initialise set of nodes to visit:
     to_visit = set(nodes)
     n0 = next(iter(to_visit))
     to_visit.remove(n0)
     # Initialise dict of distances from visited set:
-    dist_from_visited: Dict[int, _WeightT] = {
+    dist_from_visited: Dict[int, int] = {
         n: weight(n0, n) for n in nodes
     }
     # Initialise possible edges for the MST:
@@ -87,9 +70,49 @@ def _prims_algorithm_debug(nodes: Collection[int], weight: Callable[[int, int], 
     while to_visit:
         # Look for the node to be visited which is nearest to the visited set:
         nearest_node = 0 # dummy value
-        nearest_dist: _WeightT = inf # dummy value
+        nearest_dist: int = inf # dummy value
         for n in to_visit:
-            n_dist: _WeightT = dist_from_visited[n]
+            n_dist: int = dist_from_visited[n]
+            if n_dist < nearest_dist:
+                nearest_node = n
+                nearest_dist = n_dist
+        # Nearest node is removed and added to the MST:
+        to_visit.remove(nearest_node)
+        mst_branches.append(edge_from_visited[nearest_node])
+        # Update shortest distances/edges to visited set:
+        for n in to_visit:
+            dist_nearest_n = weight(nearest_node, n)
+            if dist_nearest_n < dist_from_visited[n]:
+                dist_from_visited[n] = dist_nearest_n
+                edge_from_visited[n] = (nearest_node, n)
+    return mst_branches
+
+def _prims_algorithm_full(nodes: Collection[int], weight: Callable[[int, int], int],
+                          inf: int) -> Tuple[int, Sequence[int], Sequence[Tuple[int, int]]]:
+    # pylint: disable = too-many-locals
+    if not nodes:
+        return 0, [], []
+    mst_length: int = 0
+    mst_branch_lengths = []
+    mst_branches = []
+    # Initialise set of nodes to visit:
+    to_visit = set(nodes)
+    n0 = next(iter(to_visit))
+    to_visit.remove(n0)
+    # Initialise dict of distances from visited set:
+    dist_from_visited: Dict[int, int] = {
+        n: weight(n0, n) for n in nodes
+    }
+    # Initialise possible edges for the MST:
+    edge_from_visited: Dict[int, Tuple[int, int]] = {
+        n: (n0, n) for n in nodes
+    }
+    while to_visit:
+        # Look for the node to be visited which is nearest to the visited set:
+        nearest_node = 0 # dummy value
+        nearest_dist: int = inf # dummy value
+        for n in to_visit:
+            n_dist: int = dist_from_visited[n]
             if n_dist < nearest_dist:
                 nearest_node = n
                 nearest_dist = n_dist
@@ -151,28 +174,77 @@ class PhaseGadget(Generic[AngleT]):
         """
         return self._qubits
 
-    def mst_impl_cx_count(self, topology: Topology) -> int:
+    def cx_count(self, topology: Topology) -> int:
         """
             Returns the CX count for an implementation of this phase gadget
             on the given topology based on minimum spanning trees (MST).
         """
         if not isinstance(topology, Topology):
             raise TypeError(f"Expected Topology, found {type(topology)}.")
-        return  _prims_algorithm(self._qubits,
-                                 lambda u, v: 4*topology.dist(u, v)-2,
-                                 0, 4*len(topology.qubits)-2)
+        return  _prims_algorithm_weight(self._qubits,
+                                        lambda u, v: 4*topology.dist(u, v)-2,
+                                        4*len(topology.qubits)-2)
 
-    def mst_impl_cx_circuit(self, topology: Topology) -> "CXCircuit":
+    def on_qiskit_circuit(self, topology: Topology, circuit) -> None:
         """
-            CX circuit used to implement this gadget on the given topology
-            using a minimum spanning tree (MST) technique.
-            The implementation consists of this CX circuit, followed by
-            a phase gate on any qubit, followed by the dagger of this
-            CX circuit.
-        """
-        raise NotImplementedError()
+            Applies this phase gadget to a given qiskit quantum `circuit`,
+            using the given `topology` to determine a minimum spanning
+            tree implementation of the gadget.
 
-    def print_mst_impl_info(self, topology: Topology):
+            This method relies on the `qiskit` library being available.
+            Specifically, the `circuit` argument must be of type
+            `qiskit.providers.BaseBackend`.
+        """
+        # TODO: currently uses CX ladder, must change into balanced tree! (same CX count)
+        try:
+            # pylint: disable = import-outside-toplevel
+            from qiskit.circuit import QuantumCircuit # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError("You must install the 'qiskit' library.")
+        if not isinstance(circuit, QuantumCircuit):
+            raise TypeError("Argument 'circuit' must be of type "
+                            "`qiskit.circuit.QuantumCircuit`.")
+        if not isinstance(topology, Topology):
+            raise TypeError(f"Expected Topology, found {type(topology)}.")
+        # Build MST data structure:
+        mst_branches = _prims_algorithm_branches(self._qubits,
+                                                 lambda u, v: 4*topology.dist(u, v)-2,
+                                                 4*len(topology.qubits)-2)
+        upper_ladder: List[Tuple[int, int]] = []
+        if len(self._qubits) == 1:
+            q0 = next(iter(self._qubits))
+        else:
+            q0 = min(*self._qubits)
+        if mst_branches:
+            incident: Dict[int, Set[Tuple[int, int]]] = {
+                q: set() for q in self._qubits
+            }
+            for fst, snd in mst_branches:
+                incident[fst].add((fst, snd))
+                incident[snd].add((snd, fst))
+            # Create ladder of CX gates:
+            visited: Set[int] = set()
+            queue = deque([q0])
+            while queue:
+                q = queue.popleft()
+                visited.add(q)
+                for tail, head in incident[q]:
+                    if head not in visited:
+                        if self.basis == "Z":
+                            upper_ladder.append((head, tail))
+                        else:
+                            upper_ladder.append((tail, head))
+                        queue.append(head)
+        for ctrl, trgt in reversed(upper_ladder):
+            circuit.cx(ctrl, trgt)
+        if self.basis == "Z":
+            circuit.rz(float(self.angle), q0)
+        else:
+            circuit.rx(float(self.angle), q0)
+        for ctrl, trgt in upper_ladder:
+            circuit.cx(ctrl, trgt)
+
+    def print_impl_info(self, topology: Topology):
         """
             Prints information about an implementation of this phase gadget
             on the given topology based on minimum spanning trees (MST).
@@ -180,14 +252,13 @@ class PhaseGadget(Generic[AngleT]):
         if not isinstance(topology, Topology):
             raise TypeError(f"Expected Topology, found {type(topology)}.")
         mst_length, mst_branch_lengths, mst_branches = \
-            _prims_algorithm_debug(self._qubits,
-                                   lambda u, v: 4*topology.dist(u, v)-2,
-                                   0, 4*len(topology.qubits)-2)
+            _prims_algorithm_full(self._qubits,
+                                  lambda u, v: 4*topology.dist(u, v)-2,
+                                  4*len(topology.qubits)-2)
         print(f"MST implementation info for {str(self)}:")
         print(f"  - Overall CX count for gadget: {mst_length}")
         print(f"  - MST branches: {mst_branches}")
         print(f"  - CX counts for MST branches: {mst_branch_lengths}")
-        # TODO: add CX circuit info when `mst_impl` is implemented.
         print("")
 
     def __str__(self) -> str:
@@ -377,6 +448,40 @@ class PhaseCircuit(Generic[AngleT]):
             Returns a readonly view on this circuit.
         """
         return PhaseCircuitView(self)
+
+    def _cx_count(self, topology: Topology, cache: Dict[int, Dict[FrozenSet[int], int]]) -> int:
+        """
+            Returns the CX count for an implementation of this phase gadget
+            on the given topology based on minimum spanning trees (MST).
+        """
+        num_qubits = len(self._qubits)
+        weight = lambda u, v: 4*topology.dist(u, v)-2
+        inf = 4*num_qubits-2
+        count = 0
+        for basis in ("Z", "X"):
+            for col in self._matrix[cast(Literal["Z", "X"], basis)].T:
+                legs = frozenset(i for i in range(num_qubits) if col[i] == 1)
+                # legs = frozenset(np.where(col == 1))
+                num_legs = len(legs)
+                _cache = cache.get(num_legs, None)
+                if _cache is None:
+                    _cache = {}
+                    cache[num_legs] = _cache
+                legs_count = _cache.get(legs, None)
+                if legs_count is None:
+                    legs_count = _prims_algorithm_weight(legs, weight, inf)
+                    _cache[legs] = legs_count
+                count += legs_count
+        return count
+
+    def cx_count(self, topology: Topology) -> int:
+        """
+            Returns the CX count for an implementation of this phase gadget
+            on the given topology based on minimum spanning trees (MST).
+        """
+        if not isinstance(topology, Topology):
+            raise TypeError(f"Expected Topology, found {type(topology)}.")
+        return self._cx_count(topology, {})
 
     def to_svg(self, *,
                zcolor: str = "#CCFFCC",
@@ -685,6 +790,7 @@ class CXCircuitLayer:
     """
 
     _topology: Topology
+    _couplings_seq: Tuple[Coupling, ...]
     _gates: Dict[Coupling, Tuple[int, int]]
     _matching: Matching
 
@@ -696,7 +802,9 @@ class CXCircuitLayer:
             raise TypeError(f"Expected sequence of ordered pairs, found {gates}")
         self._topology = topology
         self._gates = {}
+        self._couplings_seq = tuple(sorted(topology.couplings))
         self._matching = Matching(topology)
+        self._num_flippable_cxs = 2*len(self.topology.couplings)
         for gate in gates:
             if not isinstance(gate, (list, tuple)) or len(gate) != 2 or len(set(gate)) != 2:
                 raise TypeError(f"Expected gates to be pairs of distinct integers, found {gate}.")
@@ -728,6 +836,14 @@ class CXCircuitLayer:
             This collection is freshly generated at every call.
         """
         return frozenset(self._gates.values())
+
+    @property
+    def num_flippable_cxs(self) -> int:
+        """
+            Readonly property returning the number of CX gates in this
+            CX circuit layer that can be flipped.
+        """
+        return self._num_flippable_cxs
 
     @property
     def flippable_cxs(self) -> FrozenSet[Tuple[int, int]]:
@@ -774,11 +890,21 @@ class CXCircuitLayer:
         coupling = Coupling(ctrl, trgt)
         if coupling in self._gates:
             return self._gates[coupling] == gate
-        if self.incident(ctrl) is not None:
-            return False
-        if self.incident(trgt) is not None:
-            return False
-        return True
+        if (self._matching.incident(ctrl) is None
+                and self._matching.incident(trgt) is None):
+            return True
+        return False
+
+    def random_flip_cx(self, rng: np.random.Generator) -> Tuple[int, int]:
+        """
+            Returns a randomly selected flippable CX gate in this CX circuit layer,
+            using the given random number generator.
+        """
+        cx_idx = rng.integers(self._num_flippable_cxs)
+        for i, cx in enumerate(self._iter_flippable_cxs()):
+            if i == cx_idx:
+                return cx
+        raise Exception("Cannot get here!")
 
     def flip_cx(self, ctrl: int, trgt: int) -> "CXCircuitLayer":
         """
@@ -803,12 +929,26 @@ class CXCircuitLayer:
                 # CX gate already there, gets removed from the layer:
                 del self._gates[coupling]
                 self._matching.flip(coupling)
+                self._num_flippable_cxs += 1
+                for q in self._topology.adjacent(ctrl):
+                    if q != trgt and self.incident(q) is None:
+                        self._num_flippable_cxs += 2
+                for q in self._topology.adjacent(trgt):
+                    if q != ctrl and self.incident(q) is None:
+                        self._num_flippable_cxs += 2
                 return self
             raise ValueError(f"Invalid CX gate {gate} for given topology: another gate "
                              f"{self._gates[coupling]} already exists for this qubit pair.")
         # CX gate gets added to the layer:
         self._gates[coupling] = (ctrl, trgt)
         self._matching.flip(coupling)
+        self._num_flippable_cxs -= 1
+        for q in self._topology.adjacent(ctrl):
+            if q != trgt and self.incident(q) is None:
+                self._num_flippable_cxs -= 2
+        for q in self._topology.adjacent(trgt):
+            if q != ctrl and self.incident(q) is None:
+                self._num_flippable_cxs -= 2
         return self
 
     def draw(self, layout: str = "kamada_kawai", *,

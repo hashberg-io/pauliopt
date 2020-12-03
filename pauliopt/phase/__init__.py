@@ -5,4 +5,4 @@
 
 from pauliopt.phase.circuits import (Z, X, PhaseGadget, PhaseCircuit, CXCircuit, CXCircuitLayer,
                                      PhaseCircuitView, CXCircuitView, CXCircuitLayerView)
-from pauliopt.phase.optimizers import PhaseCircuitOptimizer, CostFun, mst_impl_cost_fun, CXFlipOptimizer
+from pauliopt.phase.optimizers import PhaseCircuitOptimizer

@@ -118,6 +118,7 @@ def floyd_warshall(topology: "Topology", *,
                 dist[(u, v)] = None
     return dist
 
+
 class Topology:
     """
         Container class for a qubit topology.

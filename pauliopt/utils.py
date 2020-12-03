@@ -1,12 +1,12 @@
 """
     Utility classes and functions for the `pauliopt` library.
 """
-# standard imports
+
 import math
 from decimal import Decimal
 from fractions import Fraction
-from typing import (Final, List, Literal, Optional, overload,
-                    Protocol,runtime_checkable, Sequence, Tuple, TypeVar, Union)
+from typing import (Final, List, Literal, Mapping, Optional, overload,
+                    Protocol, runtime_checkable, Sequence, Tuple, TypeVar, Union)
 
 AngleT = TypeVar("AngleT", bound="AngleProtocol")
 """
@@ -336,55 +336,65 @@ class SVGBuilder:
         return f'<svg width="{self.width}" height="{self.height}">{body}</svg>'
 
 
-Number = Union[int, float]
-number = (int, float)
-
 @runtime_checkable
 class TempSchedule(Protocol):
     """
         Protocol for a temperature schedule.
-        The temperature is a `number` computed from the iteration number `it`
-        (starting from 0) and the total number of iterations `num_iter`
+        The temperature is a number (int or float) computed from the iteration
+        number `it` (starting from 0) and the total number of iterations `num_iter`
         (passed as a keyword argument).
     """
 
-    def __call__(self, it: int, num_iters: int) -> Number:
+    def __call__(self, it: int, num_iters: int) -> float:
         ...
 
-def straight_temp_schedule(t_init: Number, t_final: Number) -> TempSchedule:
+@runtime_checkable
+class TempScheduleProvider(Protocol):
     """
-        Returns a straight temperature schedule for given initial and final temperatures,
+        Protocol for a function constructing a temperature schedule
+        from an initial and final temperatures.
+    """
+
+    def __call__(self, t_init: Union[int, float], t_final: Union[int, float]) -> TempSchedule:
+        ...
+
+
+def linear_temp_schedule(t_init: Union[int, float], t_final: Union[int, float]) -> TempSchedule:
+    """
+        Returns a straight/linear temperature schedule for given initial and final temperatures,
         from https://link.springer.com/article/10.1007/BF00143921
     """
-    if not isinstance(t_init, number):
+    if not isinstance(t_init, (int, float)):
         raise TypeError(f"Expected int or float, found {type(t_init)}.")
-    if not isinstance(t_final, number):
+    if not isinstance(t_final, (int, float)):
         raise TypeError(f"Expected int or float, found {type(t_final)}.")
     def temp_schedule(it: int, num_iters: int) -> float:
         return t_init + (t_final-t_init)*it/(num_iters-1)
     return temp_schedule
 
-def geometric_temp_schedule(t_init: Number, t_final: Number) -> TempSchedule:
+
+def geometric_temp_schedule(t_init: Union[int, float], t_final: Union[int, float]) -> TempSchedule:
     """
         Returns a geometric temperature schedule for given initial and final temperatures,
         from https://link.springer.com/article/10.1007/BF00143921
     """
-    if not isinstance(t_init, number):
+    if not isinstance(t_init, (int, float)):
         raise TypeError(f"Expected int or float, found {type(t_init)}.")
-    if not isinstance(t_final, number):
+    if not isinstance(t_final, (int, float)):
         raise TypeError(f"Expected int or float, found {type(t_final)}.")
     def temp_schedule(it: int, num_iters: int) -> float:
         return t_init * ((t_final/t_init)**(it/(num_iters-1)))
     return temp_schedule
 
-def reciprocal_temp_schedule(t_init: Number, t_final: Number) -> TempSchedule:
+
+def reciprocal_temp_schedule(t_init: Union[int, float], t_final: Union[int, float]) -> TempSchedule:
     """
         Returns a reciprocal temperature schedule for given initial and final temperatures,
         from https://link.springer.com/article/10.1007/BF00143921
     """
-    if not isinstance(t_init, number):
+    if not isinstance(t_init, (int, float)):
         raise TypeError(f"Expected int or float, found {type(t_init)}.")
-    if not isinstance(t_final, number):
+    if not isinstance(t_final, (int, float)):
         raise TypeError(f"Expected int or float, found {type(t_final)}.")
     def temp_schedule(it: int, num_iters: int) -> float:
         num = t_init*t_final*(num_iters-1)
@@ -392,17 +402,40 @@ def reciprocal_temp_schedule(t_init: Number, t_final: Number) -> TempSchedule:
         return num/denom
     return temp_schedule
 
-def log_temp_schedule(t_init: Number, t_final: Number) -> TempSchedule:
+
+def log_temp_schedule(t_init: Union[int, float], t_final: Union[int, float]) -> TempSchedule:
     """
         Returns a logarithmic temperature schedule for given initial and final temperatures,
         from https://link.springer.com/article/10.1007/BF00143921
     """
-    if not isinstance(t_init, number):
+    if not isinstance(t_init, (int, float)):
         raise TypeError(f"Expected int or float, found {type(t_init)}.")
-    if not isinstance(t_final, number):
+    if not isinstance(t_final, (int, float)):
         raise TypeError(f"Expected int or float, found {type(t_final)}.")
     def temp_schedule(it: int, num_iters: int) -> float:
         num = t_init*t_final*(math.log(num_iters+1)-math.log(2))
         denom = (t_final*math.log(num_iters+1)-t_init*math.log(2))+(t_init-t_final)*math.log(it+2)
         return num/denom
     return temp_schedule
+
+
+StandardTempScheduleName = Literal["linear", "geometric", "reciprocal", "log"]
+"""
+    Names of the standard temperature schedules.
+"""
+
+StandardTempSchedule = Tuple[StandardTempScheduleName,
+                             Union[int, float], Union[int, float]]
+"""
+    Type for standard temperature schedules.
+"""
+
+StandardTempSchedules: Final[Mapping[StandardTempScheduleName, TempScheduleProvider]] = {
+    "linear": linear_temp_schedule,
+    "geometric": geometric_temp_schedule,
+    "reciprocal": reciprocal_temp_schedule,
+    "log": log_temp_schedule,
+}
+"""
+    Dictionary of standard temperature schedule providers.
+"""
