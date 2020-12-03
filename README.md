@@ -35,7 +35,7 @@ pip install --upgrade pauliopt
 
 <img src="readme-example-2.png" width="640" title="Selection of a topology.">
 
-**Step 3.** Instantiate an optimizer for the desired circuit and topology. Specify a number of CX layers (3 layers, in this example) to be used for the simplification.
+**Step 3.** Instantiate an optimizer for the desired circuit and topology.
 
 <img src="readme-example-3.png" width="640" title="Instantiation of an optimizer.">
 
