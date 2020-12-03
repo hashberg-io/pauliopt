@@ -8,7 +8,7 @@ from typing import (Callable, cast, Collection, Dict, FrozenSet, Generic, Iterat
                     Literal, Optional, Sequence, Set, Tuple, Union)
 import numpy as np # type: ignore
 from pauliopt.topologies import Topology
-from pauliopt.utils import AngleT, AngleProtocol, Angle, SVGBuilder
+from pauliopt.utils import AngleT, AngleProtocol, Angle, SVGBuilder, pi
 
 def _prims_algorithm_weight(nodes: Collection[int], weight: Callable[[int, int], int],
                             inf: int) -> int:
@@ -706,11 +706,9 @@ class PhaseCircuit(Generic[AngleT]):
         legs_list: list = [
             rng.choice(num_qubits, num_legs[i], replace=False) for i in range(num_gadgets)
         ]
-        _angles = Angle.random(angle_subdivision, size=num_gadgets, rng_seed=angle_rng_seed)
-        if isinstance(_angles, Angle):
-            angles: Sequence[Angle] = [_angles]
-        else:
-            angles = _angles
+        angle_rng = np.random.default_rng(seed=angle_rng_seed)
+        angles = [int(x)*pi/angle_subdivision
+                  for x in angle_rng.integers(1, 2*angle_subdivision, size=num_gadgets)]
         bases = cast(Sequence[Literal["Z", "X"]], ("Z", "X"))
         gadgets: List[PhaseGadget] = [
             PhaseGadget(bases[(basis_idx+i)%2],
