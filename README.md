@@ -7,6 +7,8 @@
 
 PauliOpt is a Python library to simplify quantum circuits composed of phase and Pauli gadgets.
 
+<img src="phase_gadget_snippet.png" width="430" title="phase gadget snippet">
+
 The [documentation](https://sg495.github.io/pauliopt/pauliopt/index.html) for this library was generated with [pdoc](https://pdoc3.github.io/pdoc/).
 
 You can install the library with `pip`:
