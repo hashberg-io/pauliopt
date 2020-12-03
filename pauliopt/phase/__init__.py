@@ -6,3 +6,4 @@
 from pauliopt.phase.circuits import (Z, X, PhaseGadget, PhaseCircuit, CXCircuit, CXCircuitLayer,
                                      PhaseCircuitView, CXCircuitView, CXCircuitLayerView)
 from pauliopt.phase.optimizers import PhaseCircuitOptimizer
+from pauliopt.utils import pi, π
