@@ -2,6 +2,7 @@
     This module contains utility code to deal with qubit topologies.
 """
 
+import re
 from typing import (Collection, Final, FrozenSet, Iterator, List, Optional,
                     Set, Tuple, TypedDict, Union)
 import numpy as np # type: ignore
@@ -119,6 +120,7 @@ class Topology:
     _couplings: FrozenSet[Coupling]
     _adjacent: Tuple[FrozenSet[int], ...]
     _dist: np.ndarray
+    _named: Optional[str] = None
 
     def __init__(self, num_qubits: int, couplings: Collection[CouplingLike]):
         if not isinstance(num_qubits, int) or num_qubits <= 0:
@@ -156,11 +158,13 @@ class Topology:
         return self._couplings
 
     @property
-    def as_dict(self) -> TopologyDict:
+    def as_dict(self) -> Union[str, TopologyDict]:
         """
             Readonly property returning this topology as
             a dictionary, for serialization purposes.
         """
+        if self._named is not None:
+            return self._named
         return {
             "num_qubits": self.num_qubits,
             "couplings": sorted(list(c.as_pair) for c in self.couplings)
@@ -306,12 +310,29 @@ class Topology:
         return True
 
     @staticmethod
-    def from_dict(topology: TopologyDict) -> "Topology":
+    def from_dict(topology: Union[TopologyDict, str]) -> "Topology":
         """
             Creates a `Topology` instance from a dictionary in the
             format obtained from `Topology.as_dict`,
             for de-serialization purposes.
         """
+        if isinstance(topology, str):
+            line_pattern = re.compile(r"line\(([0-9]+)\)")
+            if match := line_pattern.match(topology):
+                return Topology.line(int(match[1]))
+            cycle_pattern = re.compile(r"cycle\(([0-9]+)\)")
+            if match := cycle_pattern.match(topology):
+                return Topology.cycle(int(match[1]))
+            complete_pattern = re.compile(r"complete\(([0-9]+)\)")
+            if match := complete_pattern.match(topology):
+                return Topology.complete(int(match[1]))
+            grid_pattern = re.compile(r"grid\(([0-9]+),([0-9]+)\)")
+            if match := grid_pattern.match(topology):
+                return Topology.grid(int(match[1]), int(match[2]))
+            periodic_grid_pattern = re.compile(r"periodic_grid\(([0-9]+),([0-9]+)\)")
+            if match := periodic_grid_pattern.match(topology):
+                return Topology.periodic_grid(int(match[1]), int(match[2]))
+            raise ValueError(f"Unexpected special topology {topology}")
         if "num_qubits" not in topology:
             raise TypeError("Expected key 'qubits'.")
         if "couplings" not in topology:
@@ -326,7 +347,9 @@ class Topology:
         if not isinstance(num_qubits, int) or num_qubits <= 0:
             raise TypeError("Number of qubits must be positive integer.")
         couplings = [[i, i+1] for i in range(num_qubits-1)]
-        return Topology(num_qubits, couplings)
+        top = Topology(num_qubits, couplings)
+        top._named = f"line({num_qubits})" # pylint: disable = protected-access
+        return top
 
     @staticmethod
     def cycle(num_qubits: int) -> "Topology":
@@ -336,7 +359,9 @@ class Topology:
         if not isinstance(num_qubits, int) or num_qubits <= 0:
             raise TypeError("Number of qubits must be positive integer.")
         couplings = [[i, (i+1)%num_qubits] for i in range(num_qubits)]
-        return Topology(num_qubits, couplings)
+        top = Topology(num_qubits, couplings)
+        top._named = f"cycle({num_qubits})" # pylint: disable = protected-access
+        return top
 
     @staticmethod
     def complete(num_qubits: int) -> "Topology":
@@ -346,7 +371,9 @@ class Topology:
         if not isinstance(num_qubits, int) or num_qubits <= 0:
             raise TypeError("Number of qubits must be positive integer.")
         couplings = [[i, j] for i in range(num_qubits) for j in range(i+1, num_qubits)]
-        return Topology(num_qubits, couplings)
+        top = Topology(num_qubits, couplings)
+        top._named = f"complete({num_qubits})" # pylint: disable = protected-access
+        return top
 
     @staticmethod
     def grid(num_rows: int, num_cols: int) -> "Topology":
@@ -368,7 +395,9 @@ class Topology:
                     couplings.append([qubit(r, c), qubit(r+1, c)])
                 if c < num_cols-1:
                     couplings.append([qubit(r, c), qubit(r, c+1)])
-        return Topology(num_qubits, couplings)
+        top = Topology(num_qubits, couplings)
+        top._named = f"grid({num_rows},{num_cols})" # pylint: disable = protected-access
+        return top
 
     @staticmethod
     def periodic_grid(num_rows: int, num_cols: int) -> "Topology":
@@ -388,7 +417,9 @@ class Topology:
             for c in range(num_cols):
                 couplings.append([qubit(r, c), qubit((r+1)%num_rows, c)])
                 couplings.append([qubit(r, c), qubit(r, (c+1)%num_cols)])
-        return Topology(num_qubits, couplings)
+        top = Topology(num_qubits, couplings)
+        top._named = f"periodic_grid({num_rows},{num_cols})" # pylint: disable = protected-access
+        return top
 
     @staticmethod
     def from_qiskit_config(config) -> "Topology":
