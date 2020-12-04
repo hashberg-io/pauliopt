@@ -3,7 +3,7 @@
     of circuits of mixed phase gadgets.
 """
 
-from typing import (cast, Dict, FrozenSet, Iterator, List,
+from typing import (cast, Collection, Dict, FrozenSet, Iterator, List,
                     Optional, overload, Sequence, Tuple, Union)
 import numpy as np # type: ignore
 from pauliopt.topologies import Coupling, Topology, Matching
@@ -28,11 +28,11 @@ class CXCircuitLayer:
     _matching: Matching
 
     def __init__(self, topology: Topology,
-                 gates: Sequence[GateLike] = tuple()):
+                 gates: Collection[GateLike] = tuple()):
         if not isinstance(topology, Topology):
             raise TypeError(f"Expected Topology, found {type(topology)}.")
-        if not isinstance(gates, Sequence):
-            raise TypeError(f"Expected sequence of ordered pairs, found {gates}")
+        if not isinstance(gates, Collection):
+            raise TypeError(f"Expected collection of ordered pairs, found {gates}")
         self._topology = topology
         self._gates = {}
         self._couplings_seq = tuple(sorted(topology.couplings))
@@ -185,6 +185,12 @@ class CXCircuitLayer:
                 self._num_flippable_cxs -= 2
         return self
 
+    def clone(self) -> "CXCircuitLayer":
+        """
+            Returns a copy of this CX layer.
+        """
+        return CXCircuitLayer(self.topology, self.gates)
+
     def draw(self, layout: str = "kamada_kawai", *,
              figsize: Optional[Tuple[int, int]] = None,
              zcolor: str = "#CCFFCC",
@@ -322,6 +328,19 @@ class CXCircuit(Sequence[CXCircuitLayer]):
             CX circuit.
         """
         return sum((layer.num_gates for layer in self), 0)
+
+    def dag(self) -> "CXCircuit":
+        """
+            Returns a copy of this CX circuit,
+            with the layers in reverse order.
+        """
+        return CXCircuit(self.topology, list(self))
+
+    def clone(self) -> "CXCircuit":
+        """
+            Returns a copy of this CX circuit.
+        """
+        return CXCircuit(self.topology, [l.clone() for l in self])
 
     def draw(self, layout: str = "kamada_kawai", *,
              figsize: Optional[Tuple[int, int]] = None,
@@ -461,6 +480,12 @@ class CXCircuitLayerView():
         """
         return self._layer.is_cx_flippable(ctrl, trgt)
 
+    def clone(self) -> CXCircuitLayer:
+        """
+            Returns a copy of this CX layer.
+        """
+        return self._layer.clone()
+
     def draw(self, layout: str = "kamada_kawai", *,
              figsize: Optional[Tuple[int, int]] = None,
              zcolor: str = "#CCFFCC",
@@ -511,6 +536,19 @@ class CXCircuitView(Sequence[CXCircuitLayerView]):
             CX circuit.
         """
         return self._circuit.num_gates
+
+    def dag(self) -> "CXCircuit":
+        """
+            Returns a copy of this CX circuit,
+            with the layers in reverse order.
+        """
+        return self._circuit.dag()
+
+    def clone(self) -> CXCircuit:
+        """
+            Returns a copy of this CX circuit.
+        """
+        return self._circuit.clone()
 
     def draw(self, layout: str = "kamada_kawai", *,
              figsize: Optional[Tuple[int, int]] = None,

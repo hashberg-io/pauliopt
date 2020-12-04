@@ -35,7 +35,7 @@ of circuits of mixed phase gadgets.</p>
     of circuits of mixed phase gadgets.
 &#34;&#34;&#34;
 
-from typing import (cast, Dict, FrozenSet, Iterator, List,
+from typing import (cast, Collection, Dict, FrozenSet, Iterator, List,
                     Optional, overload, Sequence, Tuple, Union)
 import numpy as np # type: ignore
 from pauliopt.topologies import Coupling, Topology, Matching
@@ -60,11 +60,11 @@ class CXCircuitLayer:
     _matching: Matching
 
     def __init__(self, topology: Topology,
-                 gates: Sequence[GateLike] = tuple()):
+                 gates: Collection[GateLike] = tuple()):
         if not isinstance(topology, Topology):
             raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
-        if not isinstance(gates, Sequence):
-            raise TypeError(f&#34;Expected sequence of ordered pairs, found {gates}&#34;)
+        if not isinstance(gates, Collection):
+            raise TypeError(f&#34;Expected collection of ordered pairs, found {gates}&#34;)
         self._topology = topology
         self._gates = {}
         self._couplings_seq = tuple(sorted(topology.couplings))
@@ -216,6 +216,12 @@ class CXCircuitLayer:
             if q != ctrl and self.incident(q) is None:
                 self._num_flippable_cxs -= 2
         return self
+
+    def clone(self) -&gt; &#34;CXCircuitLayer&#34;:
+        &#34;&#34;&#34;
+            Returns a copy of this CX layer.
+        &#34;&#34;&#34;
+        return CXCircuitLayer(self.topology, self.gates)
 
     def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
              figsize: Optional[Tuple[int, int]] = None,
@@ -355,6 +361,19 @@ class CXCircuit(Sequence[CXCircuitLayer]):
         &#34;&#34;&#34;
         return sum((layer.num_gates for layer in self), 0)
 
+    def dag(self) -&gt; &#34;CXCircuit&#34;:
+        &#34;&#34;&#34;
+            Returns a copy of this CX circuit,
+            with the layers in reverse order.
+        &#34;&#34;&#34;
+        return CXCircuit(self.topology, list(self))
+
+    def clone(self) -&gt; &#34;CXCircuit&#34;:
+        &#34;&#34;&#34;
+            Returns a copy of this CX circuit.
+        &#34;&#34;&#34;
+        return CXCircuit(self.topology, [l.clone() for l in self])
+
     def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
              figsize: Optional[Tuple[int, int]] = None,
              zcolor: str = &#34;#CCFFCC&#34;,
@@ -493,6 +512,12 @@ class CXCircuitLayerView():
         &#34;&#34;&#34;
         return self._layer.is_cx_flippable(ctrl, trgt)
 
+    def clone(self) -&gt; CXCircuitLayer:
+        &#34;&#34;&#34;
+            Returns a copy of this CX layer.
+        &#34;&#34;&#34;
+        return self._layer.clone()
+
     def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
              figsize: Optional[Tuple[int, int]] = None,
              zcolor: str = &#34;#CCFFCC&#34;,
@@ -543,6 +568,19 @@ class CXCircuitView(Sequence[CXCircuitLayerView]):
             CX circuit.
         &#34;&#34;&#34;
         return self._circuit.num_gates
+
+    def dag(self) -&gt; &#34;CXCircuit&#34;:
+        &#34;&#34;&#34;
+            Returns a copy of this CX circuit,
+            with the layers in reverse order.
+        &#34;&#34;&#34;
+        return self._circuit.dag()
+
+    def clone(self) -&gt; CXCircuit:
+        &#34;&#34;&#34;
+            Returns a copy of this CX circuit.
+        &#34;&#34;&#34;
+        return self._circuit.clone()
 
     def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
              figsize: Optional[Tuple[int, int]] = None,
@@ -640,6 +678,19 @@ and constrained by a given qubit topology.</p></div>
             CX circuit.
         &#34;&#34;&#34;
         return sum((layer.num_gates for layer in self), 0)
+
+    def dag(self) -&gt; &#34;CXCircuit&#34;:
+        &#34;&#34;&#34;
+            Returns a copy of this CX circuit,
+            with the layers in reverse order.
+        &#34;&#34;&#34;
+        return CXCircuit(self.topology, list(self))
+
+    def clone(self) -&gt; &#34;CXCircuit&#34;:
+        &#34;&#34;&#34;
+            Returns a copy of this CX circuit.
+        &#34;&#34;&#34;
+        return CXCircuit(self.topology, [l.clone() for l in self])
 
     def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
              figsize: Optional[Tuple[int, int]] = None,
@@ -751,6 +802,40 @@ def topology(self) -&gt; Topology:
 </dl>
 <h3>Methods</h3>
 <dl>
+<dt id="pauliopt.phase.cx_circuits.CXCircuit.clone"><code class="name flex">
+<span>def <span class="ident">clone</span></span>(<span>self) ‑> <a title="pauliopt.phase.cx_circuits.CXCircuit" href="#pauliopt.phase.cx_circuits.CXCircuit">CXCircuit</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a copy of this CX circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def clone(self) -&gt; &#34;CXCircuit&#34;:
+    &#34;&#34;&#34;
+        Returns a copy of this CX circuit.
+    &#34;&#34;&#34;
+    return CXCircuit(self.topology, [l.clone() for l in self])</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuit.dag"><code class="name flex">
+<span>def <span class="ident">dag</span></span>(<span>self) ‑> <a title="pauliopt.phase.cx_circuits.CXCircuit" href="#pauliopt.phase.cx_circuits.CXCircuit">CXCircuit</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a copy of this CX circuit,
+with the layers in reverse order.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def dag(self) -&gt; &#34;CXCircuit&#34;:
+    &#34;&#34;&#34;
+        Returns a copy of this CX circuit,
+        with the layers in reverse order.
+    &#34;&#34;&#34;
+    return CXCircuit(self.topology, list(self))</code></pre>
+</details>
+</dd>
 <dt id="pauliopt.phase.cx_circuits.CXCircuit.draw"><code class="name flex">
 <span>def <span class="ident">draw</span></span>(<span>self, layout: str = 'kamada_kawai', *, figsize: Union[Tuple[int, int], NoneType] = None, zcolor: str = '#CCFFCC', xcolor: str = '#FF8888', **kwargs)</span>
 </code></dt>
@@ -780,7 +865,7 @@ Keyword arguments <code>kwargs</code> are those of <code>networkx.draw_networkx<
 </dd>
 <dt id="pauliopt.phase.cx_circuits.CXCircuitLayer"><code class="flex name class">
 <span>class <span class="ident">CXCircuitLayer</span></span>
-<span>(</span><span>topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>, gates: Sequence[Union[List[int], Tuple[int, int]]] = ())</span>
+<span>(</span><span>topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>, gates: Collection[Union[List[int], Tuple[int, int]]] = ())</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Container for a layer of CX gates constrained
@@ -808,11 +893,11 @@ and to efficiently determine whether a CX gate can be added to the layer.</p></d
     _matching: Matching
 
     def __init__(self, topology: Topology,
-                 gates: Sequence[GateLike] = tuple()):
+                 gates: Collection[GateLike] = tuple()):
         if not isinstance(topology, Topology):
             raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
-        if not isinstance(gates, Sequence):
-            raise TypeError(f&#34;Expected sequence of ordered pairs, found {gates}&#34;)
+        if not isinstance(gates, Collection):
+            raise TypeError(f&#34;Expected collection of ordered pairs, found {gates}&#34;)
         self._topology = topology
         self._gates = {}
         self._couplings_seq = tuple(sorted(topology.couplings))
@@ -964,6 +1049,12 @@ and to efficiently determine whether a CX gate can be added to the layer.</p></d
             if q != ctrl and self.incident(q) is None:
                 self._num_flippable_cxs -= 2
         return self
+
+    def clone(self) -&gt; &#34;CXCircuitLayer&#34;:
+        &#34;&#34;&#34;
+            Returns a copy of this CX layer.
+        &#34;&#34;&#34;
+        return CXCircuitLayer(self.topology, self.gates)
 
     def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
              figsize: Optional[Tuple[int, int]] = None,
@@ -1168,6 +1259,22 @@ def topology(self) -&gt; Topology:
 </dl>
 <h3>Methods</h3>
 <dl>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayer.clone"><code class="name flex">
+<span>def <span class="ident">clone</span></span>(<span>self) ‑> <a title="pauliopt.phase.cx_circuits.CXCircuitLayer" href="#pauliopt.phase.cx_circuits.CXCircuitLayer">CXCircuitLayer</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a copy of this CX layer.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def clone(self) -&gt; &#34;CXCircuitLayer&#34;:
+    &#34;&#34;&#34;
+        Returns a copy of this CX layer.
+    &#34;&#34;&#34;
+    return CXCircuitLayer(self.topology, self.gates)</code></pre>
+</details>
+</dd>
 <dt id="pauliopt.phase.cx_circuits.CXCircuitLayer.draw"><code class="name flex">
 <span>def <span class="ident">draw</span></span>(<span>self, layout: str = 'kamada_kawai', *, figsize: Union[Tuple[int, int], NoneType] = None, zcolor: str = '#CCFFCC', xcolor: str = '#FF8888', **kwargs)</span>
 </code></dt>
@@ -1483,6 +1590,12 @@ using the given random number generator.</p></div>
         &#34;&#34;&#34;
         return self._layer.is_cx_flippable(ctrl, trgt)
 
+    def clone(self) -&gt; CXCircuitLayer:
+        &#34;&#34;&#34;
+            Returns a copy of this CX layer.
+        &#34;&#34;&#34;
+        return self._layer.clone()
+
     def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
              figsize: Optional[Tuple[int, int]] = None,
              zcolor: str = &#34;#CCFFCC&#34;,
@@ -1592,6 +1705,22 @@ def topology(self) -&gt; Topology:
 </dl>
 <h3>Methods</h3>
 <dl>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitLayerView.clone"><code class="name flex">
+<span>def <span class="ident">clone</span></span>(<span>self) ‑> <a title="pauliopt.phase.cx_circuits.CXCircuitLayer" href="#pauliopt.phase.cx_circuits.CXCircuitLayer">CXCircuitLayer</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a copy of this CX layer.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def clone(self) -&gt; CXCircuitLayer:
+    &#34;&#34;&#34;
+        Returns a copy of this CX layer.
+    &#34;&#34;&#34;
+    return self._layer.clone()</code></pre>
+</details>
+</dd>
 <dt id="pauliopt.phase.cx_circuits.CXCircuitLayerView.draw"><code class="name flex">
 <span>def <span class="ident">draw</span></span>(<span>self, layout: str = 'kamada_kawai', *, figsize: Union[Tuple[int, int], NoneType] = None, zcolor: str = '#CCFFCC', xcolor: str = '#FF8888', **kwargs)</span>
 </code></dt>
@@ -1717,6 +1846,19 @@ target are already covered by some other gate (gate can be added).</li>
         &#34;&#34;&#34;
         return self._circuit.num_gates
 
+    def dag(self) -&gt; &#34;CXCircuit&#34;:
+        &#34;&#34;&#34;
+            Returns a copy of this CX circuit,
+            with the layers in reverse order.
+        &#34;&#34;&#34;
+        return self._circuit.dag()
+
+    def clone(self) -&gt; CXCircuit:
+        &#34;&#34;&#34;
+            Returns a copy of this CX circuit.
+        &#34;&#34;&#34;
+        return self._circuit.clone()
+
     def draw(self, layout: str = &#34;kamada_kawai&#34;, *,
              figsize: Optional[Tuple[int, int]] = None,
              zcolor: str = &#34;#CCFFCC&#34;,
@@ -1804,6 +1946,40 @@ def topology(self) -&gt; Topology:
 </dl>
 <h3>Methods</h3>
 <dl>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitView.clone"><code class="name flex">
+<span>def <span class="ident">clone</span></span>(<span>self) ‑> <a title="pauliopt.phase.cx_circuits.CXCircuit" href="#pauliopt.phase.cx_circuits.CXCircuit">CXCircuit</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a copy of this CX circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def clone(self) -&gt; CXCircuit:
+    &#34;&#34;&#34;
+        Returns a copy of this CX circuit.
+    &#34;&#34;&#34;
+    return self._circuit.clone()</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.cx_circuits.CXCircuitView.dag"><code class="name flex">
+<span>def <span class="ident">dag</span></span>(<span>self) ‑> <a title="pauliopt.phase.cx_circuits.CXCircuit" href="#pauliopt.phase.cx_circuits.CXCircuit">CXCircuit</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a copy of this CX circuit,
+with the layers in reverse order.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def dag(self) -&gt; &#34;CXCircuit&#34;:
+    &#34;&#34;&#34;
+        Returns a copy of this CX circuit,
+        with the layers in reverse order.
+    &#34;&#34;&#34;
+    return self._circuit.dag()</code></pre>
+</details>
+</dd>
 <dt id="pauliopt.phase.cx_circuits.CXCircuitView.draw"><code class="name flex">
 <span>def <span class="ident">draw</span></span>(<span>self, layout: str = 'kamada_kawai', *, figsize: Union[Tuple[int, int], NoneType] = None, zcolor: str = '#CCFFCC', xcolor: str = '#FF8888', **kwargs)</span>
 </code></dt>
@@ -1848,6 +2024,8 @@ Keyword arguments <code>kwargs</code> are those of <code>networkx.draw_networkx<
 <li>
 <h4><code><a title="pauliopt.phase.cx_circuits.CXCircuit" href="#pauliopt.phase.cx_circuits.CXCircuit">CXCircuit</a></code></h4>
 <ul class="">
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuit.clone" href="#pauliopt.phase.cx_circuits.CXCircuit.clone">clone</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuit.dag" href="#pauliopt.phase.cx_circuits.CXCircuit.dag">dag</a></code></li>
 <li><code><a title="pauliopt.phase.cx_circuits.CXCircuit.draw" href="#pauliopt.phase.cx_circuits.CXCircuit.draw">draw</a></code></li>
 <li><code><a title="pauliopt.phase.cx_circuits.CXCircuit.num_gates" href="#pauliopt.phase.cx_circuits.CXCircuit.num_gates">num_gates</a></code></li>
 <li><code><a title="pauliopt.phase.cx_circuits.CXCircuit.topology" href="#pauliopt.phase.cx_circuits.CXCircuit.topology">topology</a></code></li>
@@ -1856,6 +2034,7 @@ Keyword arguments <code>kwargs</code> are those of <code>networkx.draw_networkx<
 <li>
 <h4><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer" href="#pauliopt.phase.cx_circuits.CXCircuitLayer">CXCircuitLayer</a></code></h4>
 <ul class="two-column">
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer.clone" href="#pauliopt.phase.cx_circuits.CXCircuitLayer.clone">clone</a></code></li>
 <li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer.draw" href="#pauliopt.phase.cx_circuits.CXCircuitLayer.draw">draw</a></code></li>
 <li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer.flip_cx" href="#pauliopt.phase.cx_circuits.CXCircuitLayer.flip_cx">flip_cx</a></code></li>
 <li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayer.flippable_cxs" href="#pauliopt.phase.cx_circuits.CXCircuitLayer.flippable_cxs">flippable_cxs</a></code></li>
@@ -1872,6 +2051,7 @@ Keyword arguments <code>kwargs</code> are those of <code>networkx.draw_networkx<
 <li>
 <h4><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayerView" href="#pauliopt.phase.cx_circuits.CXCircuitLayerView">CXCircuitLayerView</a></code></h4>
 <ul class="two-column">
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayerView.clone" href="#pauliopt.phase.cx_circuits.CXCircuitLayerView.clone">clone</a></code></li>
 <li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayerView.draw" href="#pauliopt.phase.cx_circuits.CXCircuitLayerView.draw">draw</a></code></li>
 <li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayerView.flippable_cxs" href="#pauliopt.phase.cx_circuits.CXCircuitLayerView.flippable_cxs">flippable_cxs</a></code></li>
 <li><code><a title="pauliopt.phase.cx_circuits.CXCircuitLayerView.gates" href="#pauliopt.phase.cx_circuits.CXCircuitLayerView.gates">gates</a></code></li>
@@ -1885,6 +2065,8 @@ Keyword arguments <code>kwargs</code> are those of <code>networkx.draw_networkx<
 <li>
 <h4><code><a title="pauliopt.phase.cx_circuits.CXCircuitView" href="#pauliopt.phase.cx_circuits.CXCircuitView">CXCircuitView</a></code></h4>
 <ul class="">
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitView.clone" href="#pauliopt.phase.cx_circuits.CXCircuitView.clone">clone</a></code></li>
+<li><code><a title="pauliopt.phase.cx_circuits.CXCircuitView.dag" href="#pauliopt.phase.cx_circuits.CXCircuitView.dag">dag</a></code></li>
 <li><code><a title="pauliopt.phase.cx_circuits.CXCircuitView.draw" href="#pauliopt.phase.cx_circuits.CXCircuitView.draw">draw</a></code></li>
 <li><code><a title="pauliopt.phase.cx_circuits.CXCircuitView.num_gates" href="#pauliopt.phase.cx_circuits.CXCircuitView.num_gates">num_gates</a></code></li>
 <li><code><a title="pauliopt.phase.cx_circuits.CXCircuitView.topology" href="#pauliopt.phase.cx_circuits.CXCircuitView.topology">topology</a></code></li>

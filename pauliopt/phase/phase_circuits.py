@@ -516,6 +516,7 @@ class PhaseCircuit(Generic[AngleT]):
                 svg_code_only: bool = False
                 ):
         # pylint: disable = too-many-locals, too-many-statements
+        # TODO: clean this up, restructure into a separate function, reuse for opt circuit
         num_qubits = self._num_qubits
         vscale *= scale
         hscale *= scale

@@ -8,7 +8,7 @@ from math import ceil, log10
 from typing import (Deque, Dict, Generic, List, Optional, Protocol, runtime_checkable,
                     Set, Tuple, TypedDict, Union)
 import numpy as np # type: ignore
-from pauliopt.phase.phase_circuits import PhaseGadget, PhaseCircuit, PhaseCircuitView
+from pauliopt.phase.phase_circuits import PhaseCircuit, PhaseCircuitView
 from pauliopt.phase.cx_circuits import CXCircuitLayer, CXCircuit, CXCircuitView
 from pauliopt.topologies import Topology
 from pauliopt.utils import (AngleT, TempSchedule, StandardTempSchedule,
@@ -80,67 +80,75 @@ def _validate_loggers(loggers: AnnealingLoggers) -> Tuple[Optional[AnnealingCost
 class OptimizedPhaseCircuit(Generic[AngleT]):
     # pylint: disable = too-many-instance-attributes
     """
-        Optimizer for phase circuits based on simulated annealing.
+        Container for a phase circuit to be progressively optimized.
         The original phase circuit is passed to the constructor, together
         with a qubit topology and a fixed number of layers constraining the
-        CX circuits to be used for simplification.
+        CX circuit to be used for simplification.
 
-        To understand how this works, consider the following code snippet:
+        To understand the structure of the optimized phase circuit,
+        consider the following code snippet:
 
         ```py
-            optimizer = PhaseCircuitCXBlockOptimizer(original_circuit, topology, num_layers)
-            optimizer.anneal(num_iters, temp_schedule, cost_fun)
-            phase_block = optimizer.phase_block
-            cx_block = optimizer.cx_block
+            opt_circ = PhaseCircuitCXBlockOptimizer(orig_circ, topology, num_cx_layers)
+            # perform optimization using the methods of `opt_circ`
+            phase_block = opt_circ.phase_block
+            cx_block = opt_circ.cx_block
         ```
 
         The optimized circuit is obtained by composing three blocks:
 
-        1. a first block of CX gates, given by `cx_block.dag`
+        1. a first block of CX gates, given by `cx_block.dag()`
            (the same CX gates of `cx_block`, but in reverse order);
         2. a central block of phase gadgets, given by `phase_block`;
         3. a final block of CX gates, given by `cx_block`.
 
-        Furthermore, if the original circuit is repeated `n` times, e.g. as part
-        of a quantum machine learning ansatz, then the corresponding optimized
-        circuit is obtained by repeating the central `phase_block` alone `n` times,
-        keeping the first and last CX blocks unaltered (because the intermediate
-        CX blocks cancel each other out when repeating the optimized circuit `n` times).
+        An optional keyword argument `circuit_rep` (default: 1) can be passed to the
+        constructor to indicate that the original circuit is to be repeated a certain
+        number of times (default: 1). In the optimized circuit, this is achieved by
+        repeating the `phase_block` part (at point 2. above) a number of times
+        given by the `circuit_rep` argument.
+        The first and last CX blocks are left unaltered (because the intermediate CX
+        blocks would cancel each other out in pairs when repeating the optimized circuit).
     """
 
     _topology: Topology
-    _num_qubits: int
-    _original_gadgets: Tuple[PhaseGadget, ...]
     _circuit_rep: int
-    _init_cx_count: int
-    _gadget_cx_count_cache: Dict[int, Dict[Tuple[int, ...], int]]
     _phase_block: PhaseCircuit[AngleT]
     _phase_block_view: PhaseCircuitView
     _cx_block: CXCircuit
     _cx_block_view: CXCircuitView
+    _init_cx_count: int
     _cx_count: int
+    _gadget_cx_count_cache: Dict[int, Dict[Tuple[int, ...], int]]
     _rng_seed: Optional[int]
     _rng: np.random.Generator
 
-    def __init__(self, original_circuit: PhaseCircuit[AngleT], topology: Topology, num_layers: int,
-                 *, circuit_rep: int = 1, rng_seed: Optional[int] = None):
-        if not isinstance(original_circuit, PhaseCircuit):
-            raise TypeError(f"Expected PhaseCircuit, found {type(original_circuit)}.")
+    def __init__(self, phase_block: Union[PhaseCircuit[AngleT], PhaseCircuitView[AngleT]],
+                 topology: Topology,
+                 cx_block: Union[int, CXCircuit, CXCircuitView],
+                 *,
+                 circuit_rep: int = 1,
+                 rng_seed: Optional[int] = None):
+        if not isinstance(phase_block, PhaseCircuit):
+            raise TypeError(f"Expected PhaseCircuit, found {type(phase_block)}.")
         if not isinstance(topology, Topology):
             raise TypeError(f"Expected Topology, found {type(topology)}.")
-        if not isinstance(num_layers, int) or num_layers <= 0:
-            raise TypeError(f"Expected positive integer, found {num_layers}.")
         if not isinstance(circuit_rep, int) or circuit_rep <= 0:
             raise TypeError(f"Expected positive integer, found {circuit_rep}.")
+        if not isinstance(cx_block, (int, CXCircuit, CXCircuitView)):
+            raise TypeError(f"Expected int, CXCircuit or CXCircuitView, found {type(cx_block)}.")
+        if isinstance(cx_block, int) and cx_block <= 0:
+            raise TypeError(f"Expected positive integer number of CX layers, found {cx_block}.")
         if rng_seed is not None and not isinstance(rng_seed, int):
             raise TypeError("RNG seed must be integer or None.")
         self._topology = topology
-        self._num_qubits = original_circuit.num_qubits
-        self._original_gadgets = tuple(original_circuit.gadgets)
         self._circuit_rep = circuit_rep
-        self._phase_block = PhaseCircuit(self._num_qubits, self._original_gadgets)
-        self._cx_block = CXCircuit(topology,
-                                   [CXCircuitLayer(topology) for _ in range(num_layers)])
+        self._phase_block = phase_block.clone()
+        if isinstance(cx_block, int):
+            self._cx_block = CXCircuit(topology,
+                                       [CXCircuitLayer(topology) for _ in range(cx_block)])
+        else:
+            self._cx_block = cx_block.clone()
         self._rng_seed = rng_seed
         self._rng = np.random.default_rng(seed=rng_seed)
         self._phase_block_view = PhaseCircuitView(self._phase_block)
@@ -161,14 +169,7 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         """
             Readonly property exposing the number of qubits spanned by the circuit to be optimized.
         """
-        return self._num_qubits
-
-    @property
-    def original_gadgets(self) -> Tuple[PhaseGadget, ...]:
-        """
-            Readonly property exposing the gadgets in the original circuit to be optimized.
-        """
-        return self._original_gadgets
+        return self._phase_block.num_qubits
 
     @property
     def circuit_rep(self) -> int:
@@ -206,6 +207,13 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         """
         return self._cx_count
 
+    def clone(self, rng_seed: Optional[int] = None) -> "OptimizedPhaseCircuit":
+        """
+            Returns a copy of this optimized phase circuit.
+        """
+        return OptimizedPhaseCircuit(self.phase_block, self.topology, self.cx_block,
+                                     circuit_rep=self.circuit_rep, rng_seed=rng_seed)
+
     def to_qiskit(self):
         """
             Returns the optimized circuit as a Qiskit circuit.
@@ -241,6 +249,9 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
             Performs a cycle of simulated annealing optimization,
             using the given number of iterations, temperature schedule,
             initial/final temperatures.
+
+            The circuit is modified in-place and then returned, as per the
+            [fluent API pattern](https://en.wikipedia.org/wiki/Fluent_interface).
         """
         # Validate arguments:
         if not isinstance(num_iters, int) or num_iters <= 0:
@@ -301,7 +312,7 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         layer = self._cx_block[layer_idx]
         return layer.is_cx_flippable(ctrl, trgt)
 
-    def flip_cx(self, layer_idx: int, ctrl: int, trgt: int) -> None:
+    def flip_cx(self, layer_idx: int, ctrl: int, trgt: int):
         """
             Performs the actions needed to flip the given CX gate in the given layer
             of the CX circuit used for the optimization:
@@ -376,6 +387,20 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         return self._to_svg(zcolor=zcolor, xcolor=xcolor,
                             hscale=hscale, vscale=vscale, scale=scale,
                             svg_code_only=svg_code_only)
+
+    def __eq__(self, other) -> bool:
+        if self is other:
+            return True
+        if not isinstance(other, OptimizedPhaseCircuit):
+            return NotImplemented
+        if self.circuit_rep != other.circuit_rep:
+            return False
+        if self.phase_block != other.phase_block:
+            return False
+        if self.cx_block != other.cx_block:
+            return False
+        return True
+
     def _to_svg(self, *,
                 zcolor: str = "#CCFFCC",
                 xcolor: str = "#FF8888",
@@ -384,6 +409,7 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
                 svg_code_only: bool = False
                 ):
         # pylint: disable = too-many-locals, too-many-statements
+        # TODO: reuse from phase circuit once cleaned up and restructured
         num_qubits = self.num_qubits
         vscale *= scale
         hscale *= scale
