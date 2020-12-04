@@ -312,7 +312,7 @@ class Topology:
             format obtained from `Topology.as_dict`,
             for de-serialization purposes.
         """
-        if "qubits" not in topology:
+        if "num_qubits" not in topology:
             raise TypeError("Expected key 'qubits'.")
         if "couplings" not in topology:
             raise TypeError("Expected key 'couplings'.")
