@@ -151,6 +151,8 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
     _cx_block_view: CXCircuitView
     _init_cx_count: int
     _cx_count: int
+    _init_cx_blocks_count: int
+    _cx_blocks_count: int
     _gadget_cx_count_cache: Dict[int, Dict[Tuple[int, ...], int]]
     _rng_seed: Optional[int]
     _rng: np.random.Generator
@@ -186,8 +188,9 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         self._phase_block_view = PhaseCircuitView(self._phase_block)
         self._cx_block_view = CXCircuitView(self._cx_block)
         self._gadget_cx_count_cache = {}
-        self._init_cx_count = self._compute_cx_count()
+        self._init_cx_count, self._init_cx_blocks_count = self._compute_cx_count()
         self._cx_count = self._init_cx_count
+        self._cx_blocks_count = self._init_cx_blocks_count
 
     @property
     def topology(self) -&gt; Topology:
@@ -212,13 +215,6 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         return self._circuit_rep
 
     @property
-    def init_cx_count(self) -&gt; int:
-        &#34;&#34;&#34;
-            Readonly property exposing the CX count for the original circuit.
-        &#34;&#34;&#34;
-        return self._init_cx_count
-
-    @property
     def phase_block(self) -&gt; PhaseCircuitView:
         &#34;&#34;&#34;
             Readonly property exposing a readonly view on the phase block of the optimized circuit.
@@ -233,11 +229,50 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         return self._cx_block_view
 
     @property
+    def init_cx_count(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the CX count for the original circuit.
+        &#34;&#34;&#34;
+        return self._init_cx_count
+
+    @property
     def cx_count(self) -&gt; int:
         &#34;&#34;&#34;
             Readonly property exposing the current CX count for the optimized circuit.
         &#34;&#34;&#34;
         return self._cx_count
+
+    @property
+    def init_cx_blocks_count(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the overall CX count for the two conjugating
+            CX blocks at the time the circuit was instantiated.
+        &#34;&#34;&#34;
+        return self._init_cx_blocks_count
+
+    @property
+    def cx_blocks_count(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the overall CX count for the conjugating
+            CX blocks in the currently optimized circuit.
+        &#34;&#34;&#34;
+        return self._cx_blocks_count
+
+    @property
+    def init_phase_block_cx_count(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the overall CX count for a single
+            phase block at the time the circuit was instantiated.
+        &#34;&#34;&#34;
+        return (self.init_cx_count-self.init_cx_blocks_count)//self.circuit_rep
+
+    @property
+    def phase_block_cx_count(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the overall CX count for a single
+            phase block in the currently optimized circuit.
+        &#34;&#34;&#34;
+        return (self.cx_count-self.cx_blocks_count)//self.circuit_rep
 
     def clone(self, rng_seed: Optional[int] = None) -&gt; &#34;OptimizedPhaseCircuit&#34;:
         &#34;&#34;&#34;
@@ -274,7 +309,7 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
     def anneal(self,
                num_iters: int, *,
                schedule: Union[StandardTempSchedule, TempSchedule] = (&#34;linear&#34;, 1.0, 0.1),
-               loggers: AnnealingLoggers = {}) -&gt; &#34;OptimizedPhaseCircuit&#34;:
+               loggers: AnnealingLoggers = {}):
                # pylint: disable = dangerous-default-value
         # pylint: disable = too-many-locals
         &#34;&#34;&#34;
@@ -299,7 +334,7 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         for it in range(num_iters):
             t = schedule(it, num_iters=num_iters)
             layer_idx, (ctrl, trgt) = self.random_flip_cx()
-            new_cx_count = self._compute_cx_count()
+            new_cx_count, new_cx_blocks_count = self._compute_cx_count()
             cx_count_diff = new_cx_count-self._cx_count
             accept_step = cx_count_diff &lt; 0 or rand[it] &lt; np.exp(-cx_count_diff/t)
             if log_iter is not None:
@@ -308,13 +343,13 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
             if accept_step:
                 # Accept changes:
                 self._cx_count = new_cx_count
+                self._cx_blocks_count = new_cx_blocks_count
             else:
                 # Undo changes:
                 self._flip_cx(layer_idx, ctrl, trgt)
         # Log end:
         if log_end is not None:
             log_end(self._cx_count, num_iters)
-        return self
 
     def random_flip_cx(self) -&gt; Tuple[int, Tuple[int, int]]:
         &#34;&#34;&#34;
@@ -345,7 +380,7 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         layer = self._cx_block[layer_idx]
         return layer.is_cx_flippable(ctrl, trgt)
 
-    def flip_cx(self, layer_idx: int, ctrl: int, trgt: int) -&gt; &#34;OptimizedPhaseCircuit&#34;:
+    def flip_cx(self, layer_idx: int, ctrl: int, trgt: int):
         &#34;&#34;&#34;
             Performs the actions needed to flip the given CX gate in the given layer
             of the CX circuit used for the optimization:
@@ -356,14 +391,10 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
             - applies the desired gate;
             - redoes all gate undone, in reverse order (starting from the gate and
               working forwards towards the last layer).
-
-            The circuit is modified in-place and then returned, as per the
-            [fluent API pattern](https://en.wikipedia.org/wiki/Fluent_interface).
         &#34;&#34;&#34;
         if not self.is_cx_flippable(layer_idx, ctrl, trgt):
             raise ValueError(f&#34;Gate {(ctrl, trgt)} cannot be flipped in layer number {layer_idx}.&#34;)
         self._flip_cx(layer_idx, ctrl, trgt)
-        return self
 
     def _flip_cx(self, layer_idx: int, ctrl: int, trgt: int) -&gt; None:
         conj_by: Deque[Tuple[int, int]] = deque([(ctrl, trgt)])
@@ -384,11 +415,13 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         for cx in conj_by:
             self._phase_block.conj_by_cx(*cx)
 
-    def _compute_cx_count(self) -&gt; int:
+    def _compute_cx_count(self) -&gt; Tuple[int, int]:
         # pylint: disable = protected-access
         phase_block_cost = self._phase_block._cx_count(self._topology,
                                                        self._gadget_cx_count_cache)
-        return self._circuit_rep*phase_block_cost + 2*self._cx_block.num_gates
+        cx_blocks_count = 2*self._cx_block.num_gates
+        cx_count = self._circuit_rep*phase_block_cost + cx_blocks_count
+        return cx_count, cx_blocks_count
 
     def to_svg(self, *,
                zcolor: str = &#34;#CCFFCC&#34;,
@@ -714,6 +747,8 @@ blocks would cancel each other out in pairs when repeating the optimized circuit
     _cx_block_view: CXCircuitView
     _init_cx_count: int
     _cx_count: int
+    _init_cx_blocks_count: int
+    _cx_blocks_count: int
     _gadget_cx_count_cache: Dict[int, Dict[Tuple[int, ...], int]]
     _rng_seed: Optional[int]
     _rng: np.random.Generator
@@ -749,8 +784,9 @@ blocks would cancel each other out in pairs when repeating the optimized circuit
         self._phase_block_view = PhaseCircuitView(self._phase_block)
         self._cx_block_view = CXCircuitView(self._cx_block)
         self._gadget_cx_count_cache = {}
-        self._init_cx_count = self._compute_cx_count()
+        self._init_cx_count, self._init_cx_blocks_count = self._compute_cx_count()
         self._cx_count = self._init_cx_count
+        self._cx_blocks_count = self._init_cx_blocks_count
 
     @property
     def topology(self) -&gt; Topology:
@@ -775,13 +811,6 @@ blocks would cancel each other out in pairs when repeating the optimized circuit
         return self._circuit_rep
 
     @property
-    def init_cx_count(self) -&gt; int:
-        &#34;&#34;&#34;
-            Readonly property exposing the CX count for the original circuit.
-        &#34;&#34;&#34;
-        return self._init_cx_count
-
-    @property
     def phase_block(self) -&gt; PhaseCircuitView:
         &#34;&#34;&#34;
             Readonly property exposing a readonly view on the phase block of the optimized circuit.
@@ -796,11 +825,50 @@ blocks would cancel each other out in pairs when repeating the optimized circuit
         return self._cx_block_view
 
     @property
+    def init_cx_count(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the CX count for the original circuit.
+        &#34;&#34;&#34;
+        return self._init_cx_count
+
+    @property
     def cx_count(self) -&gt; int:
         &#34;&#34;&#34;
             Readonly property exposing the current CX count for the optimized circuit.
         &#34;&#34;&#34;
         return self._cx_count
+
+    @property
+    def init_cx_blocks_count(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the overall CX count for the two conjugating
+            CX blocks at the time the circuit was instantiated.
+        &#34;&#34;&#34;
+        return self._init_cx_blocks_count
+
+    @property
+    def cx_blocks_count(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the overall CX count for the conjugating
+            CX blocks in the currently optimized circuit.
+        &#34;&#34;&#34;
+        return self._cx_blocks_count
+
+    @property
+    def init_phase_block_cx_count(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the overall CX count for a single
+            phase block at the time the circuit was instantiated.
+        &#34;&#34;&#34;
+        return (self.init_cx_count-self.init_cx_blocks_count)//self.circuit_rep
+
+    @property
+    def phase_block_cx_count(self) -&gt; int:
+        &#34;&#34;&#34;
+            Readonly property exposing the overall CX count for a single
+            phase block in the currently optimized circuit.
+        &#34;&#34;&#34;
+        return (self.cx_count-self.cx_blocks_count)//self.circuit_rep
 
     def clone(self, rng_seed: Optional[int] = None) -&gt; &#34;OptimizedPhaseCircuit&#34;:
         &#34;&#34;&#34;
@@ -837,7 +905,7 @@ blocks would cancel each other out in pairs when repeating the optimized circuit
     def anneal(self,
                num_iters: int, *,
                schedule: Union[StandardTempSchedule, TempSchedule] = (&#34;linear&#34;, 1.0, 0.1),
-               loggers: AnnealingLoggers = {}) -&gt; &#34;OptimizedPhaseCircuit&#34;:
+               loggers: AnnealingLoggers = {}):
                # pylint: disable = dangerous-default-value
         # pylint: disable = too-many-locals
         &#34;&#34;&#34;
@@ -862,7 +930,7 @@ blocks would cancel each other out in pairs when repeating the optimized circuit
         for it in range(num_iters):
             t = schedule(it, num_iters=num_iters)
             layer_idx, (ctrl, trgt) = self.random_flip_cx()
-            new_cx_count = self._compute_cx_count()
+            new_cx_count, new_cx_blocks_count = self._compute_cx_count()
             cx_count_diff = new_cx_count-self._cx_count
             accept_step = cx_count_diff &lt; 0 or rand[it] &lt; np.exp(-cx_count_diff/t)
             if log_iter is not None:
@@ -871,13 +939,13 @@ blocks would cancel each other out in pairs when repeating the optimized circuit
             if accept_step:
                 # Accept changes:
                 self._cx_count = new_cx_count
+                self._cx_blocks_count = new_cx_blocks_count
             else:
                 # Undo changes:
                 self._flip_cx(layer_idx, ctrl, trgt)
         # Log end:
         if log_end is not None:
             log_end(self._cx_count, num_iters)
-        return self
 
     def random_flip_cx(self) -&gt; Tuple[int, Tuple[int, int]]:
         &#34;&#34;&#34;
@@ -908,7 +976,7 @@ blocks would cancel each other out in pairs when repeating the optimized circuit
         layer = self._cx_block[layer_idx]
         return layer.is_cx_flippable(ctrl, trgt)
 
-    def flip_cx(self, layer_idx: int, ctrl: int, trgt: int) -&gt; &#34;OptimizedPhaseCircuit&#34;:
+    def flip_cx(self, layer_idx: int, ctrl: int, trgt: int):
         &#34;&#34;&#34;
             Performs the actions needed to flip the given CX gate in the given layer
             of the CX circuit used for the optimization:
@@ -919,14 +987,10 @@ blocks would cancel each other out in pairs when repeating the optimized circuit
             - applies the desired gate;
             - redoes all gate undone, in reverse order (starting from the gate and
               working forwards towards the last layer).
-
-            The circuit is modified in-place and then returned, as per the
-            [fluent API pattern](https://en.wikipedia.org/wiki/Fluent_interface).
         &#34;&#34;&#34;
         if not self.is_cx_flippable(layer_idx, ctrl, trgt):
             raise ValueError(f&#34;Gate {(ctrl, trgt)} cannot be flipped in layer number {layer_idx}.&#34;)
         self._flip_cx(layer_idx, ctrl, trgt)
-        return self
 
     def _flip_cx(self, layer_idx: int, ctrl: int, trgt: int) -&gt; None:
         conj_by: Deque[Tuple[int, int]] = deque([(ctrl, trgt)])
@@ -947,11 +1011,13 @@ blocks would cancel each other out in pairs when repeating the optimized circuit
         for cx in conj_by:
             self._phase_block.conj_by_cx(*cx)
 
-    def _compute_cx_count(self) -&gt; int:
+    def _compute_cx_count(self) -&gt; Tuple[int, int]:
         # pylint: disable = protected-access
         phase_block_cost = self._phase_block._cx_count(self._topology,
                                                        self._gadget_cx_count_cache)
-        return self._circuit_rep*phase_block_cost + 2*self._cx_block.num_gates
+        cx_blocks_count = 2*self._cx_block.num_gates
+        cx_count = self._circuit_rep*phase_block_cost + cx_blocks_count
+        return cx_count, cx_blocks_count
 
     def to_svg(self, *,
                zcolor: str = &#34;#CCFFCC&#34;,
@@ -1139,6 +1205,23 @@ def cx_block(self) -&gt; CXCircuitView:
     return self._cx_block_view</code></pre>
 </details>
 </dd>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.cx_blocks_count"><code class="name">var <span class="ident">cx_blocks_count</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the overall CX count for the conjugating
+CX blocks in the currently optimized circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def cx_blocks_count(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property exposing the overall CX count for the conjugating
+        CX blocks in the currently optimized circuit.
+    &#34;&#34;&#34;
+    return self._cx_blocks_count</code></pre>
+</details>
+</dd>
 <dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.cx_count"><code class="name">var <span class="ident">cx_count</span> : int</code></dt>
 <dd>
 <div class="desc"><p>Readonly property exposing the current CX count for the optimized circuit.</p></div>
@@ -1154,6 +1237,23 @@ def cx_count(self) -&gt; int:
     return self._cx_count</code></pre>
 </details>
 </dd>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.init_cx_blocks_count"><code class="name">var <span class="ident">init_cx_blocks_count</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the overall CX count for the two conjugating
+CX blocks at the time the circuit was instantiated.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def init_cx_blocks_count(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property exposing the overall CX count for the two conjugating
+        CX blocks at the time the circuit was instantiated.
+    &#34;&#34;&#34;
+    return self._init_cx_blocks_count</code></pre>
+</details>
+</dd>
 <dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.init_cx_count"><code class="name">var <span class="ident">init_cx_count</span> : int</code></dt>
 <dd>
 <div class="desc"><p>Readonly property exposing the CX count for the original circuit.</p></div>
@@ -1167,6 +1267,23 @@ def init_cx_count(self) -&gt; int:
         Readonly property exposing the CX count for the original circuit.
     &#34;&#34;&#34;
     return self._init_cx_count</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.init_phase_block_cx_count"><code class="name">var <span class="ident">init_phase_block_cx_count</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the overall CX count for a single
+phase block at the time the circuit was instantiated.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def init_phase_block_cx_count(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property exposing the overall CX count for a single
+        phase block at the time the circuit was instantiated.
+    &#34;&#34;&#34;
+    return (self.init_cx_count-self.init_cx_blocks_count)//self.circuit_rep</code></pre>
 </details>
 </dd>
 <dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.num_qubits"><code class="name">var <span class="ident">num_qubits</span> : int</code></dt>
@@ -1199,6 +1316,23 @@ def phase_block(self) -&gt; PhaseCircuitView:
     return self._phase_block_view</code></pre>
 </details>
 </dd>
+<dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.phase_block_cx_count"><code class="name">var <span class="ident">phase_block_cx_count</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Readonly property exposing the overall CX count for a single
+phase block in the currently optimized circuit.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def phase_block_cx_count(self) -&gt; int:
+    &#34;&#34;&#34;
+        Readonly property exposing the overall CX count for a single
+        phase block in the currently optimized circuit.
+    &#34;&#34;&#34;
+    return (self.cx_count-self.cx_blocks_count)//self.circuit_rep</code></pre>
+</details>
+</dd>
 <dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.topology"><code class="name">var <span class="ident">topology</span> : <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a></code></dt>
 <dd>
 <div class="desc"><p>Readonly property exposing the topology constraining the circuit optimization.</p></div>
@@ -1218,7 +1352,7 @@ def topology(self) -&gt; Topology:
 <h3>Methods</h3>
 <dl>
 <dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.anneal"><code class="name flex">
-<span>def <span class="ident">anneal</span></span>(<span>self, num_iters: int, *, schedule: Union[Tuple[Literal['linear', 'geometric', 'reciprocal', 'log'], Union[int, float], Union[int, float]], <a title="pauliopt.utils.TempSchedule" href="../utils.html#pauliopt.utils.TempSchedule">TempSchedule</a>] = ('linear', 1.0, 0.1), loggers: <a title="pauliopt.phase.optimized_circuits.AnnealingLoggers" href="#pauliopt.phase.optimized_circuits.AnnealingLoggers">AnnealingLoggers</a> = {}) ‑> <a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit">OptimizedPhaseCircuit</a></span>
+<span>def <span class="ident">anneal</span></span>(<span>self, num_iters: int, *, schedule: Union[Tuple[Literal['linear', 'geometric', 'reciprocal', 'log'], Union[int, float], Union[int, float]], <a title="pauliopt.utils.TempSchedule" href="../utils.html#pauliopt.utils.TempSchedule">TempSchedule</a>] = ('linear', 1.0, 0.1), loggers: <a title="pauliopt.phase.optimized_circuits.AnnealingLoggers" href="#pauliopt.phase.optimized_circuits.AnnealingLoggers">AnnealingLoggers</a> = {})</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Performs a cycle of simulated annealing optimization,
@@ -1233,7 +1367,7 @@ initial/final temperatures.</p>
 <pre><code class="python">def anneal(self,
            num_iters: int, *,
            schedule: Union[StandardTempSchedule, TempSchedule] = (&#34;linear&#34;, 1.0, 0.1),
-           loggers: AnnealingLoggers = {}) -&gt; &#34;OptimizedPhaseCircuit&#34;:
+           loggers: AnnealingLoggers = {}):
            # pylint: disable = dangerous-default-value
     # pylint: disable = too-many-locals
     &#34;&#34;&#34;
@@ -1258,7 +1392,7 @@ initial/final temperatures.</p>
     for it in range(num_iters):
         t = schedule(it, num_iters=num_iters)
         layer_idx, (ctrl, trgt) = self.random_flip_cx()
-        new_cx_count = self._compute_cx_count()
+        new_cx_count, new_cx_blocks_count = self._compute_cx_count()
         cx_count_diff = new_cx_count-self._cx_count
         accept_step = cx_count_diff &lt; 0 or rand[it] &lt; np.exp(-cx_count_diff/t)
         if log_iter is not None:
@@ -1267,13 +1401,13 @@ initial/final temperatures.</p>
         if accept_step:
             # Accept changes:
             self._cx_count = new_cx_count
+            self._cx_blocks_count = new_cx_blocks_count
         else:
             # Undo changes:
             self._flip_cx(layer_idx, ctrl, trgt)
     # Log end:
     if log_end is not None:
-        log_end(self._cx_count, num_iters)
-    return self</code></pre>
+        log_end(self._cx_count, num_iters)</code></pre>
 </details>
 </dd>
 <dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.clone"><code class="name flex">
@@ -1294,7 +1428,7 @@ initial/final temperatures.</p>
 </details>
 </dd>
 <dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.flip_cx"><code class="name flex">
-<span>def <span class="ident">flip_cx</span></span>(<span>self, layer_idx: int, ctrl: int, trgt: int) ‑> <a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit">OptimizedPhaseCircuit</a></span>
+<span>def <span class="ident">flip_cx</span></span>(<span>self, layer_idx: int, ctrl: int, trgt: int)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Performs the actions needed to flip the given CX gate in the given layer
@@ -1306,14 +1440,12 @@ working backwards towards the gate;</li>
 <li>applies the desired gate;</li>
 <li>redoes all gate undone, in reverse order (starting from the gate and
 working forwards towards the last layer).</li>
-</ul>
-<p>The circuit is modified in-place and then returned, as per the
-<a href="https://en.wikipedia.org/wiki/Fluent_interface">fluent API pattern</a>.</p></div>
+</ul></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def flip_cx(self, layer_idx: int, ctrl: int, trgt: int) -&gt; &#34;OptimizedPhaseCircuit&#34;:
+<pre><code class="python">def flip_cx(self, layer_idx: int, ctrl: int, trgt: int):
     &#34;&#34;&#34;
         Performs the actions needed to flip the given CX gate in the given layer
         of the CX circuit used for the optimization:
@@ -1324,14 +1456,10 @@ working forwards towards the last layer).</li>
         - applies the desired gate;
         - redoes all gate undone, in reverse order (starting from the gate and
           working forwards towards the last layer).
-
-        The circuit is modified in-place and then returned, as per the
-        [fluent API pattern](https://en.wikipedia.org/wiki/Fluent_interface).
     &#34;&#34;&#34;
     if not self.is_cx_flippable(layer_idx, ctrl, trgt):
         raise ValueError(f&#34;Gate {(ctrl, trgt)} cannot be flipped in layer number {layer_idx}.&#34;)
-    self._flip_cx(layer_idx, ctrl, trgt)
-    return self</code></pre>
+    self._flip_cx(layer_idx, ctrl, trgt)</code></pre>
 </details>
 </dd>
 <dt id="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.is_cx_flippable"><code class="name flex">
@@ -1513,17 +1641,21 @@ IPython <code>SVG</code> object.</p></div>
 </li>
 <li>
 <h4><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit">OptimizedPhaseCircuit</a></code></h4>
-<ul class="two-column">
+<ul class="">
 <li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.anneal" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.anneal">anneal</a></code></li>
 <li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.circuit_rep" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.circuit_rep">circuit_rep</a></code></li>
 <li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.clone" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.clone">clone</a></code></li>
 <li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.cx_block" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.cx_block">cx_block</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.cx_blocks_count" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.cx_blocks_count">cx_blocks_count</a></code></li>
 <li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.cx_count" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.cx_count">cx_count</a></code></li>
 <li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.flip_cx" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.flip_cx">flip_cx</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.init_cx_blocks_count" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.init_cx_blocks_count">init_cx_blocks_count</a></code></li>
 <li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.init_cx_count" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.init_cx_count">init_cx_count</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.init_phase_block_cx_count" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.init_phase_block_cx_count">init_phase_block_cx_count</a></code></li>
 <li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.is_cx_flippable" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.is_cx_flippable">is_cx_flippable</a></code></li>
 <li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.num_qubits" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.num_qubits">num_qubits</a></code></li>
 <li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.phase_block" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.phase_block">phase_block</a></code></li>
+<li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.phase_block_cx_count" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.phase_block_cx_count">phase_block_cx_count</a></code></li>
 <li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.random_flip_cx" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.random_flip_cx">random_flip_cx</a></code></li>
 <li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.to_qiskit" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.to_qiskit">to_qiskit</a></code></li>
 <li><code><a title="pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.to_svg" href="#pauliopt.phase.optimized_circuits.OptimizedPhaseCircuit.to_svg">to_svg</a></code></li>

@@ -119,6 +119,8 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
     _cx_block_view: CXCircuitView
     _init_cx_count: int
     _cx_count: int
+    _init_cx_blocks_count: int
+    _cx_blocks_count: int
     _gadget_cx_count_cache: Dict[int, Dict[Tuple[int, ...], int]]
     _rng_seed: Optional[int]
     _rng: np.random.Generator
@@ -154,8 +156,9 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         self._phase_block_view = PhaseCircuitView(self._phase_block)
         self._cx_block_view = CXCircuitView(self._cx_block)
         self._gadget_cx_count_cache = {}
-        self._init_cx_count = self._compute_cx_count()
+        self._init_cx_count, self._init_cx_blocks_count = self._compute_cx_count()
         self._cx_count = self._init_cx_count
+        self._cx_blocks_count = self._init_cx_blocks_count
 
     @property
     def topology(self) -> Topology:
@@ -180,13 +183,6 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         return self._circuit_rep
 
     @property
-    def init_cx_count(self) -> int:
-        """
-            Readonly property exposing the CX count for the original circuit.
-        """
-        return self._init_cx_count
-
-    @property
     def phase_block(self) -> PhaseCircuitView:
         """
             Readonly property exposing a readonly view on the phase block of the optimized circuit.
@@ -201,11 +197,50 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         return self._cx_block_view
 
     @property
+    def init_cx_count(self) -> int:
+        """
+            Readonly property exposing the CX count for the original circuit.
+        """
+        return self._init_cx_count
+
+    @property
     def cx_count(self) -> int:
         """
             Readonly property exposing the current CX count for the optimized circuit.
         """
         return self._cx_count
+
+    @property
+    def init_cx_blocks_count(self) -> int:
+        """
+            Readonly property exposing the overall CX count for the two conjugating
+            CX blocks at the time the circuit was instantiated.
+        """
+        return self._init_cx_blocks_count
+
+    @property
+    def cx_blocks_count(self) -> int:
+        """
+            Readonly property exposing the overall CX count for the conjugating
+            CX blocks in the currently optimized circuit.
+        """
+        return self._cx_blocks_count
+
+    @property
+    def init_phase_block_cx_count(self) -> int:
+        """
+            Readonly property exposing the overall CX count for a single
+            phase block at the time the circuit was instantiated.
+        """
+        return (self.init_cx_count-self.init_cx_blocks_count)//self.circuit_rep
+
+    @property
+    def phase_block_cx_count(self) -> int:
+        """
+            Readonly property exposing the overall CX count for a single
+            phase block in the currently optimized circuit.
+        """
+        return (self.cx_count-self.cx_blocks_count)//self.circuit_rep
 
     def clone(self, rng_seed: Optional[int] = None) -> "OptimizedPhaseCircuit":
         """
@@ -267,7 +302,7 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         for it in range(num_iters):
             t = schedule(it, num_iters=num_iters)
             layer_idx, (ctrl, trgt) = self.random_flip_cx()
-            new_cx_count = self._compute_cx_count()
+            new_cx_count, new_cx_blocks_count = self._compute_cx_count()
             cx_count_diff = new_cx_count-self._cx_count
             accept_step = cx_count_diff < 0 or rand[it] < np.exp(-cx_count_diff/t)
             if log_iter is not None:
@@ -276,6 +311,7 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
             if accept_step:
                 # Accept changes:
                 self._cx_count = new_cx_count
+                self._cx_blocks_count = new_cx_blocks_count
             else:
                 # Undo changes:
                 self._flip_cx(layer_idx, ctrl, trgt)
@@ -347,11 +383,13 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         for cx in conj_by:
             self._phase_block.conj_by_cx(*cx)
 
-    def _compute_cx_count(self) -> int:
+    def _compute_cx_count(self) -> Tuple[int, int]:
         # pylint: disable = protected-access
         phase_block_cost = self._phase_block._cx_count(self._topology,
                                                        self._gadget_cx_count_cache)
-        return self._circuit_rep*phase_block_cost + 2*self._cx_block.num_gates
+        cx_blocks_count = 2*self._cx_block.num_gates
+        cx_count = self._circuit_rep*phase_block_cost + cx_blocks_count
+        return cx_count, cx_blocks_count
 
     def to_svg(self, *,
                zcolor: str = "#CCFFCC",
