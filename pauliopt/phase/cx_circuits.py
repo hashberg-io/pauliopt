@@ -289,7 +289,8 @@ class CXCircuitLayer:
                 yield (fst, snd)
                 yield (snd, fst)
 
-CXCircuitLayerLike = Union[CXCircuitLayer, Sequence[GateLike]]
+CXCircuitLayerLike = Union[CXCircuitLayer, "CXCircuitLayerView", Sequence[GateLike]]
+CXCircuitLike = Union[CXCircuit, CXCircuitView, Sequence[CXCircuitLayerLike]]
 
 class CXCircuit(Sequence[CXCircuitLayer]):
     """
@@ -374,9 +375,11 @@ class CXCircuit(Sequence[CXCircuitLayer]):
         return iter(self._layers)
 
     def __irshift__(self, layers: Union[CXCircuitLayerLike,
-                                        Sequence[CXCircuitLayerLike]]) -> "CXCircuit":
-        if isinstance(layers, CXCircuitLayer):
+                                        CXCircuitLike]) -> "CXCircuit":
+        if isinstance(layers, (CXCircuitLayer, CXCircuitLayerView)):
             layers = [layers]
+        if isinstance(layers, (CXCircuit, CXCircuitView)):
+            layers = [layer.clone() for layer in layers]
         elif (isinstance(layers, Sequence)
               and all(isinstance(g, (list, tuple))
                       and all(isinstance(x, int) for x in g) # pylint: disable = C0330
@@ -385,12 +388,20 @@ class CXCircuit(Sequence[CXCircuitLayer]):
         if not isinstance(layers, Sequence):
             raise TypeError(f"Expected sequence of layers, found {layers}")
         for layer in layers:
-            if not isinstance(layer, CXCircuitLayer):
+            if isinstance(layer, CXCircuitLayerView):
+                layer = layer.clone()
+            elif not isinstance(layer, CXCircuitLayer):
                 if not isinstance(layer, Sequence):
                     raise TypeError(f"Expected a sequence of pairs of ints, found {layer}")
                 layer = CXCircuitLayer(self.topology, cast(Sequence[GateLike], layer))
             self._layers.append(layer)
         return self
+
+    def __rshift__(self, layers: Union[CXCircuitLayerLike,
+                                       CXCircuitLike]) -> "CXCircuit":
+        circ = CXCircuit(self.topology, [])
+        circ >>= layers
+        return circ
 
     def __eq__(self, other) -> bool:
         if self is other:

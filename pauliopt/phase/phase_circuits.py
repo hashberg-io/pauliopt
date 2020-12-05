@@ -602,15 +602,26 @@ class PhaseCircuit(Generic[AngleT]):
             return False
         return all(g == h for g, h in zip(self._iter_gadgets(), other._iter_gadgets()))
 
-    def __irshift__(self, gadgets: Union[PhaseGadget, Sequence[PhaseGadget]]) -> "PhaseCircuit":
+    def __irshift__(self, gadgets: Union[PhaseGadget[AngleT],
+                                         PhaseCircuit[AngleT],
+                                         Sequence[PhaseGadget[AngleT]]]) -> "PhaseCircuit":
         if isinstance(gadgets, PhaseGadget):
             gadgets = [gadgets]
+        elif isinstance(gadgets, PhaseCircuit):
+            gadgets = gadgets.gadgets
         if (not isinstance(gadgets, Sequence)
                 or not all(isinstance(gadget, PhaseGadget) for gadget in gadgets)):
             raise TypeError(f"Expected phase gadget or sequence of phase gadgets, found {gadgets}.")
         for gadget in gadgets:
             self.add_gadget(gadget)
         return self
+
+    def __rshift__(self, gadgets: Union[PhaseGadget[AngleT],
+                                        PhaseCircuit[AngleT],
+                                        Sequence[PhaseGadget[AngleT]]]) -> "PhaseCircuit":
+        circ: PhaseCircuit[AngleT] = PhaseCircuit(self.num_qubits, [])
+        circ >>= gadgets
+        return circ
 
     def _iter_gadgets(self) -> Iterator[PhaseGadget]:
         next_idx = {"Z": 0, "X": 0}
