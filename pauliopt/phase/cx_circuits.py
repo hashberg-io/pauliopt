@@ -290,7 +290,7 @@ class CXCircuitLayer:
                 yield (snd, fst)
 
 CXCircuitLayerLike = Union[CXCircuitLayer, "CXCircuitLayerView", Sequence[GateLike]]
-CXCircuitLike = Union[CXCircuit, CXCircuitView, Sequence[CXCircuitLayerLike]]
+CXCircuitLike = Union["CXCircuit", "CXCircuitView", Sequence[CXCircuitLayerLike]]
 
 class CXCircuit(Sequence[CXCircuitLayer]):
     """
