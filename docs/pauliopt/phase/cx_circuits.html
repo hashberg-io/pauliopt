@@ -321,7 +321,8 @@ class CXCircuitLayer:
                 yield (fst, snd)
                 yield (snd, fst)
 
-CXCircuitLayerLike = Union[CXCircuitLayer, Sequence[GateLike]]
+CXCircuitLayerLike = Union[CXCircuitLayer, &#34;CXCircuitLayerView&#34;, Sequence[GateLike]]
+CXCircuitLike = Union[&#34;CXCircuit&#34;, &#34;CXCircuitView&#34;, Sequence[CXCircuitLayerLike]]
 
 class CXCircuit(Sequence[CXCircuitLayer]):
     &#34;&#34;&#34;
@@ -406,9 +407,11 @@ class CXCircuit(Sequence[CXCircuitLayer]):
         return iter(self._layers)
 
     def __irshift__(self, layers: Union[CXCircuitLayerLike,
-                                        Sequence[CXCircuitLayerLike]]) -&gt; &#34;CXCircuit&#34;:
-        if isinstance(layers, CXCircuitLayer):
+                                        CXCircuitLike]) -&gt; &#34;CXCircuit&#34;:
+        if isinstance(layers, (CXCircuitLayer, CXCircuitLayerView)):
             layers = [layers]
+        if isinstance(layers, (CXCircuit, CXCircuitView)):
+            layers = [layer.clone() for layer in layers]
         elif (isinstance(layers, Sequence)
               and all(isinstance(g, (list, tuple))
                       and all(isinstance(x, int) for x in g) # pylint: disable = C0330
@@ -417,12 +420,20 @@ class CXCircuit(Sequence[CXCircuitLayer]):
         if not isinstance(layers, Sequence):
             raise TypeError(f&#34;Expected sequence of layers, found {layers}&#34;)
         for layer in layers:
-            if not isinstance(layer, CXCircuitLayer):
+            if isinstance(layer, CXCircuitLayerView):
+                layer = layer.clone()
+            elif not isinstance(layer, CXCircuitLayer):
                 if not isinstance(layer, Sequence):
                     raise TypeError(f&#34;Expected a sequence of pairs of ints, found {layer}&#34;)
                 layer = CXCircuitLayer(self.topology, cast(Sequence[GateLike], layer))
             self._layers.append(layer)
         return self
+
+    def __rshift__(self, layers: Union[CXCircuitLayerLike,
+                                       CXCircuitLike]) -&gt; &#34;CXCircuit&#34;:
+        circ = CXCircuit(self.topology, [])
+        circ &gt;&gt;= layers
+        return circ
 
     def __eq__(self, other) -&gt; bool:
         if self is other:
@@ -724,9 +735,11 @@ and constrained by a given qubit topology.</p></div>
         return iter(self._layers)
 
     def __irshift__(self, layers: Union[CXCircuitLayerLike,
-                                        Sequence[CXCircuitLayerLike]]) -&gt; &#34;CXCircuit&#34;:
-        if isinstance(layers, CXCircuitLayer):
+                                        CXCircuitLike]) -&gt; &#34;CXCircuit&#34;:
+        if isinstance(layers, (CXCircuitLayer, CXCircuitLayerView)):
             layers = [layers]
+        if isinstance(layers, (CXCircuit, CXCircuitView)):
+            layers = [layer.clone() for layer in layers]
         elif (isinstance(layers, Sequence)
               and all(isinstance(g, (list, tuple))
                       and all(isinstance(x, int) for x in g) # pylint: disable = C0330
@@ -735,12 +748,20 @@ and constrained by a given qubit topology.</p></div>
         if not isinstance(layers, Sequence):
             raise TypeError(f&#34;Expected sequence of layers, found {layers}&#34;)
         for layer in layers:
-            if not isinstance(layer, CXCircuitLayer):
+            if isinstance(layer, CXCircuitLayerView):
+                layer = layer.clone()
+            elif not isinstance(layer, CXCircuitLayer):
                 if not isinstance(layer, Sequence):
                     raise TypeError(f&#34;Expected a sequence of pairs of ints, found {layer}&#34;)
                 layer = CXCircuitLayer(self.topology, cast(Sequence[GateLike], layer))
             self._layers.append(layer)
         return self
+
+    def __rshift__(self, layers: Union[CXCircuitLayerLike,
+                                       CXCircuitLike]) -&gt; &#34;CXCircuit&#34;:
+        circ = CXCircuit(self.topology, [])
+        circ &gt;&gt;= layers
+        return circ
 
     def __eq__(self, other) -&gt; bool:
         if self is other:

@@ -54,25 +54,25 @@ class AngleProtocol(Protocol[AngleT]):
     def __neg__(self: AngleT) -&gt; AngleT:
         ...
 
-    def __pos__(self) -&gt; AngleT:
+    def __pos__(self: AngleT) -&gt; AngleT:
         ...
 
-    def __add__(self, other: AngleT) -&gt; AngleT:
+    def __add__(self: AngleT, other: AngleT) -&gt; AngleT:
         ...
 
-    def __sub__(self, other: AngleT) -&gt; AngleT:
+    def __sub__(self: AngleT, other: AngleT) -&gt; AngleT:
         ...
 
-    def __mul__(self, other: Union[int, Fraction]) -&gt; AngleT:
+    def __mul__(self: AngleT, other: Union[int, Fraction]) -&gt; AngleT:
         ...
 
-    def __rmul__(self, other: Union[int, Fraction]) -&gt; AngleT:
+    def __rmul__(self: AngleT, other: Union[int, Fraction]) -&gt; AngleT:
         ...
 
-    def __truediv__(self, other: Union[int, Fraction]) -&gt; AngleT:
+    def __truediv__(self: AngleT, other: Union[int, Fraction]) -&gt; AngleT:
         ...
 
-    def __float__(self) -&gt; float:
+    def __float__(self: AngleT) -&gt; float:
         ...
 
 
@@ -968,25 +968,25 @@ def value(self) -&gt; Fraction:
     def __neg__(self: AngleT) -&gt; AngleT:
         ...
 
-    def __pos__(self) -&gt; AngleT:
+    def __pos__(self: AngleT) -&gt; AngleT:
         ...
 
-    def __add__(self, other: AngleT) -&gt; AngleT:
+    def __add__(self: AngleT, other: AngleT) -&gt; AngleT:
         ...
 
-    def __sub__(self, other: AngleT) -&gt; AngleT:
+    def __sub__(self: AngleT, other: AngleT) -&gt; AngleT:
         ...
 
-    def __mul__(self, other: Union[int, Fraction]) -&gt; AngleT:
+    def __mul__(self: AngleT, other: Union[int, Fraction]) -&gt; AngleT:
         ...
 
-    def __rmul__(self, other: Union[int, Fraction]) -&gt; AngleT:
+    def __rmul__(self: AngleT, other: Union[int, Fraction]) -&gt; AngleT:
         ...
 
-    def __truediv__(self, other: Union[int, Fraction]) -&gt; AngleT:
+    def __truediv__(self: AngleT, other: Union[int, Fraction]) -&gt; AngleT:
         ...
 
-    def __float__(self) -&gt; float:
+    def __float__(self: AngleT) -&gt; float:
         ...</code></pre>
 </details>
 <h3>Ancestors</h3>
