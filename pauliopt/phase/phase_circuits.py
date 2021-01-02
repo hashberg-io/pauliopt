@@ -434,6 +434,69 @@ class PhaseCircuit(Generic[AngleT], Sequence[PhaseGadget[AngleT]]):
         """
         return PhaseCircuitView(self)
 
+    def rx(self, qubit: int, angle: Angle) -> "PhaseCircuit[AngleT]":
+        """ Phase gadget implementation of single-qubit X rotation. """
+        if not isinstance(qubit, int) or not 0 <= qubit < self.num_qubits:
+            raise TypeError(f"Invalid qubit {qubit}")
+        self >>= X(angle) @ {qubit}
+        return self
+
+    def rz(self, qubit: int, angle: Angle) -> "PhaseCircuit[AngleT]":
+        """ Phase gadget implementation of single-qubit Z rotation. """
+        if not isinstance(qubit, int) or not 0 <= qubit < self.num_qubits:
+            raise TypeError(f"Invalid qubit {qubit}")
+        self >>= Z(angle) @ {qubit}
+        return self
+
+    def ry(self, qubit: int, angle: Angle) -> "PhaseCircuit[AngleT]":
+        """ Phase gadget implementation of single-qubit Y rotation. """
+        self.rx(qubit, +pi/2)
+        self.rz(qubit, angle)
+        self.rx(qubit, -pi/2)
+        return self
+
+    def x(self, qubit: int) -> "PhaseCircuit[AngleT]":
+        """ Phase gadget implementation of single-qubit X gate. """
+        self.rx(qubit, pi)
+        return self
+
+    def z(self, qubit: int) -> "PhaseCircuit[AngleT]":
+        """ Phase gadget implementation of single-qubit X gate. """
+        self.rz(qubit, pi)
+        return self
+
+    def y(self, qubit: int) -> "PhaseCircuit[AngleT]":
+        """ Phase gadget implementation of single-qubit Y gate. """
+        self.z(qubit)
+        self.x(qubit)
+        return self
+
+    def s(self, qubit: int) -> "PhaseCircuit[AngleT]":
+        """ Phase gadget implementation of single-qubit S gate. """
+        self.rz(qubit, pi/2)
+        return self
+
+    def t(self, qubit: int) -> "PhaseCircuit[AngleT]":
+        """ Phase gadget implementation of single-qubit T gate. """
+        self.rz(qubit, pi/4)
+        return self
+
+    def h(self, qubit: int, basis: Literal["Z", "X"] = "Z", sign: Literal[1, -1]=1) -> "PhaseCircuit[AngleT]":
+        """ Phase gadget implementation of single-qubit Hadamard gate. """
+        if basis not in ("Z", "X"):
+            raise TypeError(f"Invalid basis {basis}.")
+        if sign not in (1, -1):
+            raise TypeError(f"Invalid sign {sign}.")
+        if basis == "Z":
+            self.rx(qubit, sign*pi/2)
+            self.rz(qubit, sign*pi/2)
+            self.rx(qubit, sign*pi/2)
+        else:
+            self.rz(qubit, sign*pi/2)
+            self.rx(qubit, sign*pi/2)
+            self.rz(qubit, sign*pi/2)
+        return self
+
     def add_gadget(self, gadget: PhaseGadget) -> "PhaseCircuit":
         """
             Adds a phase gadget to the circuit.
