@@ -33,9 +33,10 @@
 &#34;&#34;&#34;
 
 from collections import deque
+from itertools import islice
 from math import ceil, log10
 from typing import (Callable, cast, Collection, Dict, FrozenSet, Generic, Iterator, List,
-                    Literal, Optional, Sequence, Set, Tuple, Union)
+                    Literal, Optional, overload, Sequence, Set, Tuple, Union)
 import numpy as np # type: ignore
 from pauliopt.topologies import Topology
 from pauliopt.utils import AngleT, AngleProtocol, Angle, SVGBuilder, pi
@@ -353,7 +354,7 @@ class X(Generic[AngleT]):
         return PhaseGadget(&#34;X&#34;, self._angle, qubits)
 
 
-class PhaseCircuit(Generic[AngleT]):
+class PhaseCircuit(Generic[AngleT], Sequence[PhaseGadget[AngleT]]):
     &#34;&#34;&#34;
         Container class for a circuit of mixed ZX phase gadgets.
     &#34;&#34;&#34;
@@ -396,6 +397,13 @@ class PhaseCircuit(Generic[AngleT]):
         ```
     &#34;&#34;&#34;
 
+    _rev_gadget_idxs: List[Tuple[Literal[&#34;Z&#34;, &#34;X&#34;], int]]
+    &#34;&#34;&#34;
+        Reverse gadget index list: to each global gadget index `idx` it returns
+        a pair with the gadget basis `basis` and the column index `c` for the gadget
+        in `self._gadget_idxs[basis]` and `self._matrix[basis]`.
+    &#34;&#34;&#34;
+
     def __init__(self, num_qubits: int, gadgets: Sequence[PhaseGadget[AngleT]] = tuple()):
         if not isinstance(num_qubits, int) or num_qubits &lt;= 0:
             raise TypeError(&#34;Number of qubits must be a positive integer.&#34;)
@@ -406,7 +414,9 @@ class PhaseCircuit(Generic[AngleT]):
         # Fills the lists of original indices and angles for the gadgets:
         self._gadget_idxs = {&#34;Z&#34;: [], &#34;X&#34;: []}
         self._angles = []
+        self._rev_gadget_idxs = []
         for i, gadget in enumerate(gadgets):
+            self._rev_gadget_idxs.append((gadget.basis, len(self._gadget_idxs[gadget.basis])))
             self._gadget_idxs[gadget.basis].append(i)
             self._angles.append(gadget.angle)
         self._matrix = {}
@@ -471,8 +481,10 @@ class PhaseCircuit(Generic[AngleT]):
         for q in gadget.qubits:
             new_col[q] = 1
         self._matrix[basis] = np.append(self._matrix[basis], new_col, axis=1)
+        self._rev_gadget_idxs.append((basis, len(self._gadget_idxs[gadget.basis])))
         self._gadget_idxs[basis].append(gadget_idx)
         self._angles.append(gadget.angle)
+        self._gadget_legs_cache[basis].append(tuple(sorted(gadget.qubits)))
         return self
 
     def cx_count(self, topology: Topology) -&gt; int:
@@ -632,9 +644,13 @@ class PhaseCircuit(Generic[AngleT]):
             return False
         return all(g == h for g, h in zip(self._iter_gadgets(), other._iter_gadgets()))
 
-    def __irshift__(self, gadgets: Union[PhaseGadget, Sequence[PhaseGadget]]) -&gt; &#34;PhaseCircuit&#34;:
+    def __irshift__(self, gadgets: Union[PhaseGadget[AngleT],
+                                         &#34;PhaseCircuit[AngleT]&#34;,
+                                         Sequence[PhaseGadget[AngleT]]]) -&gt; &#34;PhaseCircuit&#34;:
         if isinstance(gadgets, PhaseGadget):
             gadgets = [gadgets]
+        elif isinstance(gadgets, PhaseCircuit):
+            gadgets = gadgets.gadgets
         if (not isinstance(gadgets, Sequence)
                 or not all(isinstance(gadget, PhaseGadget) for gadget in gadgets)):
             raise TypeError(f&#34;Expected phase gadget or sequence of phase gadgets, found {gadgets}.&#34;)
@@ -642,19 +658,53 @@ class PhaseCircuit(Generic[AngleT]):
             self.add_gadget(gadget)
         return self
 
-    def _iter_gadgets(self) -&gt; Iterator[PhaseGadget]:
-        next_idx = {&#34;Z&#34;: 0, &#34;X&#34;: 0}
-        for i, angle in enumerate(self._angles):
-            Z_next = next_idx[&#34;Z&#34;]
-            X_next = next_idx[&#34;X&#34;]
-            if Z_next &lt; len(self._gadget_idxs[&#34;Z&#34;]) and i == self._gadget_idxs[&#34;Z&#34;][Z_next]:
-                basis: Literal[&#34;Z&#34;, &#34;X&#34;] = &#34;Z&#34;
-            elif X_next &lt; len(self._gadget_idxs[&#34;X&#34;]) and i == self._gadget_idxs[&#34;X&#34;][X_next]:
-                basis = &#34;X&#34;
-            else:
-                raise Exception(&#34;This should never happen. Please open an issue on GitHub.&#34;)
-            col_idx = next_idx[basis]
-            next_idx[basis] += 1
+    def __rshift__(self, gadgets: Union[PhaseGadget[AngleT],
+                                        &#34;PhaseCircuit[AngleT]&#34;,
+                                        Sequence[PhaseGadget[AngleT]]]) -&gt; &#34;PhaseCircuit&#34;:
+        circ: PhaseCircuit[AngleT] = PhaseCircuit(self.num_qubits, [])
+        circ &gt;&gt;= self
+        circ &gt;&gt;= gadgets
+        return circ
+
+    def _reindex(self, idx: int) -&gt; int:
+        if 0 &lt;= idx &lt; self.num_gadgets:
+            return idx
+        if -self.num_gadgets &lt;= idx &lt; 0:
+            return idx + self.num_gadgets
+        raise IndexError(f&#34;Invalid gadget index {idx}&#34;)
+
+    @overload
+    def __getitem__(self, idx: int) -&gt; PhaseGadget[AngleT]:
+        ...
+
+    @overload
+    def __getitem__(self, idx: slice) -&gt; &#34;PhaseCircuit[AngleT]&#34;:
+        ...
+
+    def __getitem__(self, idx):
+        if isinstance(idx, int):
+            idx = self._reindex(idx)
+            basis, col_idx = self._rev_gadget_idxs[idx]
+            col = self._matrix[basis][:, col_idx]
+            angle = self._angles[idx]
+            return PhaseGadget(basis, angle, {i for i, b in enumerate(col) if b % 2 == 1})
+        if isinstance(idx, slice):
+            start, stop, step = (idx.start, idx.stop, idx.step)
+            return PhaseCircuit(self.num_qubits, list(self._iter_gadgets(start, stop, step)))
+        raise TypeError(f&#34;Expected int or slice, found {type(idx)}&#34;)
+
+    def __len__(self):
+        return self.num_gadgets
+
+    def _iter_gadgets(self, start=None, stop=None, step=None) -&gt; Iterator[PhaseGadget]:
+        if start is None:
+            start = 0
+        else:
+            start = self._reindex(start)
+        if stop is not None:
+            stop = self._reindex(stop)
+        for idx, angle in islice(enumerate(self._angles), start, stop, step):
+            basis, col_idx = self._rev_gadget_idxs[idx]
             col = self._matrix[basis][:, col_idx]
             yield PhaseGadget(basis, angle, {i for i, b in enumerate(col) if b % 2 == 1})
 
@@ -855,7 +905,7 @@ class PhaseCircuitView(Generic[AngleT]):
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class PhaseCircuit(Generic[AngleT]):
+<pre><code class="python">class PhaseCircuit(Generic[AngleT], Sequence[PhaseGadget[AngleT]]):
     &#34;&#34;&#34;
         Container class for a circuit of mixed ZX phase gadgets.
     &#34;&#34;&#34;
@@ -898,6 +948,13 @@ class PhaseCircuitView(Generic[AngleT]):
         ```
     &#34;&#34;&#34;
 
+    _rev_gadget_idxs: List[Tuple[Literal[&#34;Z&#34;, &#34;X&#34;], int]]
+    &#34;&#34;&#34;
+        Reverse gadget index list: to each global gadget index `idx` it returns
+        a pair with the gadget basis `basis` and the column index `c` for the gadget
+        in `self._gadget_idxs[basis]` and `self._matrix[basis]`.
+    &#34;&#34;&#34;
+
     def __init__(self, num_qubits: int, gadgets: Sequence[PhaseGadget[AngleT]] = tuple()):
         if not isinstance(num_qubits, int) or num_qubits &lt;= 0:
             raise TypeError(&#34;Number of qubits must be a positive integer.&#34;)
@@ -908,7 +965,9 @@ class PhaseCircuitView(Generic[AngleT]):
         # Fills the lists of original indices and angles for the gadgets:
         self._gadget_idxs = {&#34;Z&#34;: [], &#34;X&#34;: []}
         self._angles = []
+        self._rev_gadget_idxs = []
         for i, gadget in enumerate(gadgets):
+            self._rev_gadget_idxs.append((gadget.basis, len(self._gadget_idxs[gadget.basis])))
             self._gadget_idxs[gadget.basis].append(i)
             self._angles.append(gadget.angle)
         self._matrix = {}
@@ -973,8 +1032,10 @@ class PhaseCircuitView(Generic[AngleT]):
         for q in gadget.qubits:
             new_col[q] = 1
         self._matrix[basis] = np.append(self._matrix[basis], new_col, axis=1)
+        self._rev_gadget_idxs.append((basis, len(self._gadget_idxs[gadget.basis])))
         self._gadget_idxs[basis].append(gadget_idx)
         self._angles.append(gadget.angle)
+        self._gadget_legs_cache[basis].append(tuple(sorted(gadget.qubits)))
         return self
 
     def cx_count(self, topology: Topology) -&gt; int:
@@ -1134,9 +1195,13 @@ class PhaseCircuitView(Generic[AngleT]):
             return False
         return all(g == h for g, h in zip(self._iter_gadgets(), other._iter_gadgets()))
 
-    def __irshift__(self, gadgets: Union[PhaseGadget, Sequence[PhaseGadget]]) -&gt; &#34;PhaseCircuit&#34;:
+    def __irshift__(self, gadgets: Union[PhaseGadget[AngleT],
+                                         &#34;PhaseCircuit[AngleT]&#34;,
+                                         Sequence[PhaseGadget[AngleT]]]) -&gt; &#34;PhaseCircuit&#34;:
         if isinstance(gadgets, PhaseGadget):
             gadgets = [gadgets]
+        elif isinstance(gadgets, PhaseCircuit):
+            gadgets = gadgets.gadgets
         if (not isinstance(gadgets, Sequence)
                 or not all(isinstance(gadget, PhaseGadget) for gadget in gadgets)):
             raise TypeError(f&#34;Expected phase gadget or sequence of phase gadgets, found {gadgets}.&#34;)
@@ -1144,19 +1209,53 @@ class PhaseCircuitView(Generic[AngleT]):
             self.add_gadget(gadget)
         return self
 
-    def _iter_gadgets(self) -&gt; Iterator[PhaseGadget]:
-        next_idx = {&#34;Z&#34;: 0, &#34;X&#34;: 0}
-        for i, angle in enumerate(self._angles):
-            Z_next = next_idx[&#34;Z&#34;]
-            X_next = next_idx[&#34;X&#34;]
-            if Z_next &lt; len(self._gadget_idxs[&#34;Z&#34;]) and i == self._gadget_idxs[&#34;Z&#34;][Z_next]:
-                basis: Literal[&#34;Z&#34;, &#34;X&#34;] = &#34;Z&#34;
-            elif X_next &lt; len(self._gadget_idxs[&#34;X&#34;]) and i == self._gadget_idxs[&#34;X&#34;][X_next]:
-                basis = &#34;X&#34;
-            else:
-                raise Exception(&#34;This should never happen. Please open an issue on GitHub.&#34;)
-            col_idx = next_idx[basis]
-            next_idx[basis] += 1
+    def __rshift__(self, gadgets: Union[PhaseGadget[AngleT],
+                                        &#34;PhaseCircuit[AngleT]&#34;,
+                                        Sequence[PhaseGadget[AngleT]]]) -&gt; &#34;PhaseCircuit&#34;:
+        circ: PhaseCircuit[AngleT] = PhaseCircuit(self.num_qubits, [])
+        circ &gt;&gt;= self
+        circ &gt;&gt;= gadgets
+        return circ
+
+    def _reindex(self, idx: int) -&gt; int:
+        if 0 &lt;= idx &lt; self.num_gadgets:
+            return idx
+        if -self.num_gadgets &lt;= idx &lt; 0:
+            return idx + self.num_gadgets
+        raise IndexError(f&#34;Invalid gadget index {idx}&#34;)
+
+    @overload
+    def __getitem__(self, idx: int) -&gt; PhaseGadget[AngleT]:
+        ...
+
+    @overload
+    def __getitem__(self, idx: slice) -&gt; &#34;PhaseCircuit[AngleT]&#34;:
+        ...
+
+    def __getitem__(self, idx):
+        if isinstance(idx, int):
+            idx = self._reindex(idx)
+            basis, col_idx = self._rev_gadget_idxs[idx]
+            col = self._matrix[basis][:, col_idx]
+            angle = self._angles[idx]
+            return PhaseGadget(basis, angle, {i for i, b in enumerate(col) if b % 2 == 1})
+        if isinstance(idx, slice):
+            start, stop, step = (idx.start, idx.stop, idx.step)
+            return PhaseCircuit(self.num_qubits, list(self._iter_gadgets(start, stop, step)))
+        raise TypeError(f&#34;Expected int or slice, found {type(idx)}&#34;)
+
+    def __len__(self):
+        return self.num_gadgets
+
+    def _iter_gadgets(self, start=None, stop=None, step=None) -&gt; Iterator[PhaseGadget]:
+        if start is None:
+            start = 0
+        else:
+            start = self._reindex(start)
+        if stop is not None:
+            stop = self._reindex(stop)
+        for idx, angle in islice(enumerate(self._angles), start, stop, step):
+            basis, col_idx = self._rev_gadget_idxs[idx]
             col = self._matrix[basis][:, col_idx]
             yield PhaseGadget(basis, angle, {i for i, b in enumerate(col) if b % 2 == 1})
 
@@ -1255,6 +1354,12 @@ class PhaseCircuitView(Generic[AngleT]):
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
+<li>collections.abc.Sequence</li>
+<li>collections.abc.Reversible</li>
+<li>collections.abc.Collection</li>
+<li>collections.abc.Sized</li>
+<li>collections.abc.Iterable</li>
+<li>collections.abc.Container</li>
 <li>typing.Generic</li>
 </ul>
 <h3>Static methods</h3>
@@ -1433,8 +1538,10 @@ because the internal numpy arrays have to be copied in the process.</p>
     for q in gadget.qubits:
         new_col[q] = 1
     self._matrix[basis] = np.append(self._matrix[basis], new_col, axis=1)
+    self._rev_gadget_idxs.append((basis, len(self._gadget_idxs[gadget.basis])))
     self._gadget_idxs[basis].append(gadget_idx)
     self._angles.append(gadget.angle)
+    self._gadget_legs_cache[basis].append(tuple(sorted(gadget.qubits)))
     return self</code></pre>
 </details>
 </dd>

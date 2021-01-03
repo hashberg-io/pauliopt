@@ -24,25 +24,25 @@ class AngleProtocol(Protocol[AngleT]):
     def __neg__(self: AngleT) -> AngleT:
         ...
 
-    def __pos__(self) -> AngleT:
+    def __pos__(self: AngleT) -> AngleT:
         ...
 
-    def __add__(self, other: AngleT) -> AngleT:
+    def __add__(self: AngleT, other: AngleT) -> AngleT:
         ...
 
-    def __sub__(self, other: AngleT) -> AngleT:
+    def __sub__(self: AngleT, other: AngleT) -> AngleT:
         ...
 
-    def __mul__(self, other: Union[int, Fraction]) -> AngleT:
+    def __mul__(self: AngleT, other: Union[int, Fraction]) -> AngleT:
         ...
 
-    def __rmul__(self, other: Union[int, Fraction]) -> AngleT:
+    def __rmul__(self: AngleT, other: Union[int, Fraction]) -> AngleT:
         ...
 
-    def __truediv__(self, other: Union[int, Fraction]) -> AngleT:
+    def __truediv__(self: AngleT, other: Union[int, Fraction]) -> AngleT:
         ...
 
-    def __float__(self) -> float:
+    def __float__(self: AngleT) -> float:
         ...
 
 
