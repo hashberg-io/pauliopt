@@ -496,6 +496,33 @@ class PhaseCircuit(Generic[AngleT], Sequence[PhaseGadget[AngleT]]):
             self.rx(qubit, sign*pi/2)
             self.rz(qubit, sign*pi/2)
         return self
+    
+    def cu1(self, ctrl: int, tgt: int, angle: Angle) -> "PhaseCircuit[AngleT]":
+        self.add_gadget(Z(-angle) @ {ctrl, tgt})
+        self.rz(ctrl, angle)
+        self.rz(tgt, angle)
+        return self
+
+    def crz(self, ctrl: int, tgt: int, angle: Angle) -> "PhaseCircuit[AngleT]":
+        self.add_gadget(Z(-angle / 2) @ {ctrl, tgt})
+        self.rz(tgt, angle / 2)
+        return self
+    
+    def crx(self, ctrl: int, tgt: int, angle: Angle) -> "PhaseCircuit[AngleT]":
+        self.h(tgt)
+        self.crz(ctrl, tgt, angle)
+        self.h(tgt, sign=-1)
+        return self
+    
+    def cz(self, leg1: int, leg2: int) -> "PhaseCircuit[AngleT]":
+        self.cu1(leg1, leg2, pi / 2)
+        return self
+
+    def cx(self, ctrl: int, tgt: int):
+        self.h(tgt)
+        self.cz(ctrl, tgt)
+        self.h(tgt, sign=-1)
+        return self
 
     def add_gadget(self, gadget: PhaseGadget) -> "PhaseCircuit":
         """
