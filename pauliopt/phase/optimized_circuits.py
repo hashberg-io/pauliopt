@@ -5,13 +5,13 @@
 
 from collections import deque
 from math import ceil, log10
-from typing import (Deque, Dict, FrozenSet, List, Literal, Optional, Protocol,
+from typing import (Deque, Dict, List, Optional, Protocol,
                     runtime_checkable, Set, Tuple, TypedDict, Union)
 import numpy as np # type: ignore
-from pauliopt.phase.phase_circuits import PhaseGadget, PhaseCircuit, PhaseCircuitView
+from pauliopt.phase.phase_circuits import PhaseCircuit, PhaseCircuitView
 from pauliopt.phase.cx_circuits import CXCircuitLayer, CXCircuit, CXCircuitView
 from pauliopt.topologies import Topology
-from pauliopt.utils import (Angle, TempSchedule, StandardTempSchedule,
+from pauliopt.utils import (TempSchedule, StandardTempSchedule,
                             StandardTempSchedules, SVGBuilder)
 
 @runtime_checkable
@@ -455,7 +455,7 @@ class OptimizedPhaseCircuit:
                 scale: float = 1.0,
                 svg_code_only: bool = False
                 ):
-        # pylint: disable = too-many-locals, too-many-statements
+        # pylint: disable = too-many-locals, too-many-statements, too-many-branches
         # TODO: reuse from phase circuit once cleaned up and restructured
         num_qubits = self.num_qubits
         vscale *= scale

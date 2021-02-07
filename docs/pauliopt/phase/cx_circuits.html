@@ -227,8 +227,9 @@ class CXCircuitLayer:
              figsize: Optional[Tuple[int, int]] = None,
              zcolor: str = &#34;#CCFFCC&#34;,
              xcolor: str = &#34;#FF8888&#34;,
+             noshow: bool = False,
              **kwargs):
-        # pylint: disable = too-many-locals
+        # pylint: disable = too-many-locals, too-many-branches
         &#34;&#34;&#34;
             Draws this CX circuit layer using NetworkX and Matplotlib.
 
@@ -275,9 +276,11 @@ class CXCircuitLayer:
         for ctrl, trgt in self.gates:
             edge_idx = edges.index(Coupling(ctrl, trgt))
             kwargs[&#34;edge_color&#34;][edge_idx] = &#34;#000000&#34;
-        plt.figure(figsize=figsize)
+        if not noshow:
+            plt.figure(figsize=figsize)
         nx.draw_networkx(G, **kwargs)
-        plt.show()
+        if not noshow:
+            plt.show()
 
     def __irshift__(self, gates: Union[GateLike, Sequence[GateLike]]) -&gt; &#34;CXCircuitLayer&#34;:
         if (isinstance(gates, (list, tuple))
@@ -384,10 +387,24 @@ class CXCircuit(Sequence[CXCircuitLayer]):
             Draws this CX circuit using NetworkX and Matplotlib.
             Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
         &#34;&#34;&#34;
+        try:
+            # pylint: disable = import-outside-toplevel
+            import matplotlib.pyplot as plt # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;matplotlib&#39; library.&#34;)
+        large_figsize = None
+        if figsize is not None:
+            w, h = figsize
+            large_figsize = (w*len(self), h)
+        plt.figure(figsize=large_figsize)
+        # plt.tight_layout()
+        plt.subplots_adjust(wspace=0)
         for layer_idx, layer in enumerate(self):
-            print(f&#34;Layer {layer_idx}:&#34;)
-            layer.draw(layout=layout, figsize=figsize,
+            # print(f&#34;Layer {layer_idx}:&#34;)
+            plt.subplot(1, len(self), layer_idx+1, title=f&#34;Layer {layer_idx}&#34;)
+            layer.draw(layout=layout, figsize=figsize, noshow=True,
                        zcolor=zcolor, xcolor=xcolor, **kwargs)
+        plt.show()
 
     @overload
     def __getitem__(self, layer_idx: int) -&gt; CXCircuitLayer:
@@ -712,10 +729,24 @@ and constrained by a given qubit topology.</p></div>
             Draws this CX circuit using NetworkX and Matplotlib.
             Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
         &#34;&#34;&#34;
+        try:
+            # pylint: disable = import-outside-toplevel
+            import matplotlib.pyplot as plt # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError(&#34;You must install the &#39;matplotlib&#39; library.&#34;)
+        large_figsize = None
+        if figsize is not None:
+            w, h = figsize
+            large_figsize = (w*len(self), h)
+        plt.figure(figsize=large_figsize)
+        # plt.tight_layout()
+        plt.subplots_adjust(wspace=0)
         for layer_idx, layer in enumerate(self):
-            print(f&#34;Layer {layer_idx}:&#34;)
-            layer.draw(layout=layout, figsize=figsize,
+            # print(f&#34;Layer {layer_idx}:&#34;)
+            plt.subplot(1, len(self), layer_idx+1, title=f&#34;Layer {layer_idx}&#34;)
+            layer.draw(layout=layout, figsize=figsize, noshow=True,
                        zcolor=zcolor, xcolor=xcolor, **kwargs)
+        plt.show()
 
     @overload
     def __getitem__(self, layer_idx: int) -&gt; CXCircuitLayer:
@@ -876,10 +907,24 @@ Keyword arguments <code>kwargs</code> are those of <code>networkx.draw_networkx<
         Draws this CX circuit using NetworkX and Matplotlib.
         Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
     &#34;&#34;&#34;
+    try:
+        # pylint: disable = import-outside-toplevel
+        import matplotlib.pyplot as plt # type: ignore
+    except ModuleNotFoundError as _:
+        raise ModuleNotFoundError(&#34;You must install the &#39;matplotlib&#39; library.&#34;)
+    large_figsize = None
+    if figsize is not None:
+        w, h = figsize
+        large_figsize = (w*len(self), h)
+    plt.figure(figsize=large_figsize)
+    # plt.tight_layout()
+    plt.subplots_adjust(wspace=0)
     for layer_idx, layer in enumerate(self):
-        print(f&#34;Layer {layer_idx}:&#34;)
-        layer.draw(layout=layout, figsize=figsize,
-                   zcolor=zcolor, xcolor=xcolor, **kwargs)</code></pre>
+        # print(f&#34;Layer {layer_idx}:&#34;)
+        plt.subplot(1, len(self), layer_idx+1, title=f&#34;Layer {layer_idx}&#34;)
+        layer.draw(layout=layout, figsize=figsize, noshow=True,
+                   zcolor=zcolor, xcolor=xcolor, **kwargs)
+    plt.show()</code></pre>
 </details>
 </dd>
 </dl>
@@ -1081,8 +1126,9 @@ and to efficiently determine whether a CX gate can be added to the layer.</p></d
              figsize: Optional[Tuple[int, int]] = None,
              zcolor: str = &#34;#CCFFCC&#34;,
              xcolor: str = &#34;#FF8888&#34;,
+             noshow: bool = False,
              **kwargs):
-        # pylint: disable = too-many-locals
+        # pylint: disable = too-many-locals, too-many-branches
         &#34;&#34;&#34;
             Draws this CX circuit layer using NetworkX and Matplotlib.
 
@@ -1129,9 +1175,11 @@ and to efficiently determine whether a CX gate can be added to the layer.</p></d
         for ctrl, trgt in self.gates:
             edge_idx = edges.index(Coupling(ctrl, trgt))
             kwargs[&#34;edge_color&#34;][edge_idx] = &#34;#000000&#34;
-        plt.figure(figsize=figsize)
+        if not noshow:
+            plt.figure(figsize=figsize)
         nx.draw_networkx(G, **kwargs)
-        plt.show()
+        if not noshow:
+            plt.show()
 
     def __irshift__(self, gates: Union[GateLike, Sequence[GateLike]]) -&gt; &#34;CXCircuitLayer&#34;:
         if (isinstance(gates, (list, tuple))
@@ -1297,7 +1345,7 @@ def topology(self) -&gt; Topology:
 </details>
 </dd>
 <dt id="pauliopt.phase.cx_circuits.CXCircuitLayer.draw"><code class="name flex">
-<span>def <span class="ident">draw</span></span>(<span>self, layout: str = 'kamada_kawai', *, figsize: Union[Tuple[int, int], NoneType] = None, zcolor: str = '#CCFFCC', xcolor: str = '#FF8888', **kwargs)</span>
+<span>def <span class="ident">draw</span></span>(<span>self, layout: str = 'kamada_kawai', *, figsize: Union[Tuple[int, int], NoneType] = None, zcolor: str = '#CCFFCC', xcolor: str = '#FF8888', noshow: bool = False, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Draws this CX circuit layer using NetworkX and Matplotlib.</p>
@@ -1316,8 +1364,9 @@ Keyword arguments <code>kwargs</code> are those of <code>networkx.draw_networkx<
          figsize: Optional[Tuple[int, int]] = None,
          zcolor: str = &#34;#CCFFCC&#34;,
          xcolor: str = &#34;#FF8888&#34;,
+         noshow: bool = False,
          **kwargs):
-    # pylint: disable = too-many-locals
+    # pylint: disable = too-many-locals, too-many-branches
     &#34;&#34;&#34;
         Draws this CX circuit layer using NetworkX and Matplotlib.
 
@@ -1364,9 +1413,11 @@ Keyword arguments <code>kwargs</code> are those of <code>networkx.draw_networkx<
     for ctrl, trgt in self.gates:
         edge_idx = edges.index(Coupling(ctrl, trgt))
         kwargs[&#34;edge_color&#34;][edge_idx] = &#34;#000000&#34;
-    plt.figure(figsize=figsize)
+    if not noshow:
+        plt.figure(figsize=figsize)
     nx.draw_networkx(G, **kwargs)
-    plt.show()</code></pre>
+    if not noshow:
+        plt.show()</code></pre>
 </details>
 </dd>
 <dt id="pauliopt.phase.cx_circuits.CXCircuitLayer.flip_cx"><code class="name flex">

@@ -445,7 +445,7 @@ class QASM(Sequence["QASM.Statement"]):
                     or not all(isinstance(p, QASM.RegTarget) for p in targets)):
                 raise TypeError(f"Invalid sequence of register targets: {targets}")
             if not targets:
-                raise TypeError(f"Empty sequence of register targets.")
+                raise TypeError("Empty sequence of register targets.")
             if (not isinstance(params, Sequence)
                     or not all(isinstance(p, Angle) for p in params)):
                 raise TypeError(f"Invalid sequence of angle parameters: {params}")

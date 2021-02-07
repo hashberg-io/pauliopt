@@ -109,7 +109,9 @@ class TopologyDict(TypedDict, total=True):
 
 Layouts: Final[Tuple[str, ...]] = (&#34;circular&#34;, &#34;kamada_kawai&#34;, &#34;random&#34;,
                                    &#34;shell&#34;, &#34;spring&#34;, &#34;spectral&#34;, &#34;spiral&#34;)
-
+&#34;&#34;&#34;
+    Possible layout values for `Topology.draw`
+&#34;&#34;&#34;
 
 
 def _floyd_warshall(topology: &#34;Topology&#34;) -&gt; np.ndarray:
@@ -638,6 +640,10 @@ class Matching:
 namely any collection of <code>int</code> (subject to additional restrictions).</p>
 <p>In an ideal world, this should be "int collections of len 2",
 but static typing does not yet allow for such a constraint.</p></div>
+</dd>
+<dt id="pauliopt.topologies.Layouts"><code class="name">var <span class="ident">Layouts</span> : Final[Tuple[str, ...]]</code></dt>
+<dd>
+<div class="desc"><p>Possible layout values for <code><a title="pauliopt.topologies.Topology.draw" href="#pauliopt.topologies.Topology.draw">Topology.draw()</a></code></p></div>
 </dd>
 </dl>
 </section>
@@ -1943,6 +1949,7 @@ suitable for JSON serialization.</p></div>
 <li><h3><a href="#header-variables">Global variables</a></h3>
 <ul class="">
 <li><code><a title="pauliopt.topologies.CouplingLike" href="#pauliopt.topologies.CouplingLike">CouplingLike</a></code></li>
+<li><code><a title="pauliopt.topologies.Layouts" href="#pauliopt.topologies.Layouts">Layouts</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>

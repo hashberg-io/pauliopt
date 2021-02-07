@@ -524,7 +524,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         """ Phase gadget implementation of CRY gate. """
         ... # TODO: implement this
         raise NotImplementedError()
-        return self
+        # return self
 
     def crx(self, ctrl: int, tgt: int, angle: Angle) -> "PhaseCircuit":
         """ Phase gadget implementation of CRX gate. """
@@ -542,7 +542,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         """ Phase gadget implementation of CY gate. """
         ... # TODO: implement this
         raise NotImplementedError()
-        return self
+        # return self
 
     def cx(self, ctrl: int, tgt: int):
         """ Phase gadget implementation of CX gate. """
@@ -555,7 +555,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         """ Phase gadget implementation of U3 gate. """
         ... # TODO: implement this
         raise NotImplementedError()
-        return self
+        # return self
 
     def add_gadget(self, gadget: PhaseGadget) -> "PhaseCircuit":
         """

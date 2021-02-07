@@ -197,7 +197,7 @@ class CXCircuitLayer:
              xcolor: str = "#FF8888",
              noshow: bool = False,
              **kwargs):
-        # pylint: disable = too-many-locals
+        # pylint: disable = too-many-locals, too-many-branches
         """
             Draws this CX circuit layer using NetworkX and Matplotlib.
 

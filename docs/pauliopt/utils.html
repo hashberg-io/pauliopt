@@ -36,50 +36,11 @@ import math
 from decimal import Decimal
 from fractions import Fraction
 from typing import (Final, List, Literal, Mapping, Optional, overload,
-                    Protocol, runtime_checkable, Sequence, Tuple, TypeVar, Union)
-
-AngleT = TypeVar(&#34;AngleT&#34;, bound=&#34;AngleProtocol&#34;)
-&#34;&#34;&#34;
-    Type variable for something fitting the `AngleProtocol` protocol below.
-&#34;&#34;&#34;
-
-@runtime_checkable
-class AngleProtocol(Protocol[AngleT]):
-    &#34;&#34;&#34;
-        A protocol for an angle type.
-
-        Copyright (C) 2019 - Hashberg Ltd
-    &#34;&#34;&#34;
-
-    def __neg__(self: AngleT) -&gt; AngleT:
-        ...
-
-    def __pos__(self: AngleT) -&gt; AngleT:
-        ...
-
-    def __add__(self: AngleT, other: AngleT) -&gt; AngleT:
-        ...
-
-    def __sub__(self: AngleT, other: AngleT) -&gt; AngleT:
-        ...
-
-    def __mul__(self: AngleT, other: Union[int, Fraction]) -&gt; AngleT:
-        ...
-
-    def __rmul__(self: AngleT, other: Union[int, Fraction]) -&gt; AngleT:
-        ...
-
-    def __truediv__(self: AngleT, other: Union[int, Fraction]) -&gt; AngleT:
-        ...
-
-    def __float__(self: AngleT) -&gt; float:
-        ...
-
-
+                    Protocol, runtime_checkable, Sequence, Tuple, Union)
 
 AngleInitT = Union[int, Fraction, Decimal, str]
 
-class Angle(AngleProtocol[&#34;Angle&#34;]):
+class Angle:
     &#34;&#34;&#34;
         A container class for angles,
         as rational multiples of PI modulo 2PI.
@@ -124,6 +85,33 @@ class Angle(AngleProtocol[&#34;Angle&#34;]):
         den = self.value.denominator
         return den if num % 2 == 0 else 2*den
 
+    @property
+    def is_zero_or_pi(self) -&gt; bool:
+        &#34;&#34;&#34;
+            Whether this angle is a multiple of pi.
+        &#34;&#34;&#34;
+        num = self.value.numerator
+        den = self.value.denominator
+        return num % den == 0
+
+    @property
+    def is_zero(self) -&gt; bool:
+        &#34;&#34;&#34;
+            Whether this angle is a multiple of 2pi.
+        &#34;&#34;&#34;
+        num = self.value.numerator
+        den = self.value.denominator
+        return num % (2*den) == 0
+
+    @property
+    def is_pi(self) -&gt; bool:
+        &#34;&#34;&#34;
+            Whether this angle is an odd multiple of pi.
+        &#34;&#34;&#34;
+        num = self.value.numerator
+        den = self.value.denominator
+        return num % den == 0 and not num % (2*den) == 0
+
     def __pos__(self) -&gt; &#34;Angle&#34;:
         return self
 
@@ -138,6 +126,11 @@ class Angle(AngleProtocol[&#34;Angle&#34;]):
     def __sub__(self, other: &#34;Angle&#34;) -&gt; &#34;Angle&#34;:
         if isinstance(other, Angle):
             return Angle(self._value - other._value)
+        return NotImplemented
+
+    def __mod__(self, other: &#34;Angle&#34;) -&gt; &#34;Angle&#34;:
+        if isinstance(other, Angle):
+            return Angle(self._value % other._value)
         return NotImplemented
 
     def __mul__(self, other: Union[int, Fraction, str]) -&gt; &#34;Angle&#34;:
@@ -203,6 +196,8 @@ class Angle(AngleProtocol[&#34;Angle&#34;]):
         return &#34;$%s$&#34;%self.repr_latex
 
     def __eq__(self, other):
+        if other == 0:
+            return self.value == 0
         if not isinstance(other, Angle):
             return NotImplemented
         return self.value == other.value
@@ -285,8 +280,6 @@ class SVGBuilder:
 
     _width: int
     _height: int
-    _fill: str
-    _stroke: str
     _tags: List[str]
 
     def __init__(self, width: int, height: int):
@@ -296,8 +289,6 @@ class SVGBuilder:
             raise TypeError(&#34;Height should be positive integer.&#34;)
         self._width = width
         self._height = height
-        self._fill = &#34;none&#34;
-        self._stroke = &#34;black&#34;
         self._tags = []
 
     @property
@@ -307,12 +298,30 @@ class SVGBuilder:
         &#34;&#34;&#34;
         return self._width
 
+    @width.setter
+    def width(self, new_width: int):
+        &#34;&#34;&#34;
+            Set the figure width.
+        &#34;&#34;&#34;
+        if not isinstance(new_width, int) or new_width &lt;= 0:
+            raise TypeError(&#34;Width should be positive integer.&#34;)
+        self._width = new_width
+
     @property
     def height(self) -&gt; int:
         &#34;&#34;&#34;
             The figure height.
         &#34;&#34;&#34;
         return self._height
+
+    @height.setter
+    def height(self, new_height: int):
+        &#34;&#34;&#34;
+            Set the figure height.
+        &#34;&#34;&#34;
+        if not isinstance(new_height, int) or new_height &lt;= 0:
+            raise TypeError(&#34;Height should be positive integer.&#34;)
+        self._height = new_height
 
     @property
     def tags(self) -&gt; Sequence[str]:
@@ -362,8 +371,20 @@ class SVGBuilder:
         return self
 
     def __repr__(self) -&gt; str:
+        # pylint: disable = line-too-long
         body = &#34;\n&#34;.join(self._tags)
-        return f&#39;&lt;svg width=&#34;{self.width}&#34; height=&#34;{self.height}&#34;&gt;{body}&lt;/svg&gt;&#39;
+        headers = &#34;\n&#34;.join([
+            &#39;&lt;?xml version=&#34;1.0&#34; encoding=&#34;utf-8&#34;?&gt;&#39;,
+            &#39;&lt;!DOCTYPE svg PUBLIC &#34;-//W3C//DTD SVG 1.1//EN&#34; &#34;http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd&#34;&gt;&#39;,
+        ])
+        return f&#39;{headers}\n&lt;svg version=&#34;1.1&#34; xmlns=&#34;http://www.w3.org/2000/svg&#34; xmlns:xlink=&#34;http://www.w3.org/1999/xlink&#34; width=&#34;{self.width}&#34; height=&#34;{self.height}&#34;&gt;{body}\n&lt;/svg&gt;&#39;
+
+    def __irshift__(self, other: &#34;SVGBuilder&#34;) -&gt; &#34;SVGBuilder&#34;:
+        if not isinstance(other, SVGBuilder):
+            raise TypeError(f&#34;Expected SVGBuilder, found {type(other)}&#34;)
+        for tag in other._tags:
+            self._tags.append(tag)
+        return self
 
 
 @runtime_checkable
@@ -478,10 +499,6 @@ StandardTempSchedules: Final[Mapping[StandardTempScheduleName, TempScheduleProvi
 <section>
 <h2 class="section-title" id="header-variables">Global variables</h2>
 <dl>
-<dt id="pauliopt.utils.AngleT"><code class="name">var <span class="ident">AngleT</span></code></dt>
-<dd>
-<div class="desc"><p>Type variable for something fitting the <code><a title="pauliopt.utils.AngleProtocol" href="#pauliopt.utils.AngleProtocol">AngleProtocol</a></code> protocol below.</p></div>
-</dd>
 <dt id="pauliopt.utils.StandardTempSchedule"><code class="name">var <span class="ident">StandardTempSchedule</span></code></dt>
 <dd>
 <div class="desc"><p>Type for standard temperature schedules.</p></div>
@@ -624,7 +641,7 @@ as rational multiples of PI modulo 2PI.</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class Angle(AngleProtocol[&#34;Angle&#34;]):
+<pre><code class="python">class Angle:
     &#34;&#34;&#34;
         A container class for angles,
         as rational multiples of PI modulo 2PI.
@@ -669,6 +686,33 @@ as rational multiples of PI modulo 2PI.</p>
         den = self.value.denominator
         return den if num % 2 == 0 else 2*den
 
+    @property
+    def is_zero_or_pi(self) -&gt; bool:
+        &#34;&#34;&#34;
+            Whether this angle is a multiple of pi.
+        &#34;&#34;&#34;
+        num = self.value.numerator
+        den = self.value.denominator
+        return num % den == 0
+
+    @property
+    def is_zero(self) -&gt; bool:
+        &#34;&#34;&#34;
+            Whether this angle is a multiple of 2pi.
+        &#34;&#34;&#34;
+        num = self.value.numerator
+        den = self.value.denominator
+        return num % (2*den) == 0
+
+    @property
+    def is_pi(self) -&gt; bool:
+        &#34;&#34;&#34;
+            Whether this angle is an odd multiple of pi.
+        &#34;&#34;&#34;
+        num = self.value.numerator
+        den = self.value.denominator
+        return num % den == 0 and not num % (2*den) == 0
+
     def __pos__(self) -&gt; &#34;Angle&#34;:
         return self
 
@@ -683,6 +727,11 @@ as rational multiples of PI modulo 2PI.</p>
     def __sub__(self, other: &#34;Angle&#34;) -&gt; &#34;Angle&#34;:
         if isinstance(other, Angle):
             return Angle(self._value - other._value)
+        return NotImplemented
+
+    def __mod__(self, other: &#34;Angle&#34;) -&gt; &#34;Angle&#34;:
+        if isinstance(other, Angle):
+            return Angle(self._value % other._value)
         return NotImplemented
 
     def __mul__(self, other: Union[int, Fraction, str]) -&gt; &#34;Angle&#34;:
@@ -748,6 +797,8 @@ as rational multiples of PI modulo 2PI.</p>
         return &#34;$%s$&#34;%self.repr_latex
 
     def __eq__(self, other):
+        if other == 0:
+            return self.value == 0
         if not isinstance(other, Angle):
             return NotImplemented
         return self.value == other.value
@@ -804,12 +855,6 @@ as rational multiples of PI modulo 2PI.</p>
     pi: Final[&#34;Angle&#34;] # type: ignore
     &#34;&#34;&#34; A constant for the angle pi. &#34;&#34;&#34;</code></pre>
 </details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li><a title="pauliopt.utils.AngleProtocol" href="#pauliopt.utils.AngleProtocol">AngleProtocol</a></li>
-<li>typing.Protocol</li>
-<li>typing.Generic</li>
-</ul>
 <h3>Class variables</h3>
 <dl>
 <dt id="pauliopt.utils.Angle.pi"><code class="name">var <span class="ident">pi</span> : Final[<a title="pauliopt.utils.Angle" href="#pauliopt.utils.Angle">Angle</a>]</code></dt>
@@ -890,6 +935,57 @@ def as_root_of_unity(self) -&gt; Tuple[int, int]:
     return (a, order)</code></pre>
 </details>
 </dd>
+<dt id="pauliopt.utils.Angle.is_pi"><code class="name">var <span class="ident">is_pi</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>Whether this angle is an odd multiple of pi.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def is_pi(self) -&gt; bool:
+    &#34;&#34;&#34;
+        Whether this angle is an odd multiple of pi.
+    &#34;&#34;&#34;
+    num = self.value.numerator
+    den = self.value.denominator
+    return num % den == 0 and not num % (2*den) == 0</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.utils.Angle.is_zero"><code class="name">var <span class="ident">is_zero</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>Whether this angle is a multiple of 2pi.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def is_zero(self) -&gt; bool:
+    &#34;&#34;&#34;
+        Whether this angle is a multiple of 2pi.
+    &#34;&#34;&#34;
+    num = self.value.numerator
+    den = self.value.denominator
+    return num % (2*den) == 0</code></pre>
+</details>
+</dd>
+<dt id="pauliopt.utils.Angle.is_zero_or_pi"><code class="name">var <span class="ident">is_zero_or_pi</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>Whether this angle is a multiple of pi.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def is_zero_or_pi(self) -&gt; bool:
+    &#34;&#34;&#34;
+        Whether this angle is a multiple of pi.
+    &#34;&#34;&#34;
+    num = self.value.numerator
+    den = self.value.denominator
+    return num % den == 0</code></pre>
+</details>
+</dd>
 <dt id="pauliopt.utils.Angle.order"><code class="name">var <span class="ident">order</span></code></dt>
 <dd>
 <div class="desc"><p>The order of this angle as a root of unity.</p></div>
@@ -947,58 +1043,6 @@ def value(self) -&gt; Fraction:
 </dd>
 </dl>
 </dd>
-<dt id="pauliopt.utils.AngleProtocol"><code class="flex name class">
-<span>class <span class="ident">AngleProtocol</span></span>
-<span>(</span><span>*args, **kwargs)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>A protocol for an angle type.</p>
-<p>Copyright (C) 2019 - Hashberg Ltd</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">class AngleProtocol(Protocol[AngleT]):
-    &#34;&#34;&#34;
-        A protocol for an angle type.
-
-        Copyright (C) 2019 - Hashberg Ltd
-    &#34;&#34;&#34;
-
-    def __neg__(self: AngleT) -&gt; AngleT:
-        ...
-
-    def __pos__(self: AngleT) -&gt; AngleT:
-        ...
-
-    def __add__(self: AngleT, other: AngleT) -&gt; AngleT:
-        ...
-
-    def __sub__(self: AngleT, other: AngleT) -&gt; AngleT:
-        ...
-
-    def __mul__(self: AngleT, other: Union[int, Fraction]) -&gt; AngleT:
-        ...
-
-    def __rmul__(self: AngleT, other: Union[int, Fraction]) -&gt; AngleT:
-        ...
-
-    def __truediv__(self: AngleT, other: Union[int, Fraction]) -&gt; AngleT:
-        ...
-
-    def __float__(self: AngleT) -&gt; float:
-        ...</code></pre>
-</details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li>typing.Protocol</li>
-<li>typing.Generic</li>
-</ul>
-<h3>Subclasses</h3>
-<ul class="hlist">
-<li><a title="pauliopt.utils.Angle" href="#pauliopt.utils.Angle">Angle</a></li>
-</ul>
-</dd>
 <dt id="pauliopt.utils.SVGBuilder"><code class="flex name class">
 <span>class <span class="ident">SVGBuilder</span></span>
 <span>(</span><span>width: int, height: int)</span>
@@ -1018,8 +1062,6 @@ Follows the <a href="https://en.wikipedia.org/wiki/Fluent_interface">Fluent inte
 
     _width: int
     _height: int
-    _fill: str
-    _stroke: str
     _tags: List[str]
 
     def __init__(self, width: int, height: int):
@@ -1029,8 +1071,6 @@ Follows the <a href="https://en.wikipedia.org/wiki/Fluent_interface">Fluent inte
             raise TypeError(&#34;Height should be positive integer.&#34;)
         self._width = width
         self._height = height
-        self._fill = &#34;none&#34;
-        self._stroke = &#34;black&#34;
         self._tags = []
 
     @property
@@ -1040,12 +1080,30 @@ Follows the <a href="https://en.wikipedia.org/wiki/Fluent_interface">Fluent inte
         &#34;&#34;&#34;
         return self._width
 
+    @width.setter
+    def width(self, new_width: int):
+        &#34;&#34;&#34;
+            Set the figure width.
+        &#34;&#34;&#34;
+        if not isinstance(new_width, int) or new_width &lt;= 0:
+            raise TypeError(&#34;Width should be positive integer.&#34;)
+        self._width = new_width
+
     @property
     def height(self) -&gt; int:
         &#34;&#34;&#34;
             The figure height.
         &#34;&#34;&#34;
         return self._height
+
+    @height.setter
+    def height(self, new_height: int):
+        &#34;&#34;&#34;
+            Set the figure height.
+        &#34;&#34;&#34;
+        if not isinstance(new_height, int) or new_height &lt;= 0:
+            raise TypeError(&#34;Height should be positive integer.&#34;)
+        self._height = new_height
 
     @property
     def tags(self) -&gt; Sequence[str]:
@@ -1095,8 +1153,20 @@ Follows the <a href="https://en.wikipedia.org/wiki/Fluent_interface">Fluent inte
         return self
 
     def __repr__(self) -&gt; str:
+        # pylint: disable = line-too-long
         body = &#34;\n&#34;.join(self._tags)
-        return f&#39;&lt;svg width=&#34;{self.width}&#34; height=&#34;{self.height}&#34;&gt;{body}&lt;/svg&gt;&#39;</code></pre>
+        headers = &#34;\n&#34;.join([
+            &#39;&lt;?xml version=&#34;1.0&#34; encoding=&#34;utf-8&#34;?&gt;&#39;,
+            &#39;&lt;!DOCTYPE svg PUBLIC &#34;-//W3C//DTD SVG 1.1//EN&#34; &#34;http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd&#34;&gt;&#39;,
+        ])
+        return f&#39;{headers}\n&lt;svg version=&#34;1.1&#34; xmlns=&#34;http://www.w3.org/2000/svg&#34; xmlns:xlink=&#34;http://www.w3.org/1999/xlink&#34; width=&#34;{self.width}&#34; height=&#34;{self.height}&#34;&gt;{body}\n&lt;/svg&gt;&#39;
+
+    def __irshift__(self, other: &#34;SVGBuilder&#34;) -&gt; &#34;SVGBuilder&#34;:
+        if not isinstance(other, SVGBuilder):
+            raise TypeError(f&#34;Expected SVGBuilder, found {type(other)}&#34;)
+        for tag in other._tags:
+            self._tags.append(tag)
+        return self</code></pre>
 </details>
 <h3>Instance variables</h3>
 <dl>
@@ -1292,7 +1362,6 @@ from an initial and final temperatures.</p></div>
 </li>
 <li><h3><a href="#header-variables">Global variables</a></h3>
 <ul class="">
-<li><code><a title="pauliopt.utils.AngleT" href="#pauliopt.utils.AngleT">AngleT</a></code></li>
 <li><code><a title="pauliopt.utils.StandardTempSchedule" href="#pauliopt.utils.StandardTempSchedule">StandardTempSchedule</a></code></li>
 <li><code><a title="pauliopt.utils.StandardTempScheduleName" href="#pauliopt.utils.StandardTempScheduleName">StandardTempScheduleName</a></code></li>
 <li><code><a title="pauliopt.utils.StandardTempSchedules" href="#pauliopt.utils.StandardTempSchedules">StandardTempSchedules</a></code></li>
@@ -1314,6 +1383,9 @@ from an initial and final temperatures.</p></div>
 <h4><code><a title="pauliopt.utils.Angle" href="#pauliopt.utils.Angle">Angle</a></code></h4>
 <ul class="two-column">
 <li><code><a title="pauliopt.utils.Angle.as_root_of_unity" href="#pauliopt.utils.Angle.as_root_of_unity">as_root_of_unity</a></code></li>
+<li><code><a title="pauliopt.utils.Angle.is_pi" href="#pauliopt.utils.Angle.is_pi">is_pi</a></code></li>
+<li><code><a title="pauliopt.utils.Angle.is_zero" href="#pauliopt.utils.Angle.is_zero">is_zero</a></code></li>
+<li><code><a title="pauliopt.utils.Angle.is_zero_or_pi" href="#pauliopt.utils.Angle.is_zero_or_pi">is_zero_or_pi</a></code></li>
 <li><code><a title="pauliopt.utils.Angle.order" href="#pauliopt.utils.Angle.order">order</a></code></li>
 <li><code><a title="pauliopt.utils.Angle.pi" href="#pauliopt.utils.Angle.pi">pi</a></code></li>
 <li><code><a title="pauliopt.utils.Angle.random" href="#pauliopt.utils.Angle.random">random</a></code></li>
@@ -1321,9 +1393,6 @@ from an initial and final temperatures.</p></div>
 <li><code><a title="pauliopt.utils.Angle.value" href="#pauliopt.utils.Angle.value">value</a></code></li>
 <li><code><a title="pauliopt.utils.Angle.zero" href="#pauliopt.utils.Angle.zero">zero</a></code></li>
 </ul>
-</li>
-<li>
-<h4><code><a title="pauliopt.utils.AngleProtocol" href="#pauliopt.utils.AngleProtocol">AngleProtocol</a></code></h4>
 </li>
 <li>
 <h4><code><a title="pauliopt.utils.SVGBuilder" href="#pauliopt.utils.SVGBuilder">SVGBuilder</a></code></h4>
