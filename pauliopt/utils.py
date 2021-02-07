@@ -341,8 +341,13 @@ class SVGBuilder:
         return self
 
     def __repr__(self) -> str:
+        # pylint: disable = line-too-long
         body = "\n".join(self._tags)
-        return f'<svg width="{self.width}" height="{self.height}">{body}</svg>'
+        headers = "\n".join([
+            '<?xml version="1.0" encoding="utf-8"?>',
+            '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">',
+        ])
+        return f'{headers}\n<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{self.width}" height="{self.height}">{body}\n</svg>'
 
     def __irshift__(self, other: "SVGBuilder") -> "SVGBuilder":
         if not isinstance(other, SVGBuilder):
