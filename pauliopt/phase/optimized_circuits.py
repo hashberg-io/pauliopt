@@ -5,13 +5,13 @@
 
 from collections import deque
 from math import ceil, log10
-from typing import (Deque, Dict, Generic, List, Optional, Protocol, runtime_checkable,
-                    Set, Tuple, TypedDict, Union)
+from typing import (Deque, Dict, FrozenSet, List, Literal, Optional, Protocol,
+                    runtime_checkable, Set, Tuple, TypedDict, Union)
 import numpy as np # type: ignore
-from pauliopt.phase.phase_circuits import PhaseCircuit, PhaseCircuitView
+from pauliopt.phase.phase_circuits import PhaseGadget, PhaseCircuit, PhaseCircuitView
 from pauliopt.phase.cx_circuits import CXCircuitLayer, CXCircuit, CXCircuitView
 from pauliopt.topologies import Topology
-from pauliopt.utils import (AngleT, TempSchedule, StandardTempSchedule,
+from pauliopt.utils import (Angle, TempSchedule, StandardTempSchedule,
                             StandardTempSchedules, SVGBuilder)
 
 @runtime_checkable
@@ -77,7 +77,7 @@ def _validate_loggers(loggers: AnnealingLoggers) -> Tuple[Optional[AnnealingCost
     return log_start, log_iter, log_end
 
 
-class OptimizedPhaseCircuit(Generic[AngleT]):
+class OptimizedPhaseCircuit:
     # pylint: disable = too-many-instance-attributes
     """
         Container for a phase circuit to be progressively optimized.
@@ -113,7 +113,7 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
 
     _topology: Topology
     _circuit_rep: int
-    _phase_block: PhaseCircuit[AngleT]
+    _phase_block: PhaseCircuit
     _phase_block_view: PhaseCircuitView
     _cx_block: CXCircuit
     _cx_block_view: CXCircuitView
@@ -125,7 +125,7 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
     _rng_seed: Optional[int]
     _rng: np.random.Generator
 
-    def __init__(self, phase_block: Union[PhaseCircuit[AngleT], PhaseCircuitView[AngleT]],
+    def __init__(self, phase_block: Union[PhaseCircuit, PhaseCircuitView],
                  topology: Topology,
                  cx_block: Union[int, CXCircuit, CXCircuitView],
                  *,
@@ -145,7 +145,7 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
             raise TypeError("RNG seed must be integer or None.")
         self._topology = topology
         self._circuit_rep = circuit_rep
-        self._phase_block = phase_block.clone()
+        self._phase_block = phase_block.cloned()
         if isinstance(cx_block, int):
             self._cx_block = CXCircuit(topology,
                                        [CXCircuitLayer(topology) for _ in range(cx_block)])
@@ -273,6 +273,15 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
             for ctrl, trgt in layer.gates:
                 circuit.cx(ctrl, trgt)
         return circuit
+
+    def simplify(self):
+        """
+            Simplifies the phase block according to the commutation and fusion
+            rules for phase gadgets.
+        """
+        self._phase_block = self._phase_block.simplified()
+        self._phase_block_view = PhaseCircuitView(self._phase_block)
+        self._gadget_cx_count_cache = {}
 
     def anneal(self,
                num_iters: int, *,
@@ -467,11 +476,9 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
             pre_cx_gates_depths.append(d)
             for q in range(m, M+1):
                 _layers[q] = d+1
-        post_cx_gates_depths: List[int] = [max_cx_gates_depth - d
-                                           for d in reversed(pre_cx_gates_depths)]
         num_digits = int(ceil(log10(num_qubits)))
         line_height = int(ceil(30*vscale))
-        row_width = int(ceil(100*hscale))
+        row_width = int(ceil(120*hscale))
         cx_row_width = int(ceil(40*hscale))
         pad_x = int(ceil(10*hscale))
         margin_x = int(ceil(40*hscale))
@@ -479,50 +486,80 @@ class OptimizedPhaseCircuit(Generic[AngleT]):
         r = pad_y//2-2
         font_size = 2*r
         pad_x += font_size*(num_digits+1)
-        delta_fst = row_width//2
-        delta_snd = 3*row_width//4
+        delta_fst = row_width//4
+        delta_snd = 2*row_width//4
         width = (2*pad_x + 2*margin_x + row_width*len(gadgets)
                  + 2*max_cx_gates_depth * cx_row_width)
         height = pad_y + line_height*(num_qubits+1)
         builder = SVGBuilder(width, height)
-        for q in range(num_qubits):
-            y = pad_y + (q+1) * line_height
-            builder.line((pad_x, y), (width-pad_x, y))
-            builder.text((0, y), f"{str(q):>{num_digits}}", font_size=font_size)
-            builder.text((width-pad_x+r, y), f"{str(q):>{num_digits}}", font_size=font_size)
-        for i, (ctrl, trgt) in enumerate(pre_cx_gates):
-            row = pre_cx_gates_depths[i]
-            x = pad_x + margin_x + row * cx_row_width
+        levels: List[int] = [0 for _ in range(num_qubits)]
+        max_lvl = 0
+        base_x = pad_x + margin_x
+        for (ctrl, trgt) in pre_cx_gates:
+            qubit_span = range(min(ctrl, trgt), max(ctrl, trgt)+1)
+            lvl = max(levels[q] for q in qubit_span)
+            max_lvl = max(max_lvl, lvl)
+            x = base_x + lvl * row_width//3
+            for q in qubit_span:
+                levels[q] = lvl+1
             y_ctrl = pad_y + (ctrl+1)*line_height
             y_trgt = pad_y + (trgt+1)*line_height
             builder.line((x, y_ctrl), (x, y_trgt))
             builder.circle((x, y_ctrl), r, zcolor)
             builder.circle((x, y_trgt), r, xcolor)
-        for _row, gadget in enumerate(gadgets):
+        base_x = base_x + (max_lvl+1) * row_width//3
+        levels = [0 for _ in range(num_qubits)]
+        max_lvl = 0
+        for gadget in gadgets:
             fill = zcolor if gadget.basis == "Z" else xcolor
             other_fill = xcolor if gadget.basis == "Z" else zcolor
-            row = _row
-            x = pad_x + margin_x + row * row_width + max_cx_gates_depth * cx_row_width
-            for q in gadget.qubits:
-                y = pad_y + (q+1)*line_height
-                builder.line((x, y), (x+delta_fst, pad_y))
-            for q in gadget.qubits:
-                y = pad_y + (q+1)*line_height
-                builder.circle((x, y), r, fill)
-            builder.line((x+delta_fst, pad_y), (x+delta_snd, pad_y))
-            builder.circle((x+delta_fst, pad_y), r, other_fill)
-            builder.circle((x+delta_snd, pad_y), r, fill)
-            builder.text((x+delta_snd+2*r, pad_y), str(gadget.angle), font_size=font_size)
-        for i, (ctrl, trgt) in enumerate(post_cx_gates):
-            row = post_cx_gates_depths[i]
-            x = (pad_x + margin_x + len(gadgets) * row_width
-                 + (row+max_cx_gates_depth) * cx_row_width)
+            qubit_span = range(min(gadget.qubits), max(gadget.qubits)+1)
+            lvl = max(levels[q] for q in qubit_span)
+            max_lvl = max(max_lvl, lvl)
+            x = base_x + lvl * row_width
+            for q in qubit_span:
+                levels[q] = lvl+1
+            if len(gadget.qubits) > 1:
+                text_y = pad_y+min(gadget.qubits)*line_height+line_height//2
+                for q in gadget.qubits:
+                    y = pad_y + (q+1)*line_height
+                    builder.line((x, y), (x+delta_fst, text_y))
+                for q in gadget.qubits:
+                    y = pad_y + (q+1)*line_height
+                    builder.circle((x, y), r, fill)
+                builder.line((x+delta_fst, text_y), (x+delta_snd, text_y))
+                builder.circle((x+delta_fst, text_y), r, other_fill)
+                builder.circle((x+delta_snd, text_y), r, fill)
+                builder.text((x+delta_snd+2*r, text_y), str(gadget.angle), font_size=font_size)
+            else:
+                for q in gadget.qubits:
+                    y = pad_y + (q+1)*line_height
+                    builder.circle((x, y), r, fill)
+                builder.text((x+r, y-line_height//3), str(gadget.angle), font_size=font_size)
+        base_x = base_x + (max_lvl+1) * row_width
+        levels = [0 for _ in range(num_qubits)]
+        max_lvl = 0
+        for (ctrl, trgt) in post_cx_gates:
+            qubit_span = range(min(ctrl, trgt), max(ctrl, trgt)+1)
+            lvl = max(levels[q] for q in qubit_span)
+            max_lvl = max(max_lvl, lvl)
+            x = base_x + lvl * row_width//3
+            for q in qubit_span:
+                levels[q] = lvl+1
             y_ctrl = pad_y + (ctrl+1)*line_height
             y_trgt = pad_y + (trgt+1)*line_height
             builder.line((x, y_ctrl), (x, y_trgt))
             builder.circle((x, y_ctrl), r, zcolor)
             builder.circle((x, y_trgt), r, xcolor)
-        svg_code = repr(builder)
+        width = base_x + max_lvl * row_width//3 + pad_x + margin_x
+        _builder = SVGBuilder(width, height)
+        for q in range(num_qubits):
+            y = pad_y + (q+1) * line_height
+            _builder.line((pad_x, y), (width-pad_x, y))
+            _builder.text((0, y), f"{str(q):>{num_digits}}", font_size=font_size)
+            _builder.text((width-pad_x+r, y), f"{str(q):>{num_digits}}", font_size=font_size)
+        _builder >>= builder
+        svg_code = repr(_builder)
         if svg_code_only:
             return svg_code
         try:

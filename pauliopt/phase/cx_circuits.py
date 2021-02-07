@@ -195,6 +195,7 @@ class CXCircuitLayer:
              figsize: Optional[Tuple[int, int]] = None,
              zcolor: str = "#CCFFCC",
              xcolor: str = "#FF8888",
+             noshow: bool = False,
              **kwargs):
         # pylint: disable = too-many-locals
         """
@@ -243,9 +244,11 @@ class CXCircuitLayer:
         for ctrl, trgt in self.gates:
             edge_idx = edges.index(Coupling(ctrl, trgt))
             kwargs["edge_color"][edge_idx] = "#000000"
-        plt.figure(figsize=figsize)
+        if not noshow:
+            plt.figure(figsize=figsize)
         nx.draw_networkx(G, **kwargs)
-        plt.show()
+        if not noshow:
+            plt.show()
 
     def __irshift__(self, gates: Union[GateLike, Sequence[GateLike]]) -> "CXCircuitLayer":
         if (isinstance(gates, (list, tuple))
@@ -352,10 +355,24 @@ class CXCircuit(Sequence[CXCircuitLayer]):
             Draws this CX circuit using NetworkX and Matplotlib.
             Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
         """
+        try:
+            # pylint: disable = import-outside-toplevel
+            import matplotlib.pyplot as plt # type: ignore
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError("You must install the 'matplotlib' library.")
+        large_figsize = None
+        if figsize is not None:
+            w, h = figsize
+            large_figsize = (w*len(self), h)
+        plt.figure(figsize=large_figsize)
+        # plt.tight_layout()
+        plt.subplots_adjust(wspace=0)
         for layer_idx, layer in enumerate(self):
-            print(f"Layer {layer_idx}:")
-            layer.draw(layout=layout, figsize=figsize,
+            # print(f"Layer {layer_idx}:")
+            plt.subplot(1, len(self), layer_idx+1, title=f"Layer {layer_idx}")
+            layer.draw(layout=layout, figsize=figsize, noshow=True,
                        zcolor=zcolor, xcolor=xcolor, **kwargs)
+        plt.show()
 
     @overload
     def __getitem__(self, layer_idx: int) -> CXCircuitLayer:

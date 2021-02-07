@@ -6,50 +6,11 @@ import math
 from decimal import Decimal
 from fractions import Fraction
 from typing import (Final, List, Literal, Mapping, Optional, overload,
-                    Protocol, runtime_checkable, Sequence, Tuple, TypeVar, Union)
-
-AngleT = TypeVar("AngleT", bound="AngleProtocol")
-"""
-    Type variable for something fitting the `AngleProtocol` protocol below.
-"""
-
-@runtime_checkable
-class AngleProtocol(Protocol[AngleT]):
-    """
-        A protocol for an angle type.
-
-        Copyright (C) 2019 - Hashberg Ltd
-    """
-
-    def __neg__(self: AngleT) -> AngleT:
-        ...
-
-    def __pos__(self: AngleT) -> AngleT:
-        ...
-
-    def __add__(self: AngleT, other: AngleT) -> AngleT:
-        ...
-
-    def __sub__(self: AngleT, other: AngleT) -> AngleT:
-        ...
-
-    def __mul__(self: AngleT, other: Union[int, Fraction]) -> AngleT:
-        ...
-
-    def __rmul__(self: AngleT, other: Union[int, Fraction]) -> AngleT:
-        ...
-
-    def __truediv__(self: AngleT, other: Union[int, Fraction]) -> AngleT:
-        ...
-
-    def __float__(self: AngleT) -> float:
-        ...
-
-
+                    Protocol, runtime_checkable, Sequence, Tuple, Union)
 
 AngleInitT = Union[int, Fraction, Decimal, str]
 
-class Angle(AngleProtocol["Angle"]):
+class Angle:
     """
         A container class for angles,
         as rational multiples of PI modulo 2PI.
@@ -94,6 +55,33 @@ class Angle(AngleProtocol["Angle"]):
         den = self.value.denominator
         return den if num % 2 == 0 else 2*den
 
+    @property
+    def is_zero_or_pi(self) -> bool:
+        """
+            Whether this angle is a multiple of pi.
+        """
+        num = self.value.numerator
+        den = self.value.denominator
+        return num % den == 0
+
+    @property
+    def is_zero(self) -> bool:
+        """
+            Whether this angle is a multiple of 2pi.
+        """
+        num = self.value.numerator
+        den = self.value.denominator
+        return num % (2*den) == 0
+
+    @property
+    def is_pi(self) -> bool:
+        """
+            Whether this angle is an odd multiple of pi.
+        """
+        num = self.value.numerator
+        den = self.value.denominator
+        return num % den == 0 and not num % (2*den) == 0
+
     def __pos__(self) -> "Angle":
         return self
 
@@ -108,6 +96,11 @@ class Angle(AngleProtocol["Angle"]):
     def __sub__(self, other: "Angle") -> "Angle":
         if isinstance(other, Angle):
             return Angle(self._value - other._value)
+        return NotImplemented
+
+    def __mod__(self, other: "Angle") -> "Angle":
+        if isinstance(other, Angle):
+            return Angle(self._value % other._value)
         return NotImplemented
 
     def __mul__(self, other: Union[int, Fraction, str]) -> "Angle":
@@ -173,6 +166,8 @@ class Angle(AngleProtocol["Angle"]):
         return "$%s$"%self.repr_latex
 
     def __eq__(self, other):
+        if other == 0:
+            return self.value == 0
         if not isinstance(other, Angle):
             return NotImplemented
         return self.value == other.value
@@ -255,8 +250,6 @@ class SVGBuilder:
 
     _width: int
     _height: int
-    _fill: str
-    _stroke: str
     _tags: List[str]
 
     def __init__(self, width: int, height: int):
@@ -266,8 +259,6 @@ class SVGBuilder:
             raise TypeError("Height should be positive integer.")
         self._width = width
         self._height = height
-        self._fill = "none"
-        self._stroke = "black"
         self._tags = []
 
     @property
@@ -277,12 +268,30 @@ class SVGBuilder:
         """
         return self._width
 
+    @width.setter
+    def width(self, new_width: int):
+        """
+            Set the figure width.
+        """
+        if not isinstance(new_width, int) or new_width <= 0:
+            raise TypeError("Width should be positive integer.")
+        self._width = new_width
+
     @property
     def height(self) -> int:
         """
             The figure height.
         """
         return self._height
+
+    @height.setter
+    def height(self, new_height: int):
+        """
+            Set the figure height.
+        """
+        if not isinstance(new_height, int) or new_height <= 0:
+            raise TypeError("Height should be positive integer.")
+        self._height = new_height
 
     @property
     def tags(self) -> Sequence[str]:
@@ -334,6 +343,13 @@ class SVGBuilder:
     def __repr__(self) -> str:
         body = "\n".join(self._tags)
         return f'<svg width="{self.width}" height="{self.height}">{body}</svg>'
+
+    def __irshift__(self, other: "SVGBuilder") -> "SVGBuilder":
+        if not isinstance(other, SVGBuilder):
+            raise TypeError(f"Expected SVGBuilder, found {type(other)}")
+        for tag in other._tags:
+            self._tags.append(tag)
+        return self
 
 
 @runtime_checkable

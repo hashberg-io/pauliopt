@@ -4,6 +4,8 @@
     using peephole methods.
 """
 
+
+
 from collections import deque
 from math import pi as real_pi
 from math import ceil, log10
@@ -15,6 +17,45 @@ from pauliopt.phase import PhaseCircuit, PhaseGadget, Z, X
 from pauliopt.utils import pi, Angle
 from pauliopt.topologies import Topology
 from cmath import sin, cos, phase
+
+
+
+gate_width = {
+    'cx': 2, 'x': 1
+}
+def read_qasm(path):
+    commands = []
+    n_qubits = 0
+    with open(path, 'r') as f:
+        # skip first two lines
+        f.readline()
+        f.readline()
+        for line in f.readlines():
+            line = line.strip().replace(',', '').replace(';', '')
+            gate, *qubits_str = line.split(' ')
+            # turn q[bit] -> bit 
+            qubits = [int(qubit[2:-1]) for qubit in qubits_str]
+            gate = gate.lower()
+            if gate == 'qreg':
+                n_qubits = qubits[0]
+            else:
+                commands.append((gate, qubits))
+    circuit: PhaseCircuit = PhaseCircuit(n_qubits)
+    for gate, qubits in commands:
+        if gate not in gate_width:
+            raise Exception(f'Gate {gate} not recognised.')
+        if gate_width[gate] != len(qubits):
+            raise Exception(f'Expected {gate_width[gate]} qubits, got {len(qubits)} instead.')
+        if gate == 'cx':
+            circuit.cx(*qubits)
+        elif gate == 'x':
+            circuit.x(*qubits)
+    return circuit
+
+
+
+
+
 
 def peephole(circuit: PhaseCircuit) -> PhaseCircuit:
     def peep(l, start):
@@ -31,7 +72,6 @@ def peephole(circuit: PhaseCircuit) -> PhaseCircuit:
                     l.pop(i+1)
                     return peep(l, start=i)
             i += 1
-    
     l = list(circuit.gadgets)
     peep(l, start=0)
     return PhaseCircuit(circuit.num_qubits, l)
@@ -45,7 +85,6 @@ def _group_pi(table: Dict[FrozenSet[int], Angle]):
         if phase == pi:
             pi_qubits ^= qubits
             keys_to_remove.append(qubits)
-    
     for key in keys_to_remove:
         del table[key]
     pi_key = frozenset(pi_qubits)
@@ -61,7 +100,7 @@ def split_pi(circuit: PhaseCircuit) -> PhaseCircuit:
             basis: Union[Type[Z], Type[X]] = Z if l[i].basis == 'Z' else X
             split_gadgets = [basis(pi) @ {leg} for leg in gadget.qubits]
             l = l[:i] + split_gadgets + l[i+1:]
-    return PhaseCircuit(circuit.num_qubits, l) 
+    return PhaseCircuit(circuit.num_qubits, l)
 
 
 def aggregate(circuit: PhaseCircuit) -> PhaseCircuit:

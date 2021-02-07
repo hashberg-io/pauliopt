@@ -79,7 +79,9 @@ class TopologyDict(TypedDict, total=True):
 
 Layouts: Final[Tuple[str, ...]] = ("circular", "kamada_kawai", "random",
                                    "shell", "spring", "spectral", "spiral")
-
+"""
+    Possible layout values for `Topology.draw`
+"""
 
 
 def _floyd_warshall(topology: "Topology") -> np.ndarray:
