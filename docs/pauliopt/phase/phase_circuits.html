@@ -610,13 +610,32 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         self._gadget_legs_cache[basis].append(tuple(sorted(gadget.qubits)))
         return self
 
-    def cx_count(self, topology: Topology) -&gt; int:
+    def cx_count(self, topology: Topology, *,
+                 mapping: Optional[Union[Sequence[int], Dict[int, int]]] = None) -&gt; int:
         &#34;&#34;&#34;
             Returns the CX count for an implementation of this phase gadget
             on the given topology based on minimum spanning trees (MST).
+
+            The optional `mapping` keyword argument can be used to specify a mapping of
+            logical (circuit) qubits to phyisical (topology) qubits.
         &#34;&#34;&#34;
         if not isinstance(topology, Topology):
             raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        if mapping is not None and len(mapping) != self.num_qubits:
+            raise TypeError(f&#34;Expected {self.num_qubits} mapping entries, &#34;
+                            f&#34;found {len(mapping)}&#34;)
+        if mapping is not None and isinstance(mapping, Sequence):
+            mapping = {
+                i: mapping[i] for i in range(len(mapping))
+            }
+        if mapping is not None and set(mapping.values()) != set(range(self.num_qubits)):
+            raise TypeError(f&#34;Expected mapping images [0, ..., {self.num_qubits-1}], &#34;
+                            f&#34;found {sorted(set(mapping.values()))}&#34;)
+        if mapping is not None:
+            # use the reverse mapping on the topology
+            topology = topology.mapped_to({
+                mapping[i]: i for i in mapping
+            })
         return self._cx_count(topology, {})
 
     def to_qiskit(self, topology: Topology):
@@ -1531,13 +1550,32 @@ class PhaseCircuitView:
         self._gadget_legs_cache[basis].append(tuple(sorted(gadget.qubits)))
         return self
 
-    def cx_count(self, topology: Topology) -&gt; int:
+    def cx_count(self, topology: Topology, *,
+                 mapping: Optional[Union[Sequence[int], Dict[int, int]]] = None) -&gt; int:
         &#34;&#34;&#34;
             Returns the CX count for an implementation of this phase gadget
             on the given topology based on minimum spanning trees (MST).
+
+            The optional `mapping` keyword argument can be used to specify a mapping of
+            logical (circuit) qubits to phyisical (topology) qubits.
         &#34;&#34;&#34;
         if not isinstance(topology, Topology):
             raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+        if mapping is not None and len(mapping) != self.num_qubits:
+            raise TypeError(f&#34;Expected {self.num_qubits} mapping entries, &#34;
+                            f&#34;found {len(mapping)}&#34;)
+        if mapping is not None and isinstance(mapping, Sequence):
+            mapping = {
+                i: mapping[i] for i in range(len(mapping))
+            }
+        if mapping is not None and set(mapping.values()) != set(range(self.num_qubits)):
+            raise TypeError(f&#34;Expected mapping images [0, ..., {self.num_qubits-1}], &#34;
+                            f&#34;found {sorted(set(mapping.values()))}&#34;)
+        if mapping is not None:
+            # use the reverse mapping on the topology
+            topology = topology.mapped_to({
+                mapping[i]: i for i in mapping
+            })
         return self._cx_count(topology, {})
 
     def to_qiskit(self, topology: Topology):
@@ -2553,22 +2591,43 @@ The circuit is modified in-place and then returned, as per the
 </details>
 </dd>
 <dt id="pauliopt.phase.phase_circuits.PhaseCircuit.cx_count"><code class="name flex">
-<span>def <span class="ident">cx_count</span></span>(<span>self, topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>) ‑> int</span>
+<span>def <span class="ident">cx_count</span></span>(<span>self, topology: <a title="pauliopt.topologies.Topology" href="../topologies.html#pauliopt.topologies.Topology">Topology</a>, *, mapping: Union[Sequence[int], Dict[int, int], NoneType] = None) ‑> int</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Returns the CX count for an implementation of this phase gadget
-on the given topology based on minimum spanning trees (MST).</p></div>
+on the given topology based on minimum spanning trees (MST).</p>
+<p>The optional <code>mapping</code> keyword argument can be used to specify a mapping of
+logical (circuit) qubits to phyisical (topology) qubits.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def cx_count(self, topology: Topology) -&gt; int:
+<pre><code class="python">def cx_count(self, topology: Topology, *,
+             mapping: Optional[Union[Sequence[int], Dict[int, int]]] = None) -&gt; int:
     &#34;&#34;&#34;
         Returns the CX count for an implementation of this phase gadget
         on the given topology based on minimum spanning trees (MST).
+
+        The optional `mapping` keyword argument can be used to specify a mapping of
+        logical (circuit) qubits to phyisical (topology) qubits.
     &#34;&#34;&#34;
     if not isinstance(topology, Topology):
         raise TypeError(f&#34;Expected Topology, found {type(topology)}.&#34;)
+    if mapping is not None and len(mapping) != self.num_qubits:
+        raise TypeError(f&#34;Expected {self.num_qubits} mapping entries, &#34;
+                        f&#34;found {len(mapping)}&#34;)
+    if mapping is not None and isinstance(mapping, Sequence):
+        mapping = {
+            i: mapping[i] for i in range(len(mapping))
+        }
+    if mapping is not None and set(mapping.values()) != set(range(self.num_qubits)):
+        raise TypeError(f&#34;Expected mapping images [0, ..., {self.num_qubits-1}], &#34;
+                        f&#34;found {sorted(set(mapping.values()))}&#34;)
+    if mapping is not None:
+        # use the reverse mapping on the topology
+        topology = topology.mapped_to({
+            mapping[i]: i for i in mapping
+        })
     return self._cx_count(topology, {})</code></pre>
 </details>
 </dd>

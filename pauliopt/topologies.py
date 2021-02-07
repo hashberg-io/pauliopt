@@ -3,8 +3,8 @@
 """
 
 import re
-from typing import (Collection, Final, FrozenSet, Iterator, List, Optional,
-                    Set, Tuple, TypedDict, Union)
+from typing import (Collection, Dict, Final, FrozenSet, Iterator, List, Optional,
+                    Sequence, Set, Tuple, TypedDict, Union)
 import numpy as np # type: ignore
 
 class Coupling(FrozenSet[int]):
@@ -279,6 +279,23 @@ class Topology:
         if not isinstance(to, int) or to not in self:
             raise TypeError(f"Expected a valid qubit, found {to}.")
         return self._dist[fro, to]
+
+    def mapped_to(self, mapping: Union[Sequence[int], Dict[int, int]]) -> "Topology":
+        """
+            Returns a topology with the same couplings, but between re-mapped qubits.
+        """
+        if len(mapping) != self.num_qubits:
+            raise TypeError(f"Expected {self.num_qubits} mapping entries, "
+                            f"found {len(mapping)}")
+        if isinstance(mapping, Sequence):
+            mapping = {
+                i: mapping[i] for i in range(len(mapping))
+            }
+        if set(mapping.values()) != set(range(self.num_qubits)):
+            raise TypeError(f"Expected mapping images [0, ..., {self.num_qubits-1}], "
+                            f"found {sorted(set(mapping.values()))}")
+        mapped_couplings = [{mapping[x] for x in coupling} for coupling in self._couplings]
+        return Topology(self.num_qubits, mapped_couplings)
 
     def __contains__(self, x: Union[int, Coupling, Tuple[int, int]]) -> bool:
         if isinstance(x, int):

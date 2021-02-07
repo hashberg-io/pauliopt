@@ -580,13 +580,32 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         self._gadget_legs_cache[basis].append(tuple(sorted(gadget.qubits)))
         return self
 
-    def cx_count(self, topology: Topology) -> int:
+    def cx_count(self, topology: Topology, *,
+                 mapping: Optional[Union[Sequence[int], Dict[int, int]]] = None) -> int:
         """
             Returns the CX count for an implementation of this phase gadget
             on the given topology based on minimum spanning trees (MST).
+
+            The optional `mapping` keyword argument can be used to specify a mapping of
+            logical (circuit) qubits to phyisical (topology) qubits.
         """
         if not isinstance(topology, Topology):
             raise TypeError(f"Expected Topology, found {type(topology)}.")
+        if mapping is not None and len(mapping) != self.num_qubits:
+            raise TypeError(f"Expected {self.num_qubits} mapping entries, "
+                            f"found {len(mapping)}")
+        if mapping is not None and isinstance(mapping, Sequence):
+            mapping = {
+                i: mapping[i] for i in range(len(mapping))
+            }
+        if mapping is not None and set(mapping.values()) != set(range(self.num_qubits)):
+            raise TypeError(f"Expected mapping images [0, ..., {self.num_qubits-1}], "
+                            f"found {sorted(set(mapping.values()))}")
+        if mapping is not None:
+            # use the reverse mapping on the topology
+            topology = topology.mapped_to({
+                mapping[i]: i for i in mapping
+            })
         return self._cx_count(topology, {})
 
     def to_qiskit(self, topology: Topology):
