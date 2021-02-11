@@ -136,12 +136,12 @@ class Angle:
         num = self.value.numerator
         den = self.value.denominator
         if num == 0:
-            return "Angle.zero"
+            return "0"
         if num == 1:
             if den == 1:
-                return "Angle.pi"
-            return "Angle.pi/%d"%den
-        return "%d*Angle.pi/%d"%(num, den)
+                return "pi"
+            return "pi/%d"%den
+        return "%d*pi/%d"%(num, den)
 
     @property
     def repr_latex(self) -> str:
@@ -179,18 +179,21 @@ class Angle:
     @staticmethod
     def random(subdivision: int = 4, *,
                size: Literal[1]=1,
-               rng_seed: Optional[int] = None) -> "Angle":
+               rng_seed: Optional[int] = None,
+               nonzero: bool = False) -> "Angle":
         ...
 
     @overload
     @staticmethod
     def random(subdivision: int = 4, *,
                size: int = 1,
-               rng_seed: Optional[int] = None) -> Union["Angle", Tuple["Angle", ...]]:
+               rng_seed: Optional[int] = None,
+               nonzero: bool = False) -> Union["Angle", Tuple["Angle", ...]]:
         ...
 
     @staticmethod
-    def random(subdivision: int = 4, *, size: int = 1, rng_seed: Optional[int] = None):
+    def random(subdivision: int = 4, *, size: int = 1,
+               rng_seed: Optional[int] = None, nonzero: bool = False):
         """
             Generates a random angle with the given `subdivision`:
             `r * pi/subdivision` for random `r in range(2*subdivision)`.
@@ -200,6 +203,8 @@ class Angle:
         if not isinstance(subdivision, int):
             raise TypeError()
         if not isinstance(size, int):
+            raise TypeError()
+        if not isinstance(nonzero, bool):
             raise TypeError()
         if subdivision <= 0:
             raise ValueError("Subdivision must be positive.")
@@ -213,7 +218,10 @@ class Angle:
         except ModuleNotFoundError as _:
             raise ModuleNotFoundError("You must install the 'numpy' library.")
         rng = np.random.default_rng(seed=rng_seed)
-        rs = rng.integers(2*subdivision, size=size)
+        if nonzero:
+            rs = 1+rng.integers(2*subdivision-1, size=size)
+        else:
+            rs = rng.integers(2*subdivision, size=size)
         if size == 1:
             return Angle(Fraction(int(rs[0]), subdivision))
         return tuple(Angle(Fraction(int(r), subdivision)) for r in rs)

@@ -580,7 +580,7 @@ class QASM(Sequence["QASM.Statement"]):
         pattern = re.compile(r"(.+)\*pi")
         match = pattern.fullmatch(angle_str)
         if match:
-            return Angle(Fraction(int(match[1]), 1))
+            return Angle(Fraction(match[1]))
         pattern = re.compile(r"(.+)\*pi/(.+)")
         match = pattern.fullmatch(angle_str)
         if match:

@@ -3,8 +3,8 @@
 """
 
 import re
-from typing import (Collection, Dict, Final, FrozenSet, Iterator, List, Optional,
-                    Sequence, Set, Tuple, TypedDict, Union)
+from typing import (Collection, Dict, Final, FrozenSet, Iterator, List, Mapping,
+                    Optional, Sequence, Set, Tuple, TypedDict, Union)
 import numpy as np # type: ignore
 
 class Coupling(FrozenSet[int]):
@@ -213,6 +213,7 @@ class Topology:
 
     def draw(self, layout: str = "kamada_kawai", *,
              figsize: Optional[Tuple[int, int]] = None,
+             filename: Optional[str] = None,
              **kwargs):
         """
             Draws this qubit topology using NetworkX and Matplotlib.
@@ -222,6 +223,7 @@ class Topology:
             The `figsize` keyword argument is passed to `matplotlib.pyplot.figure`:
             if specified, it determines the width and height of the figure being drawn.
             Keyword arguments `kwargs` are those of `networkx.draw_networkx`.
+            If the keyword argument `filename` is set, the figure is also saved.
         """
         try:
             # pylint: disable = import-outside-toplevel
@@ -245,6 +247,8 @@ class Topology:
             kwargs["node_color"] = "#dddddd"
         plt.figure(figsize=figsize)
         nx.draw_networkx(G, **kwargs)
+        if filename is not None:
+            plt.savefig(filename)
         plt.show()
 
     def adjacent(self, qubit: int) -> FrozenSet[int]:
@@ -280,21 +284,56 @@ class Topology:
             raise TypeError(f"Expected a valid qubit, found {to}.")
         return self._dist[fro, to]
 
-    def mapped_to(self, mapping: Union[Sequence[int], Dict[int, int]]) -> "Topology":
+    def mapped_fwd(self, mapping: Union[Sequence[int], Dict[int, int]]) -> "Topology":
         """
-            Returns a topology with the same couplings, but between re-mapped qubits.
+            Returns a topology with the same couplings, but remapping the qubits using
+            the given mapping.
         """
-        if len(mapping) != self.num_qubits:
-            raise TypeError(f"Expected {self.num_qubits} mapping entries, "
-                            f"found {len(mapping)}")
         if isinstance(mapping, Sequence):
-            mapping = {
-                i: mapping[i] for i in range(len(mapping))
-            }
-        if set(mapping.values()) != set(range(self.num_qubits)):
-            raise TypeError(f"Expected mapping images [0, ..., {self.num_qubits-1}], "
-                            f"found {sorted(set(mapping.values()))}")
-        mapped_couplings = [{mapping[x] for x in coupling} for coupling in self._couplings]
+            if len(mapping) < self.num_qubits:
+                raise ValueError(f"Expected mapping keys [0,...,{self._num_qubits}], "
+                                 f"found {sorted(mapping)} instead.")
+            _mapping = list(mapping)
+        elif isinstance(mapping, Mapping):
+            _mapping = []
+            for i in range(self._num_qubits):
+                if i not in mapping:
+                    raise ValueError(f"Expected mapping keys [0,...,{self._num_qubits}], "
+                                     f"found {sorted(mapping.keys())} instead.")
+                _mapping.append(mapping[i])
+        else:
+            raise TypeError(f"Expected Sequence[int] or Mapping[int, int], "
+                            f"found {type(mapping)} instead.")
+        if set(_mapping) != set(range(self._num_qubits)):
+            raise ValueError(f"Expected mapping values [0,...,{self._num_qubits}], "
+                             f"found {sorted(_mapping)} instead.")
+        mapped_couplings = [{_mapping[x] for x in coupling} for coupling in self._couplings]
+        return Topology(self.num_qubits, mapped_couplings)
+
+    def mapped_bwd(self, mapping: Union[Sequence[int], Dict[int, int]]) -> "Topology":
+        """
+            Returns a topology with the same couplings, but remapping the qubits using
+            the inverse of the given mapping.
+        """
+        if isinstance(mapping, Sequence):
+            if len(mapping) < self.num_qubits:
+                raise ValueError(f"Expected mapping keys [0,...,{self._num_qubits}], "
+                                 f"found {sorted(mapping)} instead.")
+            _rev_mapping = {mapping[i]: i for i in mapping}
+        elif isinstance(mapping, Mapping):
+            _rev_mapping = {}
+            for i in range(self._num_qubits):
+                if i not in mapping:
+                    raise ValueError(f"Expected mapping keys [0,...,{self._num_qubits}], "
+                                     f"found {sorted(mapping.keys())} instead.")
+                _rev_mapping[mapping[i]] = i
+        else:
+            raise TypeError(f"Expected Sequence[int] or Mapping[int, int], "
+                            f"found {type(mapping)} instead.")
+        if set(_rev_mapping.keys()) != set(range(self._num_qubits)):
+            raise ValueError(f"Expected mapping values [0,...,{self._num_qubits}], "
+                             f"found {sorted(_rev_mapping.keys())} instead.")
+        mapped_couplings = [{_rev_mapping[x] for x in coupling} for coupling in self._couplings]
         return Topology(self.num_qubits, mapped_couplings)
 
     def __contains__(self, x: Union[int, Coupling, Tuple[int, int]]) -> bool:
@@ -310,7 +349,7 @@ class Topology:
 
     def __repr__(self) -> str:
         if self.couplings:
-            return (f"Topology({set(self.qubits)}, "
+            return (f"Topology({self.num_qubits}, "
                     f"[{', '.join(str(c) for c in self.couplings)}])")
         return f"Topology({set(self.qubits)})"
 
