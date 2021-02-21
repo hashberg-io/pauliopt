@@ -4,7 +4,7 @@ import setuptools #type:ignore
 
 setuptools.setup(
     name="pauliopt",
-    version="0.0.4.post1",
+    version="0.0.4.post2",
     maintainer="sg495",
     maintainer_email="sg495@users.noreply.github.com",
     description="A Python library to simplify quantum circuits of Pauli gadgets.",
