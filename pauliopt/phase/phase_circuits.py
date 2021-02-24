@@ -392,6 +392,18 @@ def _s(qubit: int) -> List[PhaseGadget]:
     """ Phase gadget implementation of single-qubit S gate. """
     return _rz(qubit, pi/2)
 
+def _sdg(qubit: int) -> List[PhaseGadget]:
+    """ Phase gadget implementation of single-qubit S gate. """
+    return _rz(qubit, -pi/2)
+
+def _v(qubit: int) -> List[PhaseGadget]:
+    """ Phase gadget implementation of single-qubit S gate. """
+    return _rx(qubit, pi/2)
+
+def _vdg(qubit: int) -> List[PhaseGadget]:
+    """ Phase gadget implementation of single-qubit S gate. """
+    return _rx(qubit, -pi/2)
+
 def _t(qubit: int) -> List[PhaseGadget]:
     """ Phase gadget implementation of single-qubit T gate. """
     return _rz(qubit, pi/4)
@@ -418,8 +430,7 @@ def _crz(ctrl: int, tgt: int, angle: Angle) -> List[PhaseGadget]:
 
 def _cry(ctrl: int, tgt: int, angle: Angle) -> List[PhaseGadget]:
     """ Phase gadget implementation of CRY gate. """
-    ... # TODO: implement this
-    raise NotImplementedError()
+    return _v(tgt) + _crz(ctrl, tgt, angle) + _vdg(tgt)
 
 def _crx(ctrl: int, tgt: int, angle: Angle) -> List[PhaseGadget]:
     """ Phase gadget implementation of CRX gate. """
@@ -431,9 +442,7 @@ def _cz(leg1: int, leg2: int) -> List[PhaseGadget]:
 
 def _cy(leg1: int, leg2: int) -> List[PhaseGadget]:
     """ Phase gadget implementation of CY gate. """
-    ... # TODO: implement this
-    raise NotImplementedError()
-    # return self
+    return _v(leg2) + _cz(leg1, leg2) + _vdg(leg2)
 
 def _cx(ctrl: int, tgt: int):
     """ Phase gadget implementation of CX gate. """
@@ -441,8 +450,7 @@ def _cx(ctrl: int, tgt: int):
 
 def _u3(qubit: int, theta: Angle, phi: Angle, lam: Angle) -> List[PhaseGadget]:
     """ Phase gadget implementation of U3 gate. """
-    ... # TODO: implement this
-    raise NotImplementedError()
+    return _rz(qubit, lam) + _ry(qubit, theta) + _rz(qubit, phi)
 
 
 class PhaseCircuit(Sequence[PhaseGadget]):
@@ -615,6 +623,21 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         """ Phase gadget implementation of single-qubit S gate. """
         self.rz(qubit, pi/2)
         return self
+    
+    def sdg(self, qubit: int) -> "PhaseCircuit":
+        """ Phase gadget implementation of single-qubit Sdg gate. """
+        self.rz(qubit, -pi/2)
+        return self
+
+    def v(self, qubit: int) -> "PhaseCircuit":
+        """ Phase gadget implementation of single-qubit S gate. """
+        self.rx(qubit, pi/2)
+        return self
+    
+    def vdg(self, qubit: int) -> "PhaseCircuit":
+        """ Phase gadget implementation of single-qubit Sdg gate. """
+        self.rx(qubit, -pi/2)
+        return self
 
     def t(self, qubit: int) -> "PhaseCircuit":
         """ Phase gadget implementation of single-qubit T gate. """
@@ -654,9 +677,10 @@ class PhaseCircuit(Sequence[PhaseGadget]):
 
     def cry(self, ctrl: int, tgt: int, angle: Angle) -> "PhaseCircuit":
         """ Phase gadget implementation of CRY gate. """
-        ... # TODO: implement this
-        raise NotImplementedError()
-        # return self
+        self.v(tgt)
+        self.crz(ctrl, tgt, angle)
+        self.vdg(tgt)
+        return self
 
     def crx(self, ctrl: int, tgt: int, angle: Angle) -> "PhaseCircuit":
         """ Phase gadget implementation of CRX gate. """
@@ -672,9 +696,10 @@ class PhaseCircuit(Sequence[PhaseGadget]):
 
     def cy(self, leg1: int, leg2: int) -> "PhaseCircuit":
         """ Phase gadget implementation of CY gate. """
-        ... # TODO: implement this
-        raise NotImplementedError()
-        # return self
+        self.v(leg1)
+        self.cz(leg1, leg2)
+        self.vdg(leg2)
+        return self
 
     def cx(self, ctrl: int, tgt: int):
         """ Phase gadget implementation of CX gate. """
@@ -685,9 +710,33 @@ class PhaseCircuit(Sequence[PhaseGadget]):
 
     def u3(self, qubit: int, theta: Angle, phi: Angle, lam: Angle) -> "PhaseCircuit":
         """ Phase gadget implementation of U3 gate. """
-        ... # TODO: implement this
-        raise NotImplementedError()
-        # return self
+        self.rz(qubit, lam)
+        self.ry(qubit, theta)
+        self.rz(qubit, phi)
+        return self
+
+    def ccz(self, leg1: int, leg2: int, leg3: int) -> "PhaseCircuit":
+        """ Phase gadget implementation of CCZ gate. """
+        for bit in (leg1, leg2, leg3):
+            self.rz(bit, pi / 4)
+        for src, tgt in ((leg1, leg2), (leg2, leg3), (leg3, leg1)):
+            self.add_gadget(Z(-pi / 4) @ {src, tgt})
+        self.add_gadget(Z(pi / 4) @ (leg1, leg2, leg3))
+        return self
+
+    def ccy(self, leg1: int, leg2: int, leg3: int) -> "PhaseCircuit":
+        """ Phase gadget implementation of CCX gate. """
+        self.v(leg3)
+        self.ccz(leg1, leg2, leg3)
+        self.vdg(leg3)
+        return self
+
+    def ccx(self, leg1: int, leg2: int, leg3: int) -> "PhaseCircuit":
+        """ Phase gadget implementation of CCX gate. """
+        self.h(leg3)
+        self.ccz(leg1, leg2, leg3)
+        self.h(leg3, sign=-1)
+        return self
 
     def add_gadget(self, gadget: PhaseGadget) -> "PhaseCircuit":
         """
