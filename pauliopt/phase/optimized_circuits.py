@@ -279,9 +279,14 @@ class OptimizedPhaseCircuit:
             Simplifies the phase block according to the commutation and fusion
             rules for phase gadgets.
         """
-        self._phase_block = self._phase_block.simplified()
+        new_phase_block = self._phase_block.cloned()
+        for _ in range(1, self._circuit_rep):
+            new_phase_block >>= self._phase_block
+        self._phase_block = new_phase_block.simplified()
         self._phase_block_view = PhaseCircuitView(self._phase_block)
+        self._circuit_rep = 1
         self._gadget_cx_count_cache = {}
+        self._cx_count, self._cx_blocks_count = self._compute_cx_count()
 
     def anneal(self,
                num_iters: int, *,
@@ -313,7 +318,7 @@ class OptimizedPhaseCircuit:
             layer_idx, (ctrl, trgt) = self.random_flip_cx()
             new_cx_count, new_cx_blocks_count = self._compute_cx_count()
             cx_count_diff = new_cx_count-self._cx_count
-            accept_step = cx_count_diff < 0 or rand[it] < np.exp(-cx_count_diff/t)
+            accept_step = cx_count_diff < 0 or rand[it] < np.exp(-np.log(2)*cx_count_diff/t)
             if log_iter is not None:
                 log_iter(it, self._cx_count, new_cx_count, accept_step,
                          (layer_idx, (ctrl, trgt)), t, num_iters)
@@ -376,15 +381,18 @@ class OptimizedPhaseCircuit:
     def _flip_cx(self, layer_idx: int, ctrl: int, trgt: int) -> None:
         conj_by: Deque[Tuple[int, int]] = deque([(ctrl, trgt)])
         qubits_spanned: Set[int] = set([ctrl, trgt])
-        for layer in self._cx_block[layer_idx:]:
+        for layer in reversed(self._cx_block[:layer_idx]):
             new_qubits_spanned: Set[int] = set()
+            incident_gates: Set[Tuple[int, int]] = set()
             for q in qubits_spanned:
                 incident_gate = layer.incident(q)
                 if incident_gate is not None:
+                    incident_gates.add(incident_gate)
                     new_qubits_spanned.update({incident_gate[0], incident_gate[1]})
-                    conj_by.appendleft(incident_gate) # will first undo the gate ...
-                    # ... then do all gates already in conj_by ...
-                    conj_by.append(incident_gate) # ... then finally redo the gate
+            for incident_gate in incident_gates:
+                conj_by.appendleft(incident_gate) # will first undo the gate ...
+                # ... then do all gates already in conj_by ...
+                conj_by.append(incident_gate) # ... then finally redo the gate
             qubits_spanned.update(new_qubits_spanned)
         # Flip the gate in the CX circuit:
         self._cx_block[layer_idx].flip_cx(ctrl, trgt)

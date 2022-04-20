@@ -350,6 +350,7 @@ class CXCircuit(Sequence[CXCircuitLayer]):
              figsize: Optional[Tuple[int, int]] = None,
              zcolor: str = "#CCFFCC",
              xcolor: str = "#FF8888",
+             filename: Optional[str] = None,
              **kwargs):
         """
             Draws this CX circuit using NetworkX and Matplotlib.
@@ -372,6 +373,8 @@ class CXCircuit(Sequence[CXCircuitLayer]):
             plt.subplot(1, len(self), layer_idx+1, title=f"Layer {layer_idx}")
             layer.draw(layout=layout, figsize=figsize, noshow=True,
                        zcolor=zcolor, xcolor=xcolor, **kwargs)
+        if filename is not None:
+            plt.savefig(filename)
         plt.show()
 
     @overload
