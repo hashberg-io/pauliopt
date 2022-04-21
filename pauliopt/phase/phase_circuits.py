@@ -5,12 +5,13 @@
 from collections import deque
 from itertools import islice
 from math import ceil, log10
-from typing import (Callable, cast, Collection, Dict, FrozenSet, Iterator, List,
+from typing import (Any, Callable, cast, Collection, Dict, FrozenSet, Iterator, List,
                     Literal, Mapping, Optional, overload, Sequence, Set, Tuple, Union)
-import numpy as np # type: ignore
+import numpy as np
+import numpy.typing as npt
 from pauliopt.qasm import QASM
 from pauliopt.topologies import Topology
-from pauliopt.utils import Angle, SVGBuilder, pi
+from pauliopt.utils import Angle, AngleExpr, AngleVar, SVGBuilder, pi
 
 def _frozenset_to_int(s: FrozenSet[int]) -> int:
     i = 0
@@ -163,17 +164,17 @@ class PhaseGadget:
 
     _qubits: FrozenSet[int]
     _basis: Literal["Z", "X"]
-    _angle: Angle
+    _angle: AngleExpr
 
-    def __init__(self, basis: Literal["Z", "X"], angle: Angle, qubits: Collection[int]):
+    def __init__(self, basis: Literal["Z", "X"], angle: AngleExpr, qubits: Collection[int]):
         if not isinstance(qubits, Collection) or not all(isinstance(q, int) for q in qubits):
             raise TypeError(f"Qubits should be a collection of integers, found {qubits}")
         if not qubits:
             raise ValueError("At least one qubit must be specified.")
         if basis not in ("Z", "X"):
             raise TypeError("Basis should be 'Z' or 'X'.")
-        if not isinstance(angle, Angle):
-            raise TypeError(f"Angle should be an instance of `Angle`, "
+        if not isinstance(angle, AngleExpr):
+            raise TypeError(f"Angle should be an instance of `AngleExpr`, "
                             f"found {angle} of type {type(angle)} instead.")
         self._basis = basis
         self._angle = angle
@@ -187,7 +188,7 @@ class PhaseGadget:
         return self._basis
 
     @property
-    def angle(self) -> Angle:
+    def angle(self) -> AngleExpr:
         """
             Readonly property exposing the angle for this phase gadget.
         """
@@ -211,8 +212,10 @@ class PhaseGadget:
         """
         if not isinstance(topology, Topology):
             raise TypeError(f"Expected Topology, found {type(topology)}.")
-        if self._angle.value % 2 == 0:
+        if self.angle.is_zero:
             return 0
+        # if self._angle.value % 2 == 0:
+        #     return 0
         if mapping is not None and isinstance(mapping, Sequence):
             mapping = {
                 i: mapping[i] for i in range(len(mapping))
@@ -226,7 +229,7 @@ class PhaseGadget:
                                         lambda u, v: 4*topology.dist(u, v)-2,
                                         4*len(topology.qubits)-2)
 
-    def on_qiskit_circuit(self, topology: Topology, circuit) -> None:
+    def on_qiskit_circuit(self, topology: Topology, circuit: Any) -> None:
         """
             Applies this phase gadget to a given qiskit quantum `circuit`,
             using the given `topology` to determine a minimum spanning
@@ -241,8 +244,8 @@ class PhaseGadget:
         try:
             # pylint: disable = import-outside-toplevel
             from qiskit.circuit import QuantumCircuit # type: ignore
-        except ModuleNotFoundError as _:
-            raise ModuleNotFoundError("You must install the 'qiskit' library.")
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError("You must install the 'qiskit' library.") from e
         if not isinstance(circuit, QuantumCircuit):
             raise TypeError("Argument 'circuit' must be of type "
                             "`qiskit.circuit.QuantumCircuit`.")
@@ -280,13 +283,13 @@ class PhaseGadget:
         for ctrl, trgt in reversed(upper_ladder):
             circuit.cx(ctrl, trgt)
         if self.basis == "Z":
-            circuit.rz(float(self.angle), q0)
+            circuit.rz(self.angle.to_qiskit, q0)
         else:
-            circuit.rx(float(self.angle), q0)
+            circuit.rx(self.angle.to_qiskit, q0)
         for ctrl, trgt in upper_ladder:
             circuit.cx(ctrl, trgt)
 
-    def print_impl_info(self, topology: Topology):
+    def print_impl_info(self, topology: Topology) -> None:
         """
             Prints information about an implementation of this phase gadget
             on the given topology based on minimum spanning trees (MST).
@@ -312,7 +315,7 @@ class PhaseGadget:
     def __hash__(self) -> int:
         return hash((self.basis, self.angle, self.qubits))
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if self is other:
             return True
         if not isinstance(other, PhaseGadget):
@@ -331,11 +334,11 @@ class Z:
         ```
     """
 
-    _angle: Angle
+    _angle: AngleExpr
 
-    def __init__(self, angle: Angle):
-        if not isinstance(angle, Angle):
-            raise TypeError(f"Angle should respect the `Angle` Protocol, "
+    def __init__(self, angle: AngleExpr):
+        if not isinstance(angle, AngleExpr):
+            raise TypeError(f"angle should be `AngleExpr`, "
                             f"found {angle} of type {type(angle)} instead.")
         self._angle = angle
 
@@ -352,11 +355,11 @@ class X:
         ```
     """
 
-    _angle: Angle
+    _angle: AngleExpr
 
-    def __init__(self, angle: Angle):
-        if not isinstance(angle, Angle):
-            raise TypeError(f"Angle should respect the `Angle` Protocol, "
+    def __init__(self, angle: AngleExpr):
+        if not isinstance(angle, AngleExpr):
+            raise TypeError(f"angle should be `AngleExpr`, "
                             f"found {angle} of type {type(angle)} instead.")
         self._angle = angle
 
@@ -444,7 +447,7 @@ def _cy(leg1: int, leg2: int) -> List[PhaseGadget]:
     """ Phase gadget implementation of CY gate. """
     return _v(leg2) + _cz(leg1, leg2) + _vdg(leg2)
 
-def _cx(ctrl: int, tgt: int):
+def _cx(ctrl: int, tgt: int) -> List[PhaseGadget]:
     """ Phase gadget implementation of CX gate. """
     return _h(tgt) + _cz(ctrl, tgt) + _h(tgt, sign=-1)
 
@@ -459,7 +462,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
     """
     # pylint: disable = too-many-public-methods
 
-    _matrix: Dict[Literal["Z", "X"], np.ndarray]
+    _matrix: Dict[Literal["Z", "X"], npt.NDArray[np.uint8]]
     """
         For `basis in ("Z", "X")`, the matrix `self._matrix[basis]`
         is the binary matrix encoding the qubits spanned by the
@@ -486,7 +489,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         The number of qubits spanned by this circuit.
     """
 
-    _angles: List[Angle]
+    _angles: List[AngleExpr]
     """
         The global list of angles for the gadgets.
         The angle for the `basis` gadget corresponding to column index `c`
@@ -518,7 +521,10 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         for i, gadget in enumerate(gadgets):
             self._rev_gadget_idxs.append((gadget.basis, len(self._gadget_idxs[gadget.basis])))
             self._gadget_idxs[gadget.basis].append(i)
-            self._angles.append(gadget.angle%(2*pi))
+            angle = gadget.angle
+            if isinstance(angle, Angle):
+                angle %= 2*pi
+            self._angles.append(angle)
         self._matrix = {}
         self._gadget_legs_cache = {}
         for basis in cast(Sequence[Literal["Z", "X"]], ("Z", "X")):
@@ -531,7 +537,8 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             for i, idx in enumerate(self._gadget_idxs[basis]):
                 for q in gadgets[idx].qubits:
                     if not 0 <= q < num_qubits:
-                        raise IndexError(f"Qubit {q} for gadget #{idx} out of bounds ({num_qubits = })")
+                        msg = f"Qubit {q} for gadget #{idx} out of bounds ({num_qubits = })"
+                        raise IndexError(msg)
                     self._matrix[basis][q, i] = 1
                 legs_cache.append(tuple(sorted(gadgets[idx].qubits)))
 
@@ -566,33 +573,46 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         """
         return PhaseCircuitView(self)
 
-    def set_angles(self, angles: Sequence[Angle]):
+    def set_angles(self, angles: Sequence[AngleExpr]) -> None:
+        """
+            Sets all angles for this circuit.
+        """
         if not isinstance(angles, Sequence):
-            raise TypeError(f"Expected Sequence[Angle], found {type(angles)}.")
+            raise TypeError(f"Expected Sequence[AngleExpr], found {type(angles)}.")
         for angle in angles:
-            if not isinstance(angle, Angle):
-                raise TypeError(f"Expected Angle, found {type(angle)}")
+            if not isinstance(angle, AngleExpr):
+                raise TypeError(f"Expected AngleExpr, found {type(angle)}")
         if len(angles) != len(self._angles):
             raise ValueError(f"Expected {len(self._angles)} angles, "
                              f"found {len(angles)} instead.")
         pi2 = 2*pi
-        self._angles = [angle%pi2 for angle in angles]
+        self._angles = [angle%pi2 if isinstance(angle, Angle) else angle
+                        for angle in angles]
 
-    def rx(self, qubit: int, angle: Angle) -> "PhaseCircuit":
+    def refresh_angle_vars(self, params: Union[str, Callable[[int], AngleVar]]) -> None:
+        if isinstance(params, str):
+            params = lambda i: AngleVar(f"{params}[{i}]", f"{params}_{i}")
+        new_angles = [
+            angle if isinstance(angle, Angle) else params(i)
+            for i, angle in enumerate(self._angles)
+        ]
+        self.set_angles(new_angles)
+
+    def rx(self, qubit: int, angle: AngleExpr) -> "PhaseCircuit":
         """ Phase gadget implementation of single-qubit X rotation. """
         if not isinstance(qubit, int) or not 0 <= qubit < self.num_qubits:
             raise TypeError(f"Invalid qubit {qubit}")
         self >>= X(angle) @ {qubit}
         return self
 
-    def rz(self, qubit: int, angle: Angle) -> "PhaseCircuit":
+    def rz(self, qubit: int, angle: AngleExpr) -> "PhaseCircuit":
         """ Phase gadget implementation of single-qubit Z rotation. """
         if not isinstance(qubit, int) or not 0 <= qubit < self.num_qubits:
             raise TypeError(f"Invalid qubit {qubit}")
         self >>= Z(angle) @ {qubit}
         return self
 
-    def ry(self, qubit: int, angle: Angle) -> "PhaseCircuit":
+    def ry(self, qubit: int, angle: AngleExpr) -> "PhaseCircuit":
         """ Phase gadget implementation of single-qubit Y rotation. """
         self.rx(qubit, +pi/2)
         self.rz(qubit, angle)
@@ -623,7 +643,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         """ Phase gadget implementation of single-qubit S gate. """
         self.rz(qubit, pi/2)
         return self
-    
+
     def sdg(self, qubit: int) -> "PhaseCircuit":
         """ Phase gadget implementation of single-qubit Sdg gate. """
         self.rz(qubit, -pi/2)
@@ -633,7 +653,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         """ Phase gadget implementation of single-qubit S gate. """
         self.rx(qubit, pi/2)
         return self
-    
+
     def vdg(self, qubit: int) -> "PhaseCircuit":
         """ Phase gadget implementation of single-qubit Sdg gate. """
         self.rx(qubit, -pi/2)
@@ -662,20 +682,20 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             self.rz(qubit, sign*pi/2)
         return self
 
-    def cu1(self, ctrl: int, tgt: int, angle: Angle) -> "PhaseCircuit":
+    def cu1(self, ctrl: int, tgt: int, angle: AngleExpr) -> "PhaseCircuit":
         """ Phase gadget implementation of CU1 gate. """
         self.add_gadget(Z(-angle) @ {ctrl, tgt})
         self.rz(ctrl, angle)
         self.rz(tgt, angle)
         return self
 
-    def crz(self, ctrl: int, tgt: int, angle: Angle) -> "PhaseCircuit":
+    def crz(self, ctrl: int, tgt: int, angle: AngleExpr) -> "PhaseCircuit":
         """ Phase gadget implementation of CRZ gate. """
         self.add_gadget(Z(-angle / 2) @ {ctrl, tgt})
         self.rz(tgt, angle / 2)
         return self
 
-    def cry(self, ctrl: int, tgt: int, angle: Angle) -> "PhaseCircuit":
+    def cry(self, ctrl: int, tgt: int, angle: AngleExpr) -> "PhaseCircuit":
         """ Phase gadget implementation of CRY gate. """
         self.v(tgt)
         self.crz(ctrl, tgt, angle)
@@ -701,14 +721,14 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         self.vdg(leg2)
         return self
 
-    def cx(self, ctrl: int, tgt: int):
+    def cx(self, ctrl: int, tgt: int) -> "PhaseCircuit":
         """ Phase gadget implementation of CX gate. """
         self.h(tgt)
         self.cz(ctrl, tgt)
         self.h(tgt, sign=-1)
         return self
 
-    def u3(self, qubit: int, theta: Angle, phi: Angle, lam: Angle) -> "PhaseCircuit":
+    def u3(self, qubit: int, theta: AngleExpr, phi: AngleExpr, lam: AngleExpr) -> "PhaseCircuit":
         """ Phase gadget implementation of U3 gate. """
         self.rz(qubit, lam)
         self.ry(qubit, theta)
@@ -751,7 +771,8 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             raise TypeError(f"Expected PhaseGadget, found {type(gadget)}.")
         basis = gadget.basis
         gadget_idx = len(self._angles)
-        new_col = np.zeros(shape=(self._num_qubits, 1), dtype=np.uint64)
+        new_col: npt.NDArray[np.uint64] = np.zeros(shape=(self._num_qubits, 1),
+                                                   dtype=np.uint64)
         for q in gadget.qubits:
             new_col[q] = 1
         self._matrix[basis] = np.append(self._matrix[basis], new_col, axis=1)
@@ -818,7 +839,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         ]
         return PhaseCircuit(self._num_qubits, remapped_gadgets)
 
-    def to_qiskit(self, topology: Topology):
+    def to_qiskit(self, topology: Topology) -> Any:
         """
             Returns this circuit as a Qiskit circuit.
 
@@ -830,13 +851,33 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             raise TypeError(f"Expected Topology, found {type(topology)}.")
         try:
             # pylint: disable = import-outside-toplevel
-            from qiskit.circuit import QuantumCircuit # type: ignore
-        except ModuleNotFoundError as _:
-            raise ModuleNotFoundError("You must install the 'qiskit' library.")
+            from qiskit.circuit import QuantumCircuit
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError("You must install the 'qiskit' library.") from e
         circuit = QuantumCircuit(self.num_qubits)
         for gadget in self.gadgets:
             gadget.on_qiskit_circuit(topology, circuit)
         return circuit
+
+    @overload
+    def to_svg(self, *,
+               zcolor: str = "#CCFFCC",
+               xcolor: str = "#FF8888",
+               hscale: float = 1.0, vscale: float = 1.0,
+               scale: float = 1.0,
+               svg_code_only: Literal[True]
+               ) -> str:
+        ...
+
+    @overload
+    def to_svg(self, *,
+               zcolor: str = "#CCFFCC",
+               xcolor: str = "#FF8888",
+               hscale: float = 1.0, vscale: float = 1.0,
+               scale: float = 1.0,
+               svg_code_only: Literal[False] = False
+               ) -> Any:
+        ...
 
     def to_svg(self, *,
                zcolor: str = "#CCFFCC",
@@ -844,7 +885,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                hscale: float = 1.0, vscale: float = 1.0,
                scale: float = 1.0,
                svg_code_only: bool = False
-               ):
+               ) -> Any:
         """
             Returns an SVG representation of this circuit, using
             the ZX calculus to express phase gadgets.
@@ -871,14 +912,35 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             raise TypeError("Keyword argument 'scale' must be positive float.")
         return self._to_svg(zcolor=zcolor, xcolor=xcolor,
                             hscale=hscale, vscale=vscale, scale=scale,
-                            svg_code_only=svg_code_only)
+                            svg_code_only=svg_code_only) # type: ignore[call-overload]
+
+    @overload
+    def _to_svg(self, *,
+                zcolor: str = "#CCFFCC",
+                xcolor: str = "#FF8888",
+                hscale: float = 1.0, vscale: float = 1.0,
+                scale: float = 1.0,
+                svg_code_only: Literal[True]
+                ) -> str:
+        ...
+
+    @overload
+    def _to_svg(self, *,
+                zcolor: str = "#CCFFCC",
+                xcolor: str = "#FF8888",
+                hscale: float = 1.0, vscale: float = 1.0,
+                scale: float = 1.0,
+                svg_code_only: Literal[False] = False
+                ) -> Any:
+        ...
+
     def _to_svg(self, *,
                 zcolor: str = "#CCFFCC",
                 xcolor: str = "#FF8888",
                 hscale: float = 1.0, vscale: float = 1.0,
                 scale: float = 1.0,
                 svg_code_only: bool = False
-                ):
+                ) -> Any:
         # pylint: disable = too-many-locals, too-many-statements
         # TODO: clean this up, restructure into a separate function, reuse for opt circuit
         num_qubits = self._num_qubits
@@ -941,8 +1003,8 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         try:
             # pylint: disable = import-outside-toplevel
             from IPython.core.display import SVG # type: ignore
-        except ModuleNotFoundError as _:
-            raise ModuleNotFoundError("You must install the 'IPython' library.")
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError("You must install the 'IPython' library.") from e
         return SVG(svg_code)
 
     def cloned(self) -> "PhaseCircuit":
@@ -1086,7 +1148,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         num_qubits = self.num_qubits
         gadgets = [g for g in self.gadgets if not g.angle.is_zero]
         # Groups of gadgets of the same basis, fused together where possible
-        GadgetGroup = Tuple[Literal["Z", "X"], Dict[int, Angle]]
+        GadgetGroup = Tuple[Literal["Z", "X"], Dict[int, AngleExpr]]
         groups: List[GadgetGroup] = [("Z", {})]
         # Perform the grouping and fusion
         for g in gadgets:
@@ -1193,13 +1255,14 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                 new_gadgets.append(PhaseGadget("X", pi, {q}))
         for basis, angles in groups:
             for qubits, angle in angles.items():
-                angle = angle % (2*pi)
+                if isinstance(angle, Angle):
+                    angle = angle % (2*pi)
                 if angle != 0: # skip zero angle gadgets
                     new_gadgets.append(PhaseGadget(basis, angle, _int_to_frozenset(qubits)))
         # Return a new phase circuit.
         return PhaseCircuit(num_qubits, new_gadgets)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if self is other:
             return True
         if not isinstance(other, PhaseCircuit):
@@ -1245,7 +1308,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
     def __getitem__(self, idx: slice) -> "PhaseCircuit":
         ...
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: Union[int, slice]) -> Union[PhaseGadget, "PhaseCircuit"]:
         if isinstance(idx, int):
             idx = self._reindex(idx)
             basis, col_idx = self._rev_gadget_idxs[idx]
@@ -1257,10 +1320,13 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             return PhaseCircuit(self.num_qubits, list(self._iter_gadgets(start, stop, step)))
         raise TypeError(f"Expected int or slice, found {type(idx)}")
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.num_gadgets
 
-    def _iter_gadgets(self, start=None, stop=None, step=None) -> Iterator[PhaseGadget]:
+    def _iter_gadgets(self,
+                      start: Optional[int] = None,
+                      stop: Optional[int] = None,
+                      step: Optional[int] = None) -> Iterator[PhaseGadget]:
         if start is None:
             start = 0
         else:
@@ -1309,7 +1375,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                 count += legs_count
         return count
 
-    def _repr_svg_(self):
+    def _repr_svg_(self) -> Any:
         """
             Magic method for IPython/Jupyter pretty-printing.
             See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
@@ -1318,6 +1384,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
 
     @staticmethod
     def random(num_qubits: int, num_gadgets: int, *,
+               parametric: Union[None, str, Callable[[int], AngleVar]] = None,
                angle_subdivision: int = 4,
                min_legs: int = 1,
                max_legs: Optional[int] = None,
@@ -1351,16 +1418,24 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             max_legs = num_qubits
         if rng_seed is not None and not isinstance(rng_seed, int):
             raise TypeError("RNG seed must be integer or 'None'.")
+        if parametric is not None:
+            if isinstance(parametric, str):
+                s = parametric
+                parametric = lambda i: AngleVar(f"{s}[{i}]", f"{s}_{i}")
         rng = np.random.default_rng(seed=rng_seed)
-        angle_rng_seed = int(rng.integers(65536))
-        basis_idxs = rng.integers(2, size=num_gadgets)
-        num_legs = rng.integers(min_legs, max_legs+1, size=num_gadgets)
-        legs_list: list = [
+        angle_rng_seed = int(rng.integers(65536)) # type: ignore[attr-defined]
+        basis_idxs = rng.integers(2, size=num_gadgets) # type: ignore[attr-defined]
+        num_legs = rng.integers(min_legs, max_legs+1, size=num_gadgets) # type: ignore[attr-defined]
+        legs_list: List[npt.NDArray[int]] = [
             rng.choice(num_qubits, num_legs[i], replace=False) for i in range(num_gadgets)
         ]
         angle_rng = np.random.default_rng(seed=angle_rng_seed)
+        angles: List[Union[Angle, AngleVar]]
         angles = [int(x)*pi/angle_subdivision
-                  for x in angle_rng.integers(1, 2*angle_subdivision, size=num_gadgets)]
+                  for x in angle_rng.integers(1, 2*angle_subdivision, # type: ignore[attr-defined]
+                                              size=num_gadgets)]
+        if parametric is not None:
+            angles = [parametric(i) for i in range(num_gadgets)]
         bases = cast(Sequence[Literal["Z", "X"]], ("Z", "X"))
         gadgets: List[PhaseGadget] = [
             PhaseGadget(bases[(basis_idx+i)%2],
@@ -1510,9 +1585,9 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                     "crz": (_crz, 2, 1),
                     "cu1": (_cu1, 2, 1),
                 }
-                for gate_name in gate_methods:
+                for gate_name, gate_args in gate_methods.items():
                     if statement.name == gate_name:
-                        m, num_qubits, num_params = gate_methods[gate_name]
+                        m, num_qubits, num_params = gate_args
                         if len(gate_qubits[0]) != num_qubits:
                             raise ValueError(f"Expected {num_qubits} qubits for {gate_name}, "
                                              f"found {len(gate_qubits[0])}")
@@ -1564,13 +1639,33 @@ class PhaseCircuitView:
         """
         return self._circuit.gadgets
 
+    @overload
+    def to_svg(self, *,
+               zcolor: str = "#CCFFCC",
+               xcolor: str = "#FF8888",
+               hscale: float = 1.0, vscale: float = 1.0,
+               scale: float = 1.0,
+               svg_code_only: Literal[True]
+               ) -> str:
+        ...
+
+    @overload
+    def to_svg(self, *,
+               zcolor: str = "#CCFFCC",
+               xcolor: str = "#FF8888",
+               hscale: float = 1.0, vscale: float = 1.0,
+               scale: float = 1.0,
+               svg_code_only: Literal[False] = False
+               ) -> Any:
+        ...
+
     def to_svg(self, *,
                zcolor: str = "#CCFFCC",
                xcolor: str = "#FF8888",
                hscale: float = 1.0, vscale: float = 1.0,
                scale: float = 1.0,
                svg_code_only: bool = False
-               ):
+               ) -> Any:
         # pylint: disable = too-many-locals
         """
             Returns an SVG representation of this circuit, using
@@ -1587,7 +1682,7 @@ class PhaseCircuitView:
         return self._circuit.to_svg(zcolor=zcolor, xcolor=xcolor,
                                     hscale=hscale, vscale=vscale,
                                     scale=scale,
-                                    svg_code_only=svg_code_only)
+                                    svg_code_only=svg_code_only) # type: ignore[call-overload]
 
     def cloned(self) -> PhaseCircuit:
         """
@@ -1595,7 +1690,7 @@ class PhaseCircuitView:
         """
         return self._circuit.cloned()
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if self is other:
             return True
         if isinstance(other, PhaseCircuit):
@@ -1604,7 +1699,7 @@ class PhaseCircuitView:
             return self._circuit == other._circuit
         return NotImplemented
 
-    def _repr_svg_(self):
+    def _repr_svg_(self) -> Any:
         """
             Magic method for IPython/Jupyter pretty-printing.
             See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html

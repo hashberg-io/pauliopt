@@ -5,14 +5,15 @@
 import re
 from typing import (Collection, Dict, Final, FrozenSet, Iterator, List, Mapping,
                     Optional, Sequence, Set, Tuple, TypedDict, Union)
-import numpy as np # type: ignore
+import numpy as np
+import numpy.typing as npt
 
 class Coupling(FrozenSet[int]):
     """
         Type for couplings in a qubit topology, i.e. unordered
         pairs of adjacent qubits.
     """
-    def __new__(cls, fst: int, snd: int):
+    def __new__(cls, fst: int, snd: int) -> "Coupling":
         if not isinstance(fst, int):
             raise TypeError(f"Expected integer, found {fst}")
         if not isinstance(snd, int):
@@ -510,16 +511,16 @@ class Topology:
 
             This method relies on the `qiskit` library being available.
             Specifically, the `backend` argument must be of type
-            `qiskit.providers.BaseBackend`.
+            `qiskit.providers.Backend`.
         """
         try:
             # pylint: disable = import-outside-toplevel, unused-import
-            from qiskit.providers import BaseBackend # type: ignore
+            from qiskit.providers import Backend # type: ignore
         except ModuleNotFoundError as _:
             raise ModuleNotFoundError("You must install the 'qiskit' library.")
-        if not isinstance(backend, BaseBackend):
+        if not isinstance(backend, Backend):
             raise TypeError("Argument backend must be of type "
-                            "`qiskit.providers.BaseBackend`.")
+                            "`qiskit.providers.Backend`.")
         return Topology.from_qiskit_config(backend.configuration())
 
 

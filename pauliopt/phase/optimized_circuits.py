@@ -5,13 +5,13 @@
 
 from collections import deque
 from math import ceil, log10
-from typing import (Deque, Dict, List, Optional, Protocol,
+from typing import (Callable, Deque, Dict, List, Optional, Protocol,
                     runtime_checkable, Set, Tuple, TypedDict, Union)
 import numpy as np # type: ignore
 from pauliopt.phase.phase_circuits import PhaseCircuit, PhaseCircuitView
 from pauliopt.phase.cx_circuits import CXCircuitLayer, CXCircuit, CXCircuitView
 from pauliopt.topologies import Topology
-from pauliopt.utils import (TempSchedule, StandardTempSchedule,
+from pauliopt.utils import (AngleVar, TempSchedule, StandardTempSchedule,
                             StandardTempSchedules, SVGBuilder)
 
 @runtime_checkable
@@ -124,13 +124,15 @@ class OptimizedPhaseCircuit:
     _gadget_cx_count_cache: Dict[int, Dict[Tuple[int, ...], int]]
     _rng_seed: Optional[int]
     _rng: np.random.Generator
+    _fresh_angle_vars: Union[None, Callable[[int], AngleVar]]
 
     def __init__(self, phase_block: Union[PhaseCircuit, PhaseCircuitView],
                  topology: Topology,
                  cx_block: Union[int, CXCircuit, CXCircuitView],
                  *,
                  circuit_rep: int = 1,
-                 rng_seed: Optional[int] = None):
+                 rng_seed: Optional[int] = None,
+                 fresh_angle_vars: Union[None, str, Callable[[int], AngleVar]] = None):
         if not isinstance(phase_block, PhaseCircuit):
             raise TypeError(f"Expected PhaseCircuit, found {type(phase_block)}.")
         if not isinstance(topology, Topology):
@@ -159,6 +161,10 @@ class OptimizedPhaseCircuit:
         self._init_cx_count, self._init_cx_blocks_count = self._compute_cx_count()
         self._cx_count = self._init_cx_count
         self._cx_blocks_count = self._init_cx_blocks_count
+        if isinstance(fresh_angle_vars, str):
+            self._fresh_angle_vars = lambda i: AngleVar(f"{fresh_angle_vars}[{i}]", f"{fresh_angle_vars}_{i}")
+        else:
+            self._fresh_angle_vars = fresh_angle_vars
 
     @property
     def topology(self) -> Topology:
@@ -518,7 +524,10 @@ class OptimizedPhaseCircuit:
         base_x = base_x + (max_lvl+1) * row_width//3
         levels = [0 for _ in range(num_qubits)]
         max_lvl = 0
-        for gadget in gadgets:
+        for i, gadget in enumerate(gadgets):
+            angle = gadget.angle
+            if isinstance(angle, AngleVar) and self._fresh_angle_vars is not None:
+                angle = self._fresh_angle_vars(i)
             fill = zcolor if gadget.basis == "Z" else xcolor
             other_fill = xcolor if gadget.basis == "Z" else zcolor
             qubit_span = range(min(gadget.qubits), max(gadget.qubits)+1)
@@ -538,12 +547,12 @@ class OptimizedPhaseCircuit:
                 builder.line((x+delta_fst, text_y), (x+delta_snd, text_y))
                 builder.circle((x+delta_fst, text_y), r, other_fill)
                 builder.circle((x+delta_snd, text_y), r, fill)
-                builder.text((x+delta_snd+2*r, text_y), str(gadget.angle), font_size=font_size)
+                builder.text((x+delta_snd+2*r, text_y), str(angle), font_size=font_size)
             else:
                 for q in gadget.qubits:
                     y = pad_y + (q+1)*line_height
                     builder.circle((x, y), r, fill)
-                builder.text((x+r, y-line_height//3), str(gadget.angle), font_size=font_size)
+                builder.text((x+r, y-line_height//3), str(angle), font_size=font_size)
         base_x = base_x + (max_lvl+1) * row_width
         levels = [0 for _ in range(num_qubits)]
         max_lvl = 0

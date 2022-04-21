@@ -2,20 +2,111 @@
     Utility classes and functions for the `pauliopt` library.
 """
 
+from abc import ABC, abstractmethod
 import math
 from decimal import Decimal
 from fractions import Fraction
-from typing import (Final, List, Literal, Mapping, Optional, overload,
+from types import MappingProxyType
+from typing import (Any, Callable, ClassVar, Dict, Final, List, Literal, Mapping, Optional, overload,
                     Protocol, runtime_checkable, Sequence, Tuple, Union)
+import numpy as np
 
-AngleInitT = Union[int, Fraction, Decimal, str]
+AngleInitT = Union[int, Fraction, str, Decimal]
 
-class Angle:
+class AngleExpr(ABC):
+    """
+        A container class for angle expressions.
+    """
+
+    def __pos__(self) -> "AngleExpr":
+        return self
+
+    def __neg__(self) -> "AngleExpr":
+        return SumprodAngleExpr(self, coeffs=-1)
+
+    def __add__(self, other: "AngleExpr") -> "AngleExpr":
+        if isinstance(other, AngleExpr):
+            return SumprodAngleExpr(self, other)
+        return NotImplemented
+
+    def __sub__(self, other: "AngleExpr") -> "AngleExpr":
+        if isinstance(other, AngleExpr):
+            return SumprodAngleExpr(self, -other)
+        return NotImplemented
+
+    def __mod__(self, other: "AngleExpr") -> "AngleExpr":
+        if isinstance(other, AngleExpr):
+            return ModAngleExpr(self, other)
+        return NotImplemented
+
+    def __mul__(self, other: int) -> "AngleExpr":
+        if isinstance(other, int):
+            return SumprodAngleExpr(self, coeffs=other)
+        return NotImplemented
+
+    def __rmul__(self, other: int) -> "AngleExpr":
+        if isinstance(other, int):
+            return SumprodAngleExpr(self, coeffs=other)
+        return NotImplemented
+
+    def __truediv__(self, other: int) -> "AngleExpr":
+        if isinstance(other, int):
+            return SumprodAngleExpr(self, coeffs=Fraction(1,other))
+        return NotImplemented
+
+    @abstractmethod
+    def __hash__(self) -> int:
+        ...
+
+    @abstractmethod
+    def __str__(self) -> str:
+        ...
+
+    @abstractmethod
+    def __repr__(self) -> str:
+        ...
+
+    @property
+    @abstractmethod
+    def repr_latex(self) -> str:
+        """
+            LaTeX math mode representation of this number.
+        """
+        ...
+
+    @property
+    @abstractmethod
+    def to_qiskit(self) -> Any:
+        ...
+
+    @property
+    def is_zero(self) -> bool:
+        return False
+
+    @property
+    def is_pi(self) -> bool:
+        return False
+
+    @property
+    def is_zero_or_pi(self) -> bool:
+        return self.is_zero or self.is_pi
+
+    def _repr_latex_(self) -> str:
+        """
+            Magic method for IPython/Jupyter pretty-printing.
+            See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
+        """
+        return "$%s$"%self.repr_latex
+
+    @abstractmethod
+    def __eq__(self, other: Any) -> bool:
+        ...
+
+
+class Angle(AngleExpr):
     """
         A container class for angles,
         as rational multiples of PI modulo 2PI.
-
-        Copyright (C) 2019 - Hashberg Ltd
     """
 
     _value: Fraction
@@ -47,7 +138,7 @@ class Angle:
         return (a, order)
 
     @property
-    def order(self):
+    def order(self) -> int:
         """
             The order of this angle as a root of unity.
         """
@@ -82,40 +173,71 @@ class Angle:
         den = self.value.denominator
         return num % den == 0 and not num % (2*den) == 0
 
+    @property
+    def to_qiskit(self) -> float:
+        return float(self)
+
     def __pos__(self) -> "Angle":
         return self
 
     def __neg__(self) -> "Angle":
         return Angle(-self._value)
 
+    @overload
     def __add__(self, other: "Angle") -> "Angle":
+        ...
+
+    @overload
+    def __add__(self, other: "AngleExpr") -> "AngleExpr":
+        ...
+
+    def __add__(self, other: "AngleExpr") -> "AngleExpr":
         if isinstance(other, Angle):
             return Angle(self._value + other._value)
-        return NotImplemented
+        return super().__add__(other)
 
+    @overload
     def __sub__(self, other: "Angle") -> "Angle":
+        ...
+
+    @overload
+    def __sub__(self, other: "AngleExpr") -> "AngleExpr":
+        ...
+
+    def __sub__(self, other: "AngleExpr") -> "AngleExpr":
         if isinstance(other, Angle):
             return Angle(self._value - other._value)
-        return NotImplemented
+        return super().__sub__(other)
 
+    @overload
     def __mod__(self, other: "Angle") -> "Angle":
+        ...
+
+    @overload
+    def __mod__(self, other: "AngleExpr") -> "AngleExpr":
+        ...
+
+    def __mod__(self, other: "AngleExpr") -> "AngleExpr":
         if isinstance(other, Angle):
             return Angle(self._value % other._value)
+        return super().__mod__(other)
+
+    def _mul(self, other: Union[int, Fraction]) -> "Angle":
+        return Angle(self._value*other)
+
+    def __mul__(self, other: int) -> "Angle":
+        if isinstance(other, int):
+            return self._mul(other)
         return NotImplemented
 
-    def __mul__(self, other: Union[int, Fraction, str]) -> "Angle":
+    def __rmul__(self, other: int) -> "Angle":
         if isinstance(other, int):
-            return Angle(self._value * Fraction(other))
+            return self._mul(other)
         return NotImplemented
 
-    def __rmul__(self, other: Union[int, Fraction, str]) -> "Angle":
+    def __truediv__(self, other: int) -> "Angle":
         if isinstance(other, int):
-            return Angle(self._value * Fraction(other))
-        return NotImplemented
-
-    def __truediv__(self, other: Union[int, Fraction, str]) -> "Angle":
-        if isinstance(other, int):
-            return Angle(self._value / Fraction(other))
+            return self._mul(Fraction(1, other))
         return NotImplemented
 
     def __hash__(self) -> int:
@@ -158,14 +280,14 @@ class Angle:
             return "\\frac{\\pi}{%d}"%den
         return "\\frac{%d\\pi}{%d}"%(num, den)
 
-    def _repr_latex_(self):
+    def _repr_latex_(self) -> str:
         """
             Magic method for IPython/Jupyter pretty-printing.
             See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
         """
         return "$%s$"%self.repr_latex
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if other == 0:
             return self.value == 0
         if not isinstance(other, Angle):
@@ -193,12 +315,11 @@ class Angle:
 
     @staticmethod
     def random(subdivision: int = 4, *, size: int = 1,
-               rng_seed: Optional[int] = None, nonzero: bool = False):
+               rng_seed: Optional[int] = None,
+               nonzero: bool = False) -> Union["Angle", Tuple["Angle", ...]]:
         """
             Generates a random angle with the given `subdivision`:
             `r * pi/subdivision` for random `r in range(2*subdivision)`.
-
-            Requires `numpy`.
         """
         if not isinstance(subdivision, int):
             raise TypeError()
@@ -212,16 +333,11 @@ class Angle:
             raise ValueError("Size must be positive.")
         if rng_seed is not None and not isinstance(rng_seed, int):
             raise TypeError("RNG seed must be integer or 'None'.")
-        try:
-            # pylint: disable = import-outside-toplevel, unused-import
-            import numpy as np # type: ignore
-        except ModuleNotFoundError as _:
-            raise ModuleNotFoundError("You must install the 'numpy' library.")
         rng = np.random.default_rng(seed=rng_seed)
         if nonzero:
-            rs = 1+rng.integers(2*subdivision-1, size=size)
+            rs = 1+rng.integers(2*subdivision-1, size=size) # type: ignore[attr-defined]
         else:
-            rs = rng.integers(2*subdivision, size=size)
+            rs = rng.integers(2*subdivision, size=size) # type: ignore[attr-defined]
         if size == 1:
             return Angle(Fraction(int(rs[0]), subdivision))
         return tuple(Angle(Fraction(int(r), subdivision)) for r in rs)
@@ -240,11 +356,227 @@ Angle.pi = Angle(1) # type: ignore
 pi: Final[Angle] = Angle.pi
 """ Constant for `Angle.pi`. """
 
-π: Final[Angle] = Angle.pi
+π: Final[Angle] = Angle.pi # pylint: disable=non-ascii-name
 """ Constant for `Angle.pi`. """
 
 
-def _validate_vec2(vec2: Tuple[int, int]):
+def SumprodAngleExpr(*exprs: AngleExpr,
+                     coeffs: Union[int, Fraction,
+                                   Sequence[Union[int, Fraction]]] = 1
+                    ) -> AngleExpr:
+    if not isinstance(coeffs, Sequence):
+        coeffs = (coeffs,)
+    if len(coeffs) != len(exprs):
+        raise ValueError(f"Expected a sequence of {len(exprs)} coefficients, "
+                         f"found {len(coeffs)}.")
+    _coeffs: Dict[AngleExpr, Fraction] = {}
+    _const: Angle = Angle.zero
+    for e, c in zip(exprs, coeffs):
+        if isinstance(e, Angle):
+            _const += e._mul(c) # pylint: disable = protected-access
+        elif isinstance(e, _SumprodAngleExpr):
+            for sub_e, sub_c in e.coeffs.items():
+                new_c = c*sub_c
+                if sub_e in _coeffs:
+                    new_c += _coeffs[sub_e]
+                _coeffs[sub_e] = new_c
+        elif c != 0:
+            c = Fraction(c)
+            if e in _coeffs:
+                c += _coeffs[e]
+            _coeffs[e] = c
+    _coeffs = {
+        e: c
+        for e, c in sorted(_coeffs.items(), key=lambda i: -i[1])
+        if c != 0 and not e.is_zero
+    }
+    if not _coeffs:
+        return _const
+    return _SumprodAngleExpr(_coeffs, _const)
+
+
+class _SumprodAngleExpr(AngleExpr):
+    _coeffs: Mapping[AngleExpr, Fraction]
+    _const: "Angle"
+
+    def __init__(self, coeffs: Mapping[AngleExpr, Fraction],
+                 const: "Angle" = Angle.zero):
+        if any(isinstance(e, Angle) for e in coeffs):
+            raise ValueError("Keys of 'coeff' argument of _SumprodAngleExpr"
+                             "constructor cannot be Angle.")
+        self._coeffs = MappingProxyType({e: c for e, c in coeffs.items()
+                                         if c != 0 and not e.is_zero})
+        self._const = const
+
+    @property
+    def coeffs(self) -> Mapping[AngleExpr, Fraction]:
+        return self._coeffs
+
+    @property
+    def const(self) -> "Angle":
+        return self._const
+
+    @property
+    def is_zero(self) -> bool:
+        return not self.coeffs and self.const.is_zero
+
+    @property
+    def is_pi(self) -> bool:
+        return not self.coeffs and self.const.is_pi
+
+    @property
+    def to_qiskit(self) -> Any:
+        return sum((c*e.to_qiskit for e, c in self.coeffs.items()), self.const.to_qiskit)
+
+    def __hash__(self) -> int:
+        return hash((_SumprodAngleExpr, tuple(self.coeffs.items()), self.const))
+
+    def _str_repr(self, f: Callable[[Union[Angle, AngleExpr]], str]) -> str:
+        if not self.coeffs:
+            return f(self.const)
+        pos_sub_e = {e: c for e, c in self.coeffs.items() if c > 0}
+        neg_sub_e = {e: c for e, c in self.coeffs.items() if c < 0}
+        s = "+".join(
+            ("" if c == 1 else str(c))+f(e)
+            for e, c in pos_sub_e.items()
+        )
+        if neg_sub_e:
+            s += "-"+"".join(
+                ("-" if c == -1 else str(c))+f(e)
+                for e, c in pos_sub_e.items()
+            )
+        if self.const != 0:
+            s += f(self.const)
+        return s
+
+    def __str__(self) -> str:
+        return self._str_repr(str)
+
+    def __repr__(self) -> str:
+        return self._str_repr(repr)
+
+    @property
+    def repr_latex(self) -> str:
+        """
+            LaTeX math mode representation of this number.
+        """
+        return self._str_repr(lambda e: e.repr_latex)
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, _SumprodAngleExpr):
+            return self.coeffs == other.coeffs and self.const == other.const
+        if isinstance(other, AngleExpr):
+            return False
+        return NotImplemented
+
+def ModAngleExpr(expr: AngleExpr, mod: AngleExpr) -> AngleExpr:
+    if isinstance(expr, Angle) and isinstance(mod, Angle):
+        return expr%mod
+    return _ModAngleExpr(expr, mod)
+
+class _ModAngleExpr(AngleExpr):
+    _expr: AngleExpr
+    _mod: AngleExpr
+
+    def __init__(self, expr: AngleExpr, mod: AngleExpr):
+        if isinstance(expr, Angle) and isinstance(mod, Angle):
+            raise ValueError("Arguments to _ModAngleExpr constructor cannot both be Angle.")
+        self._expr = expr
+        self._mod = mod
+
+    @property
+    def expr(self) -> AngleExpr:
+        return self._expr
+
+    @property
+    def mod(self) -> AngleExpr:
+        return self._mod
+
+    @property
+    def is_zero(self) -> bool:
+        return self.expr.is_zero or self.expr == self.mod
+
+    @property
+    def to_qiskit(self) -> Any:
+        return self.expr.to_qiskit%self.mod.to_qiskit
+
+    def __hash__(self) -> int:
+        return hash((_ModAngleExpr, self.expr, self.mod))
+
+    def __str__(self) -> str:
+        return f"{str(self.expr)}%{str(self.mod)}"
+
+    def __repr__(self) -> str:
+        return f"{repr(self.expr)}%{repr(self.mod)}"
+
+    @property
+    def repr_latex(self) -> str:
+        """
+            LaTeX math mode representation of this number.
+        """
+        return fr"{self.expr.repr_latex} mod\left({self.mod.repr_latex}\right)"
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, _ModAngleExpr):
+            return self._expr == other._expr and self._mod == other._mod
+        if isinstance(other, AngleExpr):
+            return False
+        return NotImplemented
+
+class AngleVar(AngleExpr):
+    _global_id: ClassVar[int] = 0
+    _qiskit_bindings: ClassVar[Dict[int, Any]]
+    _id: int
+    _label: str
+    _latex_label: str
+
+    def __init__(self, label: str, latex_label: Optional[str] = None):
+        self._label = label
+        if latex_label is None:
+            latex_label = label
+        self._latex_label = latex_label
+        self._id = AngleVar._global_id
+        AngleVar._global_id += 1
+
+    @property
+    def to_qiskit(self) -> Any:
+        if self._id in AngleVar._qiskit_bindings:
+            return AngleVar._qiskit_bindings[self._id]
+        try:
+            # pylint: disable = import-outside-toplevel
+            from qiskit.circuit import Parameter # type: ignore
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError("You must install the 'qiskit' library.") from e
+        p = Parameter(self._repr_latex_)
+        AngleVar._qiskit_bindings[self._id] = p
+        return p
+
+    def __hash__(self) -> int:
+        return hash((AngleVar, self._id))
+
+    def __str__(self) -> str:
+        return self._label
+
+    def __repr__(self) -> str:
+        return self._label
+
+    @property
+    def repr_latex(self) -> str:
+        """
+            LaTeX math mode representation of this number.
+        """
+        return self._latex_label
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, AngleVar):
+            return self is other
+        if isinstance(other, AngleExpr):
+            return False
+        return NotImplemented
+
+
+
+def _validate_vec2(vec2: Tuple[int, int]) -> None:
     if not isinstance(vec2, tuple) or len(vec2) != 2:
         raise TypeError("Expected pair.")
     if not all(isinstance(x, int) for x in vec2):
@@ -277,7 +609,7 @@ class SVGBuilder:
         return self._width
 
     @width.setter
-    def width(self, new_width: int):
+    def width(self, new_width: int) -> None:
         """
             Set the figure width.
         """
@@ -293,7 +625,7 @@ class SVGBuilder:
         return self._height
 
     @height.setter
-    def height(self, new_height: int):
+    def height(self, new_height: int) -> None:
         """
             Set the figure height.
         """
@@ -412,7 +744,7 @@ def geometric_temp_schedule(t_init: Union[int, float], t_final: Union[int, float
     if not isinstance(t_final, (int, float)):
         raise TypeError(f"Expected int or float, found {type(t_final)}.")
     def temp_schedule(it: int, num_iters: int) -> float:
-        return t_init * ((t_final/t_init)**(it/(num_iters-1)))
+        return t_init * ((t_final/t_init)**(it/(num_iters-1.0))) # type: ignore[no-any-return]
     return temp_schedule
 
 
