@@ -7,14 +7,13 @@ import pytket
 from pytket._tket.circuit import PauliExpBox
 from pytket._tket.transform import Transform
 from pytket.extensions.qiskit.qiskit_convert import tk_to_qiskit, qiskit_to_tk
-
+from pytket._tket.pauli import Pauli
 from qiskit import QuantumCircuit
 
 from pauliopt.pauli.clifford_gates import CX, CY, CZ, H, S, V
 from pauliopt.pauli.pauli_gadget import PPhase
 from pauliopt.pauli.pauli_polynomial import PauliPolynomial
 from pauliopt.pauli.utils import X, Y, Z, I
-from pytket._tket.pauli import Pauli
 
 from pauliopt.topologies import Topology
 
@@ -100,18 +99,18 @@ class TestPauliConversion(unittest.TestCase):
 
     def test_gate_propagation(self):
         """
-        Checks if the clifford Propagation rules are sound for 3, 4, 5 qubits
+        Checks if the clifford Propagation rules are sound for 2, 3, 4 qubits
         """
         for num_qubits in [2, 3, 4]:
             pp = generate_all_combination_pauli_polynomial(n_qubits=num_qubits)
             inital_qc = pp.to_qiskit()
-
             for gate_class in [CX, CY, CZ, H, S, V]:
                 gate = gate_class.generate_random(num_qubits)
-                pp_ = pp.propagate(gate)
+                print(gate.to_qiskit())
+                pp_ = pp.copy().propagate(gate)
                 qc = QuantumCircuit(num_qubits)
-                qc.compose(gate.to_qiskit(), inplace=True)
-                qc.compose(pp_.to_qiskit())
                 qc.compose(gate.to_qiskit().inverse(), inplace=True)
-
+                qc.compose(pp_.to_qiskit(), inplace=True)
+                qc.compose(gate.to_qiskit(), inplace=True)
+                # print(qc)
                 self.assertTrue(verify_equality(inital_qc, qc), "The resulting Quantum Circuits were not equivalent")
