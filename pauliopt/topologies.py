@@ -8,13 +8,11 @@ from typing import (Collection, Dict, Final, FrozenSet, Iterator, List, Mapping,
 import numpy as np
 import numpy.typing as npt
 
-
 class Coupling(FrozenSet[int]):
     """
         Type for couplings in a qubit topology, i.e. unordered
         pairs of adjacent qubits.
     """
-
     def __new__(cls, fst: int, snd: int) -> "Coupling":
         if not isinstance(fst, int):
             raise TypeError(f"Expected integer, found {fst}")
@@ -23,14 +21,14 @@ class Coupling(FrozenSet[int]):
         if len({fst, snd}) != 2:
             raise ValueError("Expected a pair of distinct qubits.")
         # see https://github.com/python/mypy/issues/6061
-        return super(Coupling, cls).__new__(cls, {fst, snd})  # type: ignore
+        return super(Coupling, cls).__new__(cls, {fst, snd}) # type: ignore
 
     @property
     def as_pair(self) -> Tuple[int, int]:
         """
             Returns the coupling as a (increasingly) ordered pair.
         """
-        return (min(*self), max(*self))  # pylint: disable = not-an-iterable
+        return (min(*self), max(*self)) # pylint: disable = not-an-iterable
 
     def __str__(self) -> str:
         fst, snd = sorted(self)
@@ -173,8 +171,8 @@ class Topology:
         """
         try:
             # pylint: disable = import-outside-toplevel
-            import networkx as nx  # type: ignore
-        except ModuleNotFoundError as e:  # pylint: disable = unused-variable
+            import networkx as nx # type: ignore
+        except ModuleNotFoundError as e: # pylint: disable = unused-variable
             raise ModuleNotFoundError("You must install the 'networkx' library.")
         G = self.to_nx
         is_planar, _ = nx.check_planarity(G)
@@ -186,7 +184,7 @@ class Topology:
             Readonly property returning the available layouts for this qubit topology.
         """
         if self.is_planar:
-            return Layouts + ("planar",)
+            return Layouts+("planar",)
         return Layouts
 
     @property
@@ -197,7 +195,7 @@ class Topology:
         """
         try:
             # pylint: disable = import-outside-toplevel
-            import networkx as nx  # type: ignore
+            import networkx as nx # type: ignore
         except ModuleNotFoundError as _:
             raise ModuleNotFoundError("You must install the 'networkx' library.")
         g = nx.Graph()
@@ -221,12 +219,12 @@ class Topology:
         """
         try:
             # pylint: disable = import-outside-toplevel
-            import networkx as nx  # type: ignore
+            import networkx as nx # type: ignore
         except ModuleNotFoundError as _:
             raise ModuleNotFoundError("You must install the 'networkx' library.")
         try:
             # pylint: disable = import-outside-toplevel
-            import matplotlib.pyplot as plt  # type: ignore
+            import matplotlib.pyplot as plt # type: ignore
         except ModuleNotFoundError as _:
             raise ModuleNotFoundError("You must install the 'matplotlib' library.")
         G = self.to_nx
@@ -236,7 +234,7 @@ class Topology:
             if layout not in layouts:
                 raise ValueError(f"Invalid layout found: {layout}. "
                                  f"Valid layouts: {', '.join(repr(l) for l in layouts)}")
-            kwargs["pos"] = getattr(nx, layout + "_layout")(G)
+            kwargs["pos"] = getattr(nx, layout+"_layout")(G)
         if "node_color" not in kwargs:
             kwargs["node_color"] = "#dddddd"
         plt.figure(figsize=figsize)
@@ -278,19 +276,6 @@ class Topology:
             raise TypeError(f"Expected a valid qubit, found {to}.")
         return self._dist[fro, to]
 
-    def shortest_path(self, fro: int, to: int):
-        """
-        Compute the shortest path using the next lookup table from the Floyd–Warshall algorithm
-        """
-        if self._next[fro, to] is None:
-            raise Exception("Unconnected Architecture")
-        else:
-            path = [fro]
-            while fro != to:
-                fro = self._next[fro, to]
-                path.append(fro)
-            return path
-
     def mapped_fwd(self, mapping: Union[Sequence[int], Dict[int, int]]) -> "Topology":
         """
             Returns a topology with the same couplings, but remapping the qubits using
@@ -317,7 +302,22 @@ class Topology:
         mapped_couplings = [{_mapping[x] for x in coupling} for coupling in self._couplings]
         return Topology(self.num_qubits, mapped_couplings)
 
-    def mapped_bwd(self, mapping: Union[Sequence[int], Dict[int, int]]) -> "Topology":
+    def shortest_path(self, fro: int, to: int):
+        """
+        Computes the shortest path using the next lookup table from the Floyd–Warshall algorithm
+        """
+        if self._next[fro, to] is None:
+            raise Exception("Unconnected Architecture")
+        else:
+            path = [fro]
+            while fro != to:
+                fro = self._next[fro, to]
+                path.append(fro)
+            return path
+
+
+
+def mapped_bwd(self, mapping: Union[Sequence[int], Dict[int, int]]) -> "Topology":
         """
             Returns a topology with the same couplings, but remapping the qubits using
             the inverse of the given mapping.
@@ -411,9 +411,9 @@ class Topology:
         """
         if not isinstance(num_qubits, int) or num_qubits <= 0:
             raise TypeError("Number of qubits must be positive integer.")
-        couplings = [[i, i + 1] for i in range(num_qubits - 1)]
+        couplings = [[i, i+1] for i in range(num_qubits-1)]
         top = Topology(num_qubits, couplings)
-        top._named = f"line({num_qubits})"  # pylint: disable = protected-access
+        top._named = f"line({num_qubits})" # pylint: disable = protected-access
         return top
 
     @staticmethod
@@ -423,9 +423,9 @@ class Topology:
         """
         if not isinstance(num_qubits, int) or num_qubits <= 0:
             raise TypeError("Number of qubits must be positive integer.")
-        couplings = [[i, (i + 1) % num_qubits] for i in range(num_qubits)]
+        couplings = [[i, (i+1)%num_qubits] for i in range(num_qubits)]
         top = Topology(num_qubits, couplings)
-        top._named = f"cycle({num_qubits})"  # pylint: disable = protected-access
+        top._named = f"cycle({num_qubits})" # pylint: disable = protected-access
         return top
 
     @staticmethod
@@ -435,9 +435,9 @@ class Topology:
         """
         if not isinstance(num_qubits, int) or num_qubits <= 0:
             raise TypeError("Number of qubits must be positive integer.")
-        couplings = [[i, j] for i in range(num_qubits) for j in range(i + 1, num_qubits)]
+        couplings = [[i, j] for i in range(num_qubits) for j in range(i+1, num_qubits)]
         top = Topology(num_qubits, couplings)
-        top._named = f"complete({num_qubits})"  # pylint: disable = protected-access
+        top._named = f"complete({num_qubits})" # pylint: disable = protected-access
         return top
 
     @staticmethod
@@ -451,19 +451,17 @@ class Topology:
         if not isinstance(num_cols, int) or num_cols <= 0:
             raise TypeError("Number of cols must be positive integer.")
         num_qubits = num_rows * num_cols
-
         def qubit(r, c):
-            return num_cols * r + c
-
+            return num_cols*r + c
         couplings: List[List[int]] = []
         for r in range(num_rows):
             for c in range(num_cols):
-                if r < num_rows - 1:
-                    couplings.append([qubit(r, c), qubit(r + 1, c)])
-                if c < num_cols - 1:
-                    couplings.append([qubit(r, c), qubit(r, c + 1)])
+                if r < num_rows-1:
+                    couplings.append([qubit(r, c), qubit(r+1, c)])
+                if c < num_cols-1:
+                    couplings.append([qubit(r, c), qubit(r, c+1)])
         top = Topology(num_qubits, couplings)
-        top._named = f"grid({num_rows},{num_cols})"  # pylint: disable = protected-access
+        top._named = f"grid({num_rows},{num_cols})" # pylint: disable = protected-access
         return top
 
     @staticmethod
@@ -477,17 +475,15 @@ class Topology:
         if not isinstance(num_cols, int) or num_cols <= 0:
             raise TypeError("Number of cols must be positive integer.")
         num_qubits = num_rows * num_cols
-
         def qubit(r, c):
-            return num_cols * r + c
-
+            return num_cols*r + c
         couplings: List[List[int]] = []
         for r in range(num_rows):
             for c in range(num_cols):
-                couplings.append([qubit(r, c), qubit((r + 1) % num_rows, c)])
-                couplings.append([qubit(r, c), qubit(r, (c + 1) % num_cols)])
+                couplings.append([qubit(r, c), qubit((r+1)%num_rows, c)])
+                couplings.append([qubit(r, c), qubit(r, (c+1)%num_cols)])
         top = Topology(num_qubits, couplings)
-        top._named = f"periodic_grid({num_rows},{num_cols})"  # pylint: disable = protected-access
+        top._named = f"periodic_grid({num_rows},{num_cols})" # pylint: disable = protected-access
         return top
 
     @staticmethod
@@ -502,7 +498,7 @@ class Topology:
         """
         try:
             # pylint: disable = import-outside-toplevel
-            from qiskit.providers.models import QasmBackendConfiguration  # type: ignore
+            from qiskit.providers.models import QasmBackendConfiguration # type: ignore
         except ModuleNotFoundError as _:
             raise ModuleNotFoundError("You must install the 'qiskit' library.")
         if not isinstance(config, QasmBackendConfiguration):
@@ -525,7 +521,7 @@ class Topology:
         """
         try:
             # pylint: disable = import-outside-toplevel, unused-import
-            from qiskit.providers import Backend  # type: ignore
+            from qiskit.providers import Backend # type: ignore
         except ModuleNotFoundError as _:
             raise ModuleNotFoundError("You must install the 'qiskit' library.")
         if not isinstance(backend, Backend):
