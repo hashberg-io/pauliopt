@@ -87,17 +87,6 @@ Layouts: Final[Tuple[str, ...]] = ("circular", "kamada_kawai", "random",
 """
 
 
-def fw_shortest_path(self, u, v):
-    if self.floyd_warshall_next[u, v] is None:
-        raise Exception("Unconnected Architecture")
-    else:
-        path = [u]
-        while u != v:
-            u = self.floyd_warshall_next[u, v]
-            path.append(u)
-        return path
-
-
 def _floyd_warshall(topology: "Topology"):
     next = np.ones((topology.num_qubits, topology.num_qubits), dtype=int)
     dist = np.inf * np.ones((topology.num_qubits, topology.num_qubits))
