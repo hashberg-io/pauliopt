@@ -13,13 +13,11 @@ from pauliopt.qasm import QASM
 from pauliopt.topologies import Topology
 from pauliopt.utils import Angle, AngleExpr, AngleVar, SVGBuilder, pi
 
-
 def _frozenset_to_int(s: FrozenSet[int]) -> int:
     i = 0
     for x in s:
-        i |= (2 ** x)
+        i |= (2**x)
     return i
-
 
 def _int_to_frozenset(i: int) -> FrozenSet[int]:
     s: List[int] = []
@@ -31,7 +29,6 @@ def _int_to_frozenset(i: int) -> FrozenSet[int]:
         x += 1
     return frozenset(s)
 
-
 def _int_to_iterator(i: int) -> Iterator[int]:
     x = 0
     while i != 0:
@@ -39,7 +36,6 @@ def _int_to_iterator(i: int) -> Iterator[int]:
             yield x
         i //= 2
         x += 1
-
 
 def _prims_algorithm_weight(nodes: Collection[int], weight: Callable[[int, int], int],
                             inf: int) -> int:
@@ -63,8 +59,8 @@ def _prims_algorithm_weight(nodes: Collection[int], weight: Callable[[int, int],
     }
     while to_visit:
         # Look for the node to be visited which is nearest to the visited set:
-        nearest_node = 0  # dummy value
-        nearest_dist: int = inf  # dummy value
+        nearest_node = 0 # dummy value
+        nearest_dist: int = inf # dummy value
         for n in to_visit:
             n_dist: int = dist_from_visited[n]
             if n_dist < nearest_dist:
@@ -79,7 +75,6 @@ def _prims_algorithm_weight(nodes: Collection[int], weight: Callable[[int, int],
             if dist_nearest_n < dist_from_visited[n]:
                 dist_from_visited[n] = dist_nearest_n
     return mst_length
-
 
 def _prims_algorithm_branches(nodes: Collection[int], weight: Callable[[int, int], int],
                               inf: int) -> Sequence[Tuple[int, int]]:
@@ -101,8 +96,8 @@ def _prims_algorithm_branches(nodes: Collection[int], weight: Callable[[int, int
     }
     while to_visit:
         # Look for the node to be visited which is nearest to the visited set:
-        nearest_node = 0  # dummy value
-        nearest_dist: int = inf  # dummy value
+        nearest_node = 0 # dummy value
+        nearest_dist: int = inf # dummy value
         for n in to_visit:
             n_dist: int = dist_from_visited[n]
             if n_dist < nearest_dist:
@@ -118,7 +113,6 @@ def _prims_algorithm_branches(nodes: Collection[int], weight: Callable[[int, int
                 dist_from_visited[n] = dist_nearest_n
                 edge_from_visited[n] = (nearest_node, n)
     return mst_branches
-
 
 def _prims_algorithm_full(nodes: Collection[int], weight: Callable[[int, int], int],
                           inf: int) -> Tuple[int, Sequence[int], Sequence[Tuple[int, int]]]:
@@ -142,8 +136,8 @@ def _prims_algorithm_full(nodes: Collection[int], weight: Callable[[int, int], i
     }
     while to_visit:
         # Look for the node to be visited which is nearest to the visited set:
-        nearest_node = 0  # dummy value
-        nearest_dist: int = inf  # dummy value
+        nearest_node = 0 # dummy value
+        nearest_dist: int = inf # dummy value
         for n in to_visit:
             n_dist: int = dist_from_visited[n]
             if n_dist < nearest_dist:
@@ -231,9 +225,9 @@ class PhaseGadget:
             topology = topology.mapped_fwd({
                 mapping[i]: i for i in mapping
             })
-        return _prims_algorithm_weight(self._qubits,
-                                       lambda u, v: 4 * topology.dist(u, v) - 2,
-                                       4 * len(topology.qubits) - 2)
+        return  _prims_algorithm_weight(self._qubits,
+                                        lambda u, v: 4*topology.dist(u, v)-2,
+                                        4*len(topology.qubits)-2)
 
     def on_qiskit_circuit(self, topology: Topology, circuit: Any) -> None:
         """
@@ -249,7 +243,7 @@ class PhaseGadget:
         # TODO: currently uses CX ladder, must change into balanced tree! (same CX count)
         try:
             # pylint: disable = import-outside-toplevel
-            from qiskit.circuit import QuantumCircuit  # type: ignore
+            from qiskit.circuit import QuantumCircuit # type: ignore
         except ModuleNotFoundError as e:
             raise ModuleNotFoundError("You must install the 'qiskit' library.") from e
         if not isinstance(circuit, QuantumCircuit):
@@ -259,8 +253,8 @@ class PhaseGadget:
             raise TypeError(f"Expected Topology, found {type(topology)}.")
         # Build MST data structure:
         mst_branches = _prims_algorithm_branches(self._qubits,
-                                                 lambda u, v: 4 * topology.dist(u, v) - 2,
-                                                 4 * len(topology.qubits) - 2)
+                                                 lambda u, v: 4*topology.dist(u, v)-2,
+                                                 4*len(topology.qubits)-2)
         upper_ladder: List[Tuple[int, int]] = []
         if len(self._qubits) == 1:
             q0 = next(iter(self._qubits))
@@ -304,8 +298,8 @@ class PhaseGadget:
             raise TypeError(f"Expected Topology, found {type(topology)}.")
         mst_length, mst_branch_lengths, mst_branches = \
             _prims_algorithm_full(self._qubits,
-                                  lambda u, v: 4 * topology.dist(u, v) - 2,
-                                  4 * len(topology.qubits) - 2)
+                                  lambda u, v: 4*topology.dist(u, v)-2,
+                                  4*len(topology.qubits)-2)
         print(f"MST implementation info for {str(self)}:")
         print(f"  - Overall CX count for gadget: {mst_length}")
         print(f"  - MST branches: {mst_branches}")
@@ -376,106 +370,86 @@ class X:
 def _rx(qubit: int, angle: Angle) -> List[PhaseGadget]:
     return [X(angle) @ {qubit}]
 
-
 def _rz(qubit: int, angle: Angle) -> List[PhaseGadget]:
     return [Z(angle) @ {qubit}]
 
-
 def _ry(qubit: int, angle: Angle) -> List[PhaseGadget]:
     """ Phase gadget implementation of single-qubit Y rotation. """
-    return _rx(qubit, +pi / 2) + _rz(qubit, angle) + _rx(qubit, -pi / 2)
-
+    return _rx(qubit, +pi/2) + _rz(qubit, angle) + _rx(qubit, -pi/2)
 
 def _i(qubit: int) -> List[PhaseGadget]:
     return []
 
-
 def _x(qubit: int) -> List[PhaseGadget]:
     return _rx(qubit, pi)
-
 
 def _z(qubit: int) -> List[PhaseGadget]:
     """ Phase gadget implementation of single-qubit X gate. """
     return _rz(qubit, pi)
 
-
 def _y(qubit: int) -> List[PhaseGadget]:
     """ Phase gadget implementation of single-qubit Y gate. """
     return _z(qubit) + _x(qubit)
 
-
 def _s(qubit: int) -> List[PhaseGadget]:
     """ Phase gadget implementation of single-qubit S gate. """
-    return _rz(qubit, pi / 2)
-
+    return _rz(qubit, pi/2)
 
 def _sdg(qubit: int) -> List[PhaseGadget]:
     """ Phase gadget implementation of single-qubit S gate. """
-    return _rz(qubit, -pi / 2)
-
+    return _rz(qubit, -pi/2)
 
 def _v(qubit: int) -> List[PhaseGadget]:
     """ Phase gadget implementation of single-qubit S gate. """
-    return _rx(qubit, pi / 2)
-
+    return _rx(qubit, pi/2)
 
 def _vdg(qubit: int) -> List[PhaseGadget]:
     """ Phase gadget implementation of single-qubit S gate. """
-    return _rx(qubit, -pi / 2)
-
+    return _rx(qubit, -pi/2)
 
 def _t(qubit: int) -> List[PhaseGadget]:
     """ Phase gadget implementation of single-qubit T gate. """
-    return _rz(qubit, pi / 4)
-
+    return _rz(qubit, pi/4)
 
 def _h(qubit: int,
        basis: Literal["Z", "X"] = "Z",
-       sign: Literal[1, -1] = 1) -> List[PhaseGadget]:
+       sign: Literal[1, -1]=1) -> List[PhaseGadget]:
     """ Phase gadget implementation of single-qubit Hadamard gate. """
     if basis not in ("Z", "X"):
         raise TypeError(f"Invalid basis {basis}.")
     if sign not in (1, -1):
         raise TypeError(f"Invalid sign {sign}.")
     if basis == "Z":
-        return _rx(qubit, sign * pi / 2) + _rz(qubit, sign * pi / 2) + _rx(qubit, sign * pi / 2)
-    return _rz(qubit, sign * pi / 2) + _rx(qubit, sign * pi / 2) + _rz(qubit, sign * pi / 2)
-
+        return _rx(qubit, sign*pi/2) + _rz(qubit, sign*pi/2) + _rx(qubit, sign*pi/2)
+    return _rz(qubit, sign*pi/2) + _rx(qubit, sign*pi/2) + _rz(qubit, sign*pi/2)
 
 def _cu1(ctrl: int, tgt: int, angle: Angle) -> List[PhaseGadget]:
     """ Phase gadget implementation of CU1 gate. """
     return [Z(-angle) @ {ctrl, tgt}] + _rz(ctrl, angle) + _rz(tgt, angle)
 
-
 def _crz(ctrl: int, tgt: int, angle: Angle) -> List[PhaseGadget]:
     """ Phase gadget implementation of CRZ gate. """
     return [Z(-angle / 2) @ {ctrl, tgt}] + _rz(tgt, angle / 2)
-
 
 def _cry(ctrl: int, tgt: int, angle: Angle) -> List[PhaseGadget]:
     """ Phase gadget implementation of CRY gate. """
     return _v(tgt) + _crz(ctrl, tgt, angle) + _vdg(tgt)
 
-
 def _crx(ctrl: int, tgt: int, angle: Angle) -> List[PhaseGadget]:
     """ Phase gadget implementation of CRX gate. """
     return _h(tgt) + _crz(ctrl, tgt, angle) + _h(tgt, sign=-1)
-
 
 def _cz(leg1: int, leg2: int) -> List[PhaseGadget]:
     """ Phase gadget implementation of CZ gate. """
     return _cu1(leg1, leg2, pi / 2)
 
-
 def _cy(leg1: int, leg2: int) -> List[PhaseGadget]:
     """ Phase gadget implementation of CY gate. """
     return _v(leg2) + _cz(leg1, leg2) + _vdg(leg2)
 
-
 def _cx(ctrl: int, tgt: int) -> List[PhaseGadget]:
     """ Phase gadget implementation of CX gate. """
     return _h(tgt) + _cz(ctrl, tgt) + _h(tgt, sign=-1)
-
 
 def _u3(qubit: int, theta: Angle, phi: Angle, lam: Angle) -> List[PhaseGadget]:
     """ Phase gadget implementation of U3 gate. """
@@ -537,7 +511,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         if not isinstance(num_qubits, int) or num_qubits <= 0:
             raise TypeError("Number of qubits must be a positive integer.")
         if (not isinstance(gadgets, Sequence)
-                or not all(isinstance(g, PhaseGadget) for g in gadgets)):  # pylint: disable = C0330
+            or not all(isinstance(g, PhaseGadget) for g in gadgets)): # pylint: disable = C0330
             raise TypeError("Gadgets should be a sequence of PhaseGadget.")
         self._num_qubits = num_qubits
         # Fills the lists of original indices and angles for the gadgets:
@@ -549,7 +523,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             self._gadget_idxs[gadget.basis].append(i)
             angle = gadget.angle
             if isinstance(angle, Angle):
-                angle %= 2 * pi
+                angle %= 2*pi
             self._angles.append(angle)
         self._matrix = {}
         self._gadget_legs_cache = {}
@@ -611,8 +585,8 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         if len(angles) != len(self._angles):
             raise ValueError(f"Expected {len(self._angles)} angles, "
                              f"found {len(angles)} instead.")
-        pi2 = 2 * pi
-        self._angles = [angle % pi2 if isinstance(angle, Angle) else angle
+        pi2 = 2*pi
+        self._angles = [angle%pi2 if isinstance(angle, Angle) else angle
                         for angle in angles]
 
     def refresh_angle_vars(self, params: Union[str, Callable[[int], AngleVar]]) -> None:
@@ -640,9 +614,9 @@ class PhaseCircuit(Sequence[PhaseGadget]):
 
     def ry(self, qubit: int, angle: AngleExpr) -> "PhaseCircuit":
         """ Phase gadget implementation of single-qubit Y rotation. """
-        self.rx(qubit, +pi / 2)
+        self.rx(qubit, +pi/2)
         self.rz(qubit, angle)
-        self.rx(qubit, -pi / 2)
+        self.rx(qubit, -pi/2)
         return self
 
     def i(self, qubit: int) -> "PhaseCircuit":
@@ -667,45 +641,45 @@ class PhaseCircuit(Sequence[PhaseGadget]):
 
     def s(self, qubit: int) -> "PhaseCircuit":
         """ Phase gadget implementation of single-qubit S gate. """
-        self.rz(qubit, pi / 2)
+        self.rz(qubit, pi/2)
         return self
 
     def sdg(self, qubit: int) -> "PhaseCircuit":
         """ Phase gadget implementation of single-qubit Sdg gate. """
-        self.rz(qubit, -pi / 2)
+        self.rz(qubit, -pi/2)
         return self
 
     def v(self, qubit: int) -> "PhaseCircuit":
         """ Phase gadget implementation of single-qubit S gate. """
-        self.rx(qubit, pi / 2)
+        self.rx(qubit, pi/2)
         return self
 
     def vdg(self, qubit: int) -> "PhaseCircuit":
         """ Phase gadget implementation of single-qubit Sdg gate. """
-        self.rx(qubit, -pi / 2)
+        self.rx(qubit, -pi/2)
         return self
 
     def t(self, qubit: int) -> "PhaseCircuit":
         """ Phase gadget implementation of single-qubit T gate. """
-        self.rz(qubit, pi / 4)
+        self.rz(qubit, pi/4)
         return self
 
     def h(self, qubit: int,
           basis: Literal["Z", "X"] = "Z",
-          sign: Literal[1, -1] = 1) -> "PhaseCircuit":
+          sign: Literal[1, -1]=1) -> "PhaseCircuit":
         """ Phase gadget implementation of single-qubit Hadamard gate. """
         if basis not in ("Z", "X"):
             raise TypeError(f"Invalid basis {basis}.")
         if sign not in (1, -1):
             raise TypeError(f"Invalid sign {sign}.")
         if basis == "Z":
-            self.rx(qubit, sign * pi / 2)
-            self.rz(qubit, sign * pi / 2)
-            self.rx(qubit, sign * pi / 2)
+            self.rx(qubit, sign*pi/2)
+            self.rz(qubit, sign*pi/2)
+            self.rx(qubit, sign*pi/2)
         else:
-            self.rz(qubit, sign * pi / 2)
-            self.rx(qubit, sign * pi / 2)
-            self.rz(qubit, sign * pi / 2)
+            self.rz(qubit, sign*pi/2)
+            self.rx(qubit, sign*pi/2)
+            self.rz(qubit, sign*pi/2)
         return self
 
     def cu1(self, ctrl: int, tgt: int, angle: AngleExpr) -> "PhaseCircuit":
@@ -827,7 +801,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                 i: mapping[i] for i in range(len(mapping))
             }
         if mapping is not None and set(mapping.values()) != set(range(self.num_qubits)):
-            raise TypeError(f"Expected mapping images [0, ..., {self.num_qubits - 1}], "
+            raise TypeError(f"Expected mapping images [0, ..., {self.num_qubits-1}], "
                             f"found {sorted(set(mapping.values()))}")
         if mapping is not None:
             # use the reverse mapping on the topology
@@ -938,7 +912,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             raise TypeError("Keyword argument 'scale' must be positive float.")
         return self._to_svg(zcolor=zcolor, xcolor=xcolor,
                             hscale=hscale, vscale=vscale, scale=scale,
-                            svg_code_only=svg_code_only)  # type: ignore[call-overload]
+                            svg_code_only=svg_code_only) # type: ignore[call-overload]
 
     @overload
     def _to_svg(self, *,
@@ -974,61 +948,61 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         hscale *= scale
         gadgets = self.gadgets
         num_digits = int(ceil(log10(num_qubits)))
-        line_height = int(ceil(30 * vscale))
-        row_width = int(ceil(120 * hscale))
-        pad_x = int(ceil(10 * hscale))
-        margin_x = int(ceil(40 * hscale))
-        pad_y = int(ceil(20 * vscale))
-        r = pad_y // 2 - 2
-        font_size = 2 * r
-        pad_x += font_size * (num_digits + 1)
-        delta_fst = row_width // 4
-        delta_snd = 2 * row_width // 4
-        width = 2 * pad_x + 2 * margin_x + row_width * len(gadgets)
-        height = pad_y + line_height * (num_qubits + 1)
+        line_height = int(ceil(30*vscale))
+        row_width = int(ceil(120*hscale))
+        pad_x = int(ceil(10*hscale))
+        margin_x = int(ceil(40*hscale))
+        pad_y = int(ceil(20*vscale))
+        r = pad_y//2-2
+        font_size = 2*r
+        pad_x += font_size*(num_digits+1)
+        delta_fst = row_width//4
+        delta_snd = 2*row_width//4
+        width = 2*pad_x + 2*margin_x + row_width*len(gadgets)
+        height = pad_y + line_height*(num_qubits+1)
         builder = SVGBuilder(width, height)
         levels: List[int] = [0 for _ in range(num_qubits)]
         max_lvl = 0
         for gadget in gadgets:
             fill = zcolor if gadget.basis == "Z" else xcolor
             other_fill = xcolor if gadget.basis == "Z" else zcolor
-            qubit_span = range(min(gadget.qubits), max(gadget.qubits) + 1)
+            qubit_span = range(min(gadget.qubits), max(gadget.qubits)+1)
             lvl = max(levels[q] for q in qubit_span)
             max_lvl = max(max_lvl, lvl)
             x = pad_x + margin_x + lvl * row_width
             for q in qubit_span:
-                levels[q] = lvl + 1
+                levels[q] = lvl+1
             if len(gadget.qubits) > 1:
-                text_y = pad_y + min(gadget.qubits) * line_height + line_height // 2
+                text_y = pad_y+min(gadget.qubits)*line_height+line_height//2
                 for q in gadget.qubits:
-                    y = pad_y + (q + 1) * line_height
-                    builder.line((x, y), (x + delta_fst, text_y))
+                    y = pad_y + (q+1)*line_height
+                    builder.line((x, y), (x+delta_fst, text_y))
                 for q in gadget.qubits:
-                    y = pad_y + (q + 1) * line_height
+                    y = pad_y + (q+1)*line_height
                     builder.circle((x, y), r, fill)
-                builder.line((x + delta_fst, text_y), (x + delta_snd, text_y))
-                builder.circle((x + delta_fst, text_y), r, other_fill)
-                builder.circle((x + delta_snd, text_y), r, fill)
-                builder.text((x + delta_snd + 2 * r, text_y), str(gadget.angle), font_size=font_size)
+                builder.line((x+delta_fst, text_y), (x+delta_snd, text_y))
+                builder.circle((x+delta_fst, text_y), r, other_fill)
+                builder.circle((x+delta_snd, text_y), r, fill)
+                builder.text((x+delta_snd+2*r, text_y), str(gadget.angle), font_size=font_size)
             else:
                 for q in gadget.qubits:
-                    y = pad_y + (q + 1) * line_height
+                    y = pad_y + (q+1)*line_height
                     builder.circle((x, y), r, fill)
-                builder.text((x + r, y - line_height // 3), str(gadget.angle), font_size=font_size)
-        width = 2 * pad_x + 2 * margin_x + row_width * (2 * max_lvl + 1) // 2
+                builder.text((x+r, y-line_height//3), str(gadget.angle), font_size=font_size)
+        width = 2*pad_x + 2*margin_x + row_width*(2*max_lvl+1)//2
         _builder = SVGBuilder(width, height)
         for q in range(num_qubits):
-            y = pad_y + (q + 1) * line_height
-            _builder.line((pad_x, y), (width - pad_x, y))
+            y = pad_y + (q+1) * line_height
+            _builder.line((pad_x, y), (width-pad_x, y))
             _builder.text((0, y), f"{str(q):>{num_digits}}", font_size=font_size)
-            _builder.text((width - pad_x + r, y), f"{str(q):>{num_digits}}", font_size=font_size)
+            _builder.text((width-pad_x+r, y), f"{str(q):>{num_digits}}", font_size=font_size)
         _builder >>= builder
         svg_code = repr(_builder)
         if svg_code_only:
             return svg_code
         try:
             # pylint: disable = import-outside-toplevel
-            from IPython.core.display import SVG  # type: ignore
+            from IPython.core.display import SVG # type: ignore
         except ModuleNotFoundError as e:
             raise ModuleNotFoundError("You must install the 'IPython' library.") from e
         return SVG(svg_code)
@@ -1200,15 +1174,15 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         # Perform all commutations, fusions and pi gadget simplifications
         # TODO: explain with comments how the jumplist works
         # jumplist: Dict[int, Optional[Dict[int, int]]] = {}
-        for i, (basis, angles) in enumerate(groups):  # pylint: disable = too-many-nested-blocks
+        for i, (basis, angles) in enumerate(groups): # pylint: disable = too-many-nested-blocks
             # Try commuting all gadgets to the left as much as possible
             for qubits, angle in angles.items():
                 if angle == 0:
                     # Skip zeroed gadgets
                     continue
                 # Try to commute the gadget to the left as much as possible
-                j = i  # j is the current group to which the gadget has been commuted
-                obstacle_found = False  # this records whether we found an obstacle
+                j = i # j is the current group to which the gadget has been commuted
+                obstacle_found = False # this records whether we found an obstacle
                 while not obstacle_found and j >= 2:
                     # if j in jumplist:
                     #     j_jump = jumplist[j]
@@ -1216,13 +1190,13 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                     #         print("Jump", i, j, j_jump[qubits], bin(qubits))
                     #         j = j_jump[qubits]
                     #         break
-                    _, angles_commute = groups[j - 1]  # angles to commute through
+                    _, angles_commute = groups[j-1] # angles to commute through
                     for qubits_commute, angle_commute in angles_commute.items():
                         if angle_commute.is_zero:
                             # Zero angle gadget, not an obstable
                             continue
                         # https://stackoverflow.com/questions/9829578/fast-way-of-counting-non-zero-bits-in-positive-integer
-                        if bin(qubits & qubits_commute).count("1") % 2 != 0:
+                        if bin(qubits&qubits_commute).count("1") % 2 != 0:
                             # Odd number of shared legs, obstacle found
                             obstacle_found = True
                             break
@@ -1251,11 +1225,11 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                         angles_fuse[qubits] = angle
                     if angles_fuse[qubits].is_pi:
                         # This is a pi gadget, further simplification to be performed
-                        angles_fuse[qubits] = Angle.zero  # Remove gadget from this group
+                        angles_fuse[qubits] = Angle.zero # Remove gadget from this group
                         pi_gadget = True
                 elif angle.is_pi:
                     # We didn't manage to commute the gadget, but it is a pi gadget
-                    angles[qubits] = Angle.zero  # Remove gadget from this group
+                    angles[qubits] = Angle.zero # Remove gadget from this group
                     pi_gadget = True
                 if pi_gadget:
                     # pi gadget
@@ -1263,7 +1237,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                         # Commute through gadgets below of other basis, flipping sign if necessary
                         _, angles_k = groups[k]
                         for qubits_k in angles_k:
-                            if bin(qubits_k & qubits).count("1") % 2 == 1:
+                            if bin(qubits_k&qubits).count("1")%2 == 1:
                                 # Odd number of legs in comon: flip sign
                                 angles_k[qubits_k] *= -1
                     for q in _int_to_iterator(qubits):
@@ -1272,18 +1246,18 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         # Create the new list of gadgets
         new_gadgets: List[PhaseGadget] = []
         for q in range(num_qubits):
-            if pi_gates["Z"][q] % 2 == 1:
+            if pi_gates["Z"][q]%2 == 1:
                 # Single-qubit pi Z gate
                 new_gadgets.append(PhaseGadget("Z", pi, {q}))
         for q in range(num_qubits):
-            if pi_gates["X"][q] % 2 == 1:
+            if pi_gates["X"][q]%2 == 1:
                 # Single-qubit pi X gate
                 new_gadgets.append(PhaseGadget("X", pi, {q}))
         for basis, angles in groups:
             for qubits, angle in angles.items():
                 if isinstance(angle, Angle):
-                    angle = angle % (2 * pi)
-                if angle != 0:  # skip zero angle gadgets
+                    angle = angle % (2*pi)
+                if angle != 0: # skip zero angle gadgets
                     new_gadgets.append(PhaseGadget(basis, angle, _int_to_frozenset(qubits)))
         # Return a new phase circuit.
         return PhaseCircuit(num_qubits, new_gadgets)
@@ -1371,8 +1345,8 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         """
         # pylint: disable = too-many-locals
         num_qubits = self._num_qubits
-        weight = lambda u, v: 4 * topology.dist(u, v) - 2
-        inf = 4 * num_qubits - 2
+        weight = lambda u, v: 4*topology.dist(u, v)-2
+        inf = 4*num_qubits-2
         count = 0
         for basis in ("Z", "X"):
             basis = cast(Literal["Z", "X"], basis)
@@ -1449,22 +1423,22 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                 s = parametric
                 parametric = lambda i: AngleVar(f"{s}[{i}]", f"{s}_{i}")
         rng = np.random.default_rng(seed=rng_seed)
-        angle_rng_seed = int(rng.integers(65536))  # type: ignore[attr-defined]
-        basis_idxs = rng.integers(2, size=num_gadgets)  # type: ignore[attr-defined]
-        num_legs = rng.integers(min_legs, max_legs + 1, size=num_gadgets)  # type: ignore[attr-defined]
+        angle_rng_seed = int(rng.integers(65536)) # type: ignore[attr-defined]
+        basis_idxs = rng.integers(2, size=num_gadgets) # type: ignore[attr-defined]
+        num_legs = rng.integers(min_legs, max_legs+1, size=num_gadgets) # type: ignore[attr-defined]
         legs_list: List[npt.NDArray[int]] = [
             rng.choice(num_qubits, num_legs[i], replace=False) for i in range(num_gadgets)
         ]
         angle_rng = np.random.default_rng(seed=angle_rng_seed)
         angles: List[Union[Angle, AngleVar]]
-        angles = [int(x) * pi / angle_subdivision
-                  for x in angle_rng.integers(1, 2 * angle_subdivision,  # type: ignore[attr-defined]
+        angles = [int(x)*pi/angle_subdivision
+                  for x in angle_rng.integers(1, 2*angle_subdivision, # type: ignore[attr-defined]
                                               size=num_gadgets)]
         if parametric is not None:
             angles = [parametric(i) for i in range(num_gadgets)]
         bases = cast(Sequence[Literal["Z", "X"]], ("Z", "X"))
         gadgets: List[PhaseGadget] = [
-            PhaseGadget(bases[(basis_idx + i) % 2],
+            PhaseGadget(bases[(basis_idx+i)%2],
                         angle,
                         [int(x) for x in legs])
             for i, (basis_idx, angle, legs) in enumerate(zip(basis_idxs,
@@ -1621,7 +1595,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                             raise ValueError(f"Expected {num_params} angles for {gate_name}, "
                                              f"found {len(gate_params)}")
                         for qs in gate_qubits:
-                            gadgets += m(*qs, *gate_params)  # type: ignore # TODO: fix this!
+                            gadgets += m(*qs, *gate_params) # type: ignore # TODO: fix this!
                         break
                 continue
             raise ValueError(f"Unsupported QASM statement: {statement}")
@@ -1708,7 +1682,7 @@ class PhaseCircuitView:
         return self._circuit.to_svg(zcolor=zcolor, xcolor=xcolor,
                                     hscale=hscale, vscale=vscale,
                                     scale=scale,
-                                    svg_code_only=svg_code_only)  # type: ignore[call-overload]
+                                    svg_code_only=svg_code_only) # type: ignore[call-overload]
 
     def cloned(self) -> PhaseCircuit:
         """
@@ -1730,4 +1704,4 @@ class PhaseCircuitView:
             Magic method for IPython/Jupyter pretty-printing.
             See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
         """
-        return self._circuit._repr_svg_()  # pylint: disable = protected-access
+        return self._circuit._repr_svg_() # pylint: disable = protected-access
