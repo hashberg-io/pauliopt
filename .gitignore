@@ -1,36 +1,3 @@
-
-Skip to content
-Pull requests
-Issues
-Codespaces
-Marketplace
-Explore
-@daehiff
-sg495 /
-pauliopt
-Public
-
-Fork your own copy of sg495/pauliopt
-
-Code
-Issues 6
-Pull requests 2
-Actions
-Projects
-Security
-
-    Insights
-
-Beta Try the new code view
-pauliopt/.gitignore
-@y-richie-y
-y-richie-y gitignore
-Latest commit 21e20e7 Jan 2, 2021
-History
-2 contributors
-@sg495
-@y-richie-y
-133 lines (107 sloc) 1.78 KB
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -164,20 +131,3 @@ dmypy.json
 
 .vscode
 .DS_Store
-Footer
-© 2023 GitHub, Inc.
-Footer navigation
-
-    Terms
-    Privacy
-    Security
-    Status
-    Docs
-    Contact GitHub
-    Pricing
-    API
-    Training
-    Blog
-    About
-
-pauliopt/.gitignore at main · sg495/pauliopt
