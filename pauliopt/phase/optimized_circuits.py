@@ -7,12 +7,13 @@ from collections import deque
 from math import ceil, log10
 from typing import (Callable, Deque, Dict, List, Optional, Protocol,
                     runtime_checkable, Set, Tuple, TypedDict, Union)
-import numpy as np # type: ignore
+import numpy as np  # type: ignore
 from pauliopt.phase.phase_circuits import PhaseCircuit, PhaseCircuitView
 from pauliopt.phase.cx_circuits import CXCircuitLayer, CXCircuit, CXCircuitView
 from pauliopt.topologies import Topology
 from pauliopt.utils import (AngleVar, TempSchedule, StandardTempSchedule,
                             StandardTempSchedules, SVGBuilder)
+
 
 @runtime_checkable
 class AnnealingCostLogger(Protocol):
@@ -47,15 +48,17 @@ class AnnealingLoggers(TypedDict, total=False):
     log_end: AnnealingCostLogger
 
 
-def _validate_temp_schedule(schedule: Union[StandardTempSchedule, TempSchedule]) -> TempSchedule:
+def _validate_temp_schedule(
+        schedule: Union[StandardTempSchedule, TempSchedule]) -> TempSchedule:
     if not isinstance(schedule, TempSchedule):
         if not isinstance(schedule, tuple) or len(schedule) != 3:
             raise TypeError(f"Expected triple (schedule_name, t_init, t_final), "
                             f"found {schedule}")
         schedule_name, t_init, t_final = schedule
         if schedule_name not in StandardTempSchedules:
-            raise TypeError(f"Invalid standard temperature schedule name {schedule_name}, "
-                            f"allowed names are: {list(StandardTempSchedules.keys())}")
+            raise TypeError(
+                f"Invalid standard temperature schedule name {schedule_name}, "
+                f"allowed names are: {list(StandardTempSchedules.keys())}")
         if not isinstance(t_init, (int, float)) or not isinstance(t_final, (int, float)):
             raise TypeError("Expected t_init and t_final to be int or float.")
         schedule = StandardTempSchedules[schedule_name](t_init, t_final)
@@ -140,9 +143,11 @@ class OptimizedPhaseCircuit:
         if not isinstance(circuit_rep, int) or circuit_rep <= 0:
             raise TypeError(f"Expected positive integer, found {circuit_rep}.")
         if not isinstance(cx_block, (int, CXCircuit, CXCircuitView)):
-            raise TypeError(f"Expected int, CXCircuit or CXCircuitView, found {type(cx_block)}.")
+            raise TypeError(
+                f"Expected int, CXCircuit or CXCircuitView, found {type(cx_block)}.")
         if isinstance(cx_block, int) and cx_block <= 0:
-            raise TypeError(f"Expected positive integer number of CX layers, found {cx_block}.")
+            raise TypeError(
+                f"Expected positive integer number of CX layers, found {cx_block}.")
         if rng_seed is not None and not isinstance(rng_seed, int):
             raise TypeError("RNG seed must be integer or None.")
         self._topology = topology
@@ -150,7 +155,8 @@ class OptimizedPhaseCircuit:
         self._phase_block = phase_block.cloned()
         if isinstance(cx_block, int):
             self._cx_block = CXCircuit(topology,
-                                       [CXCircuitLayer(topology) for _ in range(cx_block)])
+                                       [CXCircuitLayer(topology) for _ in
+                                        range(cx_block)])
         else:
             self._cx_block = cx_block.clone()
         self._rng_seed = rng_seed
@@ -162,7 +168,8 @@ class OptimizedPhaseCircuit:
         self._cx_count = self._init_cx_count
         self._cx_blocks_count = self._init_cx_blocks_count
         if isinstance(fresh_angle_vars, str):
-            self._fresh_angle_vars = lambda i: AngleVar(f"{fresh_angle_vars}[{i}]", f"{fresh_angle_vars}_{i}")
+            self._fresh_angle_vars = lambda i: AngleVar(f"{fresh_angle_vars}[{i}]",
+                                                        f"{fresh_angle_vars}_{i}")
         else:
             self._fresh_angle_vars = fresh_angle_vars
 
@@ -238,7 +245,7 @@ class OptimizedPhaseCircuit:
             Readonly property exposing the overall CX count for a single
             phase block at the time the circuit was instantiated.
         """
-        return (self.init_cx_count-self.init_cx_blocks_count)//self.circuit_rep
+        return (self.init_cx_count - self.init_cx_blocks_count) // self.circuit_rep
 
     @property
     def phase_block_cx_count(self) -> int:
@@ -246,7 +253,7 @@ class OptimizedPhaseCircuit:
             Readonly property exposing the overall CX count for a single
             phase block in the currently optimized circuit.
         """
-        return (self.cx_count-self.cx_blocks_count)//self.circuit_rep
+        return (self.cx_count - self.cx_blocks_count) // self.circuit_rep
 
     def clone(self, rng_seed: Optional[int] = None) -> "OptimizedPhaseCircuit":
         """
@@ -265,7 +272,7 @@ class OptimizedPhaseCircuit:
         """
         try:
             # pylint: disable = import-outside-toplevel
-            from qiskit.circuit import QuantumCircuit # type: ignore
+            from qiskit.circuit import QuantumCircuit  # type: ignore
         except ModuleNotFoundError as _:
             raise ModuleNotFoundError("You must install the 'qiskit' library.")
         circuit = QuantumCircuit(self.num_qubits)
@@ -298,7 +305,7 @@ class OptimizedPhaseCircuit:
                num_iters: int, *,
                schedule: Union[StandardTempSchedule, TempSchedule] = ("linear", 1.0, 0.1),
                loggers: AnnealingLoggers = {}):
-               # pylint: disable = dangerous-default-value
+        # pylint: disable = dangerous-default-value
         # pylint: disable = too-many-locals
         """
             Performs a cycle of simulated annealing optimization,
@@ -323,8 +330,9 @@ class OptimizedPhaseCircuit:
             t = schedule(it, num_iters=num_iters)
             layer_idx, (ctrl, trgt) = self.random_flip_cx()
             new_cx_count, new_cx_blocks_count = self._compute_cx_count()
-            cx_count_diff = new_cx_count-self._cx_count
-            accept_step = cx_count_diff < 0 or rand[it] < np.exp(-np.log(2)*cx_count_diff/t)
+            cx_count_diff = new_cx_count - self._cx_count
+            accept_step = cx_count_diff < 0 or rand[it] < np.exp(
+                -np.log(2) * cx_count_diff / t)
             if log_iter is not None:
                 log_iter(it, self._cx_count, new_cx_count, accept_step,
                          (layer_idx, (ctrl, trgt)), t, num_iters)
@@ -350,10 +358,11 @@ class OptimizedPhaseCircuit:
         while True:
             layer_idx = int(self._rng.integers(len(self._cx_block)))
             ctrl, trgt = self._cx_block[layer_idx].random_flip_cx(self._rng)
-            if layer_idx < len(self._cx_block)-1 and self._cx_block[layer_idx+1].has_cx(ctrl, trgt):
+            if layer_idx < len(self._cx_block) - 1 and self._cx_block[
+                layer_idx + 1].has_cx(ctrl, trgt):
                 # Try again if CX gate already present in layer above (to avoid redundancy)
                 continue
-            if layer_idx > 0 and self._cx_block[layer_idx-1].has_cx(ctrl, trgt):
+            if layer_idx > 0 and self._cx_block[layer_idx - 1].has_cx(ctrl, trgt):
                 # Try again if CX gate already present in layer below (to avoid redundancy)
                 continue
             self._flip_cx(layer_idx, ctrl, trgt)
@@ -381,7 +390,8 @@ class OptimizedPhaseCircuit:
               working forwards towards the last layer).
         """
         if not self.is_cx_flippable(layer_idx, ctrl, trgt):
-            raise ValueError(f"Gate {(ctrl, trgt)} cannot be flipped in layer number {layer_idx}.")
+            raise ValueError(
+                f"Gate {(ctrl, trgt)} cannot be flipped in layer number {layer_idx}.")
         self._flip_cx(layer_idx, ctrl, trgt)
 
     def _flip_cx(self, layer_idx: int, ctrl: int, trgt: int) -> None:
@@ -396,9 +406,9 @@ class OptimizedPhaseCircuit:
                     incident_gates.add(incident_gate)
                     new_qubits_spanned.update({incident_gate[0], incident_gate[1]})
             for incident_gate in incident_gates:
-                conj_by.appendleft(incident_gate) # will first undo the gate ...
+                conj_by.appendleft(incident_gate)  # will first undo the gate ...
                 # ... then do all gates already in conj_by ...
-                conj_by.append(incident_gate) # ... then finally redo the gate
+                conj_by.append(incident_gate)  # ... then finally redo the gate
             qubits_spanned.update(new_qubits_spanned)
         # Flip the gate in the CX circuit:
         self._cx_block[layer_idx].flip_cx(ctrl, trgt)
@@ -410,8 +420,8 @@ class OptimizedPhaseCircuit:
         # pylint: disable = protected-access
         phase_block_cost = self._phase_block._cx_count(self._topology,
                                                        self._gadget_cx_count_cache)
-        cx_blocks_count = 2*self._cx_block.num_gates
-        cx_count = self._circuit_rep*phase_block_cost + cx_blocks_count
+        cx_blocks_count = 2 * self._cx_block.num_gates
+        cx_count = self._circuit_rep * phase_block_cost + cx_blocks_count
         return cx_count, cx_blocks_count
 
     def to_svg(self, *,
@@ -477,7 +487,7 @@ class OptimizedPhaseCircuit:
         cx_block = self._cx_block
         phase_block = self._phase_block
         pre_cx_gates = [gate for layer in reversed(cx_block) for gate in layer.gates]
-        gadgets = list(phase_block.gadgets)*self._circuit_rep
+        gadgets = list(phase_block.gadgets) * self._circuit_rep
         post_cx_gates = list(reversed(pre_cx_gates))
         _layers: List[int] = [0 for _ in range(num_qubits)]
         pre_cx_gates_depths: List[int] = []
@@ -485,43 +495,43 @@ class OptimizedPhaseCircuit:
         for gate in pre_cx_gates:
             m = min(gate)
             M = max(gate)
-            d = max(_layers[q] for q in range(m, M+1))
-            max_cx_gates_depth = max(max_cx_gates_depth, d+1)
+            d = max(_layers[q] for q in range(m, M + 1))
+            max_cx_gates_depth = max(max_cx_gates_depth, d + 1)
             pre_cx_gates_depths.append(d)
-            for q in range(m, M+1):
-                _layers[q] = d+1
+            for q in range(m, M + 1):
+                _layers[q] = d + 1
         num_digits = int(ceil(log10(num_qubits)))
-        line_height = int(ceil(30*vscale))
-        row_width = int(ceil(120*hscale))
-        cx_row_width = int(ceil(40*hscale))
-        pad_x = int(ceil(10*hscale))
-        margin_x = int(ceil(40*hscale))
-        pad_y = int(ceil(20*vscale))
-        r = pad_y//2-2
-        font_size = 2*r
-        pad_x += font_size*(num_digits+1)
-        delta_fst = row_width//4
-        delta_snd = 2*row_width//4
-        width = (2*pad_x + 2*margin_x + row_width*len(gadgets)
-                 + 2*max_cx_gates_depth * cx_row_width)
-        height = pad_y + line_height*(num_qubits+1)
+        line_height = int(ceil(30 * vscale))
+        row_width = int(ceil(120 * hscale))
+        cx_row_width = int(ceil(40 * hscale))
+        pad_x = int(ceil(10 * hscale))
+        margin_x = int(ceil(40 * hscale))
+        pad_y = int(ceil(20 * vscale))
+        r = pad_y // 2 - 2
+        font_size = 2 * r
+        pad_x += font_size * (num_digits + 1)
+        delta_fst = row_width // 4
+        delta_snd = 2 * row_width // 4
+        width = (2 * pad_x + 2 * margin_x + row_width * len(gadgets)
+                 + 2 * max_cx_gates_depth * cx_row_width)
+        height = pad_y + line_height * (num_qubits + 1)
         builder = SVGBuilder(width, height)
         levels: List[int] = [0 for _ in range(num_qubits)]
         max_lvl = 0
         base_x = pad_x + margin_x
         for (ctrl, trgt) in pre_cx_gates:
-            qubit_span = range(min(ctrl, trgt), max(ctrl, trgt)+1)
+            qubit_span = range(min(ctrl, trgt), max(ctrl, trgt) + 1)
             lvl = max(levels[q] for q in qubit_span)
             max_lvl = max(max_lvl, lvl)
-            x = base_x + lvl * row_width//3
+            x = base_x + lvl * row_width // 3
             for q in qubit_span:
-                levels[q] = lvl+1
-            y_ctrl = pad_y + (ctrl+1)*line_height
-            y_trgt = pad_y + (trgt+1)*line_height
+                levels[q] = lvl + 1
+            y_ctrl = pad_y + (ctrl + 1) * line_height
+            y_trgt = pad_y + (trgt + 1) * line_height
             builder.line((x, y_ctrl), (x, y_trgt))
             builder.circle((x, y_ctrl), r, zcolor)
             builder.circle((x, y_trgt), r, xcolor)
-        base_x = base_x + (max_lvl+1) * row_width//3
+        base_x = base_x + (max_lvl + 1) * row_width // 3
         levels = [0 for _ in range(num_qubits)]
         max_lvl = 0
         for i, gadget in enumerate(gadgets):
@@ -530,58 +540,61 @@ class OptimizedPhaseCircuit:
                 angle = self._fresh_angle_vars(i)
             fill = zcolor if gadget.basis == "Z" else xcolor
             other_fill = xcolor if gadget.basis == "Z" else zcolor
-            qubit_span = range(min(gadget.qubits), max(gadget.qubits)+1)
+            qubit_span = range(min(gadget.qubits), max(gadget.qubits) + 1)
             lvl = max(levels[q] for q in qubit_span)
             max_lvl = max(max_lvl, lvl)
             x = base_x + lvl * row_width
             for q in qubit_span:
-                levels[q] = lvl+1
+                levels[q] = lvl + 1
             if len(gadget.qubits) > 1:
-                text_y = pad_y+min(gadget.qubits)*line_height+line_height//2
+                text_y = pad_y + min(gadget.qubits) * line_height + line_height // 2
                 for q in gadget.qubits:
-                    y = pad_y + (q+1)*line_height
-                    builder.line((x, y), (x+delta_fst, text_y))
+                    y = pad_y + (q + 1) * line_height
+                    builder.line((x, y), (x + delta_fst, text_y))
                 for q in gadget.qubits:
-                    y = pad_y + (q+1)*line_height
+                    y = pad_y + (q + 1) * line_height
                     builder.circle((x, y), r, fill)
-                builder.line((x+delta_fst, text_y), (x+delta_snd, text_y))
-                builder.circle((x+delta_fst, text_y), r, other_fill)
-                builder.circle((x+delta_snd, text_y), r, fill)
-                builder.text((x+delta_snd+2*r, text_y), str(angle), font_size=font_size)
+                builder.line((x + delta_fst, text_y), (x + delta_snd, text_y))
+                builder.circle((x + delta_fst, text_y), r, other_fill)
+                builder.circle((x + delta_snd, text_y), r, fill)
+                builder.text((x + delta_snd + 2 * r, text_y), str(angle),
+                             font_size=font_size)
             else:
                 for q in gadget.qubits:
-                    y = pad_y + (q+1)*line_height
+                    y = pad_y + (q + 1) * line_height
                     builder.circle((x, y), r, fill)
-                builder.text((x+r, y-line_height//3), str(angle), font_size=font_size)
-        base_x = base_x + (max_lvl+1) * row_width
+                builder.text((x + r, y - line_height // 3), str(angle),
+                             font_size=font_size)
+        base_x = base_x + (max_lvl + 1) * row_width
         levels = [0 for _ in range(num_qubits)]
         max_lvl = 0
         for (ctrl, trgt) in post_cx_gates:
-            qubit_span = range(min(ctrl, trgt), max(ctrl, trgt)+1)
+            qubit_span = range(min(ctrl, trgt), max(ctrl, trgt) + 1)
             lvl = max(levels[q] for q in qubit_span)
             max_lvl = max(max_lvl, lvl)
-            x = base_x + lvl * row_width//3
+            x = base_x + lvl * row_width // 3
             for q in qubit_span:
-                levels[q] = lvl+1
-            y_ctrl = pad_y + (ctrl+1)*line_height
-            y_trgt = pad_y + (trgt+1)*line_height
+                levels[q] = lvl + 1
+            y_ctrl = pad_y + (ctrl + 1) * line_height
+            y_trgt = pad_y + (trgt + 1) * line_height
             builder.line((x, y_ctrl), (x, y_trgt))
             builder.circle((x, y_ctrl), r, zcolor)
             builder.circle((x, y_trgt), r, xcolor)
-        width = base_x + max_lvl * row_width//3 + pad_x + margin_x
+        width = base_x + max_lvl * row_width // 3 + pad_x + margin_x
         _builder = SVGBuilder(width, height)
         for q in range(num_qubits):
-            y = pad_y + (q+1) * line_height
-            _builder.line((pad_x, y), (width-pad_x, y))
+            y = pad_y + (q + 1) * line_height
+            _builder.line((pad_x, y), (width - pad_x, y))
             _builder.text((0, y), f"{str(q):>{num_digits}}", font_size=font_size)
-            _builder.text((width-pad_x+r, y), f"{str(q):>{num_digits}}", font_size=font_size)
+            _builder.text((width - pad_x + r, y), f"{str(q):>{num_digits}}",
+                          font_size=font_size)
         _builder >>= builder
         svg_code = repr(_builder)
         if svg_code_only:
             return svg_code
         try:
             # pylint: disable = import-outside-toplevel
-            from IPython.core.display import SVG # type: ignore
+            from IPython.core.display import SVG  # type: ignore
         except ModuleNotFoundError as _:
             raise ModuleNotFoundError("You must install the 'IPython' library.")
         return SVG(svg_code)

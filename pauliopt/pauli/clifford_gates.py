@@ -72,8 +72,10 @@ class ControlGate(CliffordGate):
             raise Exception(f"{self} has no rules defined for propagation!")
         pauli_size = len(gadget)
         if self.control >= pauli_size or self.target >= pauli_size:
-            raise Exception(f"Control: {self.control} or Target {self.target} out of bounds: {pauli_size}")
-        p_string = _pauli_to_string(gadget.paulis[self.control]) + _pauli_to_string(gadget.paulis[self.target])
+            raise Exception(
+                f"Control: {self.control} or Target {self.target} out of bounds: {pauli_size}")
+        p_string = _pauli_to_string(gadget.paulis[self.control]) + _pauli_to_string(
+            gadget.paulis[self.target])
         p_c, p_t, phase_change = self.rules[p_string]
         gadget.paulis[self.control] = p_c
         gadget.paulis[self.target] = p_t

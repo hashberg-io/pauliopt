@@ -1,6 +1,7 @@
 # Jupyter Notebooks
 
-This folder contains Jupyter Notebooks exemplifying several aspects of the PauliOpt library:
+This folder contains Jupyter Notebooks exemplifying several aspects of the PauliOpt
+library:
 
 - [1. Qubit Topologies.ipynb](1.%20Qubit%20Topologies.ipynb)
 - [2. Circuits of Phase Gadgets.ipynb](2.%20Circuits%20of%20Phase%20Gadgets.ipynb)

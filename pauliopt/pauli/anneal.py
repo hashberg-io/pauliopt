@@ -18,14 +18,17 @@ def pick_random_gate(num_qubits, G: nx.Graph, gate_set=None):
     return gate.generate_random(num_qubits)
 
 
-def compute_effect(pp: PauliPolynomial, gate: CliffordGate, topology: Topology, leg_chache=None):
+def compute_effect(pp: PauliPolynomial, gate: CliffordGate, topology: Topology,
+                   leg_chache=None):
     pp_ = pp.copy()
     pp_.propagate(gate)
 
-    return pp_.two_qubit_count(topology, leg_chache=leg_chache) - pp.two_qubit_count(topology, leg_chache=leg_chache)
+    return pp_.two_qubit_count(topology, leg_chache=leg_chache) - pp.two_qubit_count(
+        topology, leg_chache=leg_chache)
 
 
-def anneal(pp: PauliPolynomial, topology, schedule=("geometric", 1.0, 0.1), nr_iterations=100) -> QuantumCircuit:
+def anneal(pp: PauliPolynomial, topology, schedule=("geometric", 1.0, 0.1),
+           nr_iterations=100) -> QuantumCircuit:
     leg_cache = {}
     clifford_region = CliffordRegion()
 
@@ -38,7 +41,7 @@ def anneal(pp: PauliPolynomial, topology, schedule=("geometric", 1.0, 0.1), nr_i
         effect = 2 + compute_effect(pp, gate, topology, leg_chache=leg_cache)
         accept_step = effect < 0 or random_nrs[it] < np.exp(-np.log(2) * effect / t)
         if accept_step:
-            clifford_region.add_gate(gate) # TODO optimize clifford regions
+            clifford_region.add_gate(gate)  # TODO optimize clifford regions
             pp.propagate(gate)
 
     qc = QuantumCircuit(pp.num_qubits)

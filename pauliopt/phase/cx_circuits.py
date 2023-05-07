@@ -5,9 +5,8 @@
 
 from typing import (cast, Collection, Dict, FrozenSet, Iterator, List,
                     Optional, overload, Sequence, Tuple, Union)
-import numpy as np # type: ignore
+import numpy as np  # type: ignore
 from pauliopt.topologies import Coupling, Topology, Matching
-
 
 GateLike = Union[List[int], Tuple[int, int]]
 
@@ -37,10 +36,12 @@ class CXCircuitLayer:
         self._gates = {}
         self._couplings_seq = tuple(sorted(topology.couplings))
         self._matching = Matching(topology)
-        self._num_flippable_cxs = 2*len(self.topology.couplings)
+        self._num_flippable_cxs = 2 * len(self.topology.couplings)
         for gate in gates:
-            if not isinstance(gate, (list, tuple)) or len(gate) != 2 or len(set(gate)) != 2:
-                raise TypeError(f"Expected gates to be pairs of distinct integers, found {gate}.")
+            if not isinstance(gate, (list, tuple)) or len(gate) != 2 or len(
+                    set(gate)) != 2:
+                raise TypeError(
+                    f"Expected gates to be pairs of distinct integers, found {gate}.")
             ctrl, trgt = gate
             self.flip_cx(ctrl, trgt)
 
@@ -211,12 +212,12 @@ class CXCircuitLayer:
         """
         try:
             # pylint: disable = import-outside-toplevel
-            import networkx as nx # type: ignore
+            import networkx as nx  # type: ignore
         except ModuleNotFoundError as _:
             raise ModuleNotFoundError("You must install the 'networkx' library.")
         try:
             # pylint: disable = import-outside-toplevel
-            import matplotlib.pyplot as plt # type: ignore
+            import matplotlib.pyplot as plt  # type: ignore
         except ModuleNotFoundError as _:
             raise ModuleNotFoundError("You must install the 'matplotlib' library.")
         G = self.topology.to_nx
@@ -228,7 +229,7 @@ class CXCircuitLayer:
             if layout not in layouts:
                 raise ValueError(f"Invalid layout found: {layout}. "
                                  f"Valid layouts: {', '.join(repr(l) for l in layouts)}")
-            kwargs["pos"] = getattr(nx, layout+"_layout")(G)
+            kwargs["pos"] = getattr(nx, layout + "_layout")(G)
         if "node_color" not in kwargs:
             kwargs["node_color"] = ["#dddddd" for _ in nodes]
         for node_idx, node in enumerate(nodes):
@@ -292,8 +293,10 @@ class CXCircuitLayer:
                 yield (fst, snd)
                 yield (snd, fst)
 
+
 CXCircuitLayerLike = Union[CXCircuitLayer, "CXCircuitLayerView", Sequence[GateLike]]
 CXCircuitLike = Union["CXCircuit", "CXCircuitView", Sequence[CXCircuitLayerLike]]
+
 
 class CXCircuit(Sequence[CXCircuitLayer]):
     """
@@ -358,19 +361,19 @@ class CXCircuit(Sequence[CXCircuitLayer]):
         """
         try:
             # pylint: disable = import-outside-toplevel
-            import matplotlib.pyplot as plt # type: ignore
+            import matplotlib.pyplot as plt  # type: ignore
         except ModuleNotFoundError as _:
             raise ModuleNotFoundError("You must install the 'matplotlib' library.")
         large_figsize = None
         if figsize is not None:
             w, h = figsize
-            large_figsize = (w*len(self), h)
+            large_figsize = (w * len(self), h)
         plt.figure(figsize=large_figsize)
         # plt.tight_layout()
         plt.subplots_adjust(wspace=0)
         for layer_idx, layer in enumerate(self):
             # print(f"Layer {layer_idx}:")
-            plt.subplot(1, len(self), layer_idx+1, title=f"Layer {layer_idx}")
+            plt.subplot(1, len(self), layer_idx + 1, title=f"Layer {layer_idx}")
             layer.draw(layout=layout, figsize=figsize, noshow=True,
                        zcolor=zcolor, xcolor=xcolor, **kwargs)
         if filename is not None:
@@ -402,8 +405,8 @@ class CXCircuit(Sequence[CXCircuitLayer]):
             layers = [layer.clone() for layer in layers]
         elif (isinstance(layers, Sequence)
               and all(isinstance(g, (list, tuple))
-                      and all(isinstance(x, int) for x in g) # pylint: disable = C0330
-                      and len(g) == 2 for g in layers)): # pylint: disable = C0330
+                      and all(isinstance(x, int) for x in g)  # pylint: disable = C0330
+                      and len(g) == 2 for g in layers)):  # pylint: disable = C0330
             layers = [cast(Sequence[GateLike], layers)]
         if not isinstance(layers, Sequence):
             raise TypeError(f"Expected sequence of layers, found {layers}")
@@ -412,7 +415,8 @@ class CXCircuit(Sequence[CXCircuitLayer]):
                 layer = layer.clone()
             elif not isinstance(layer, CXCircuitLayer):
                 if not isinstance(layer, Sequence):
-                    raise TypeError(f"Expected a sequence of pairs of ints, found {layer}")
+                    raise TypeError(
+                        f"Expected a sequence of pairs of ints, found {layer}")
                 layer = CXCircuitLayer(self.topology, cast(Sequence[GateLike], layer))
             self._layers.append(layer)
         return self
@@ -558,7 +562,6 @@ class CXCircuitView(Sequence[CXCircuitLayerView]):
             constraining this CX circuit.
         """
         return self._circuit.topology
-
 
     @property
     def num_gates(self) -> int:
