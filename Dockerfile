@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the source code to the container
 COPY . .
 
-# Install your library
+# Install pauliopt
 RUN python setup.py install
 
 # Execute all the unit tests in the ./tests folder
