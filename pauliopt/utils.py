@@ -1,7 +1,7 @@
 """
     Utility classes and functions for the `pauliopt` library.
 """
-import itertools
+
 from abc import ABC, abstractmethod
 import math
 from decimal import Decimal
@@ -12,7 +12,6 @@ from typing import (Any, Callable, ClassVar, Dict, Final, List, Literal, Mapping
 import numpy as np
 
 AngleInitT = Union[int, Fraction, str, Decimal]
-
 
 class AngleExpr(ABC):
     """
@@ -52,7 +51,7 @@ class AngleExpr(ABC):
 
     def __truediv__(self, other: int) -> "AngleExpr":
         if isinstance(other, int):
-            return SumprodAngleExpr(self, coeffs=Fraction(1, other))
+            return SumprodAngleExpr(self, coeffs=Fraction(1,other))
         return NotImplemented
 
     @abstractmethod
@@ -97,7 +96,7 @@ class AngleExpr(ABC):
             Magic method for IPython/Jupyter pretty-printing.
             See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
         """
-        return "$%s$" % self.repr_latex
+        return "$%s$"%self.repr_latex
 
     @abstractmethod
     def __eq__(self, other: Any) -> bool:
@@ -123,7 +122,7 @@ class Angle(AngleExpr):
         """
             The value of this angle as a fraction of PI.
         """
-        return self._value % 2
+        return self._value%2
 
     @property
     def as_root_of_unity(self) -> Tuple[int, int]:
@@ -134,8 +133,8 @@ class Angle(AngleExpr):
         """
         num = self.value.numerator
         den = self.value.denominator
-        a: int = num // 2 if num % 2 == 0 else num
-        order: int = den if num % 2 == 0 else 2 * den
+        a: int = num//2 if num%2 == 0 else num
+        order: int = den if num % 2 == 0 else 2*den
         return (a, order)
 
     @property
@@ -145,7 +144,7 @@ class Angle(AngleExpr):
         """
         num = self.value.numerator
         den = self.value.denominator
-        return den if num % 2 == 0 else 2 * den
+        return den if num % 2 == 0 else 2*den
 
     @property
     def is_zero_or_pi(self) -> bool:
@@ -163,7 +162,7 @@ class Angle(AngleExpr):
         """
         num = self.value.numerator
         den = self.value.denominator
-        return num % (2 * den) == 0
+        return num % (2*den) == 0
 
     @property
     def is_pi(self) -> bool:
@@ -172,7 +171,7 @@ class Angle(AngleExpr):
         """
         num = self.value.numerator
         den = self.value.denominator
-        return num % den == 0 and not num % (2 * den) == 0
+        return num % den == 0 and not num % (2*den) == 0
 
     @property
     def to_qiskit(self) -> float:
@@ -224,7 +223,7 @@ class Angle(AngleExpr):
         return super().__mod__(other)
 
     def _mul(self, other: Union[int, Fraction]) -> "Angle":
-        return Angle(self._value * other)
+        return Angle(self._value*other)
 
     def __mul__(self, other: int) -> "Angle":
         if isinstance(other, int):
@@ -252,8 +251,8 @@ class Angle(AngleExpr):
         if num == 1:
             if den == 1:
                 return "π"
-            return "π/%d" % den
-        return "%dπ/%d" % (num, den)
+            return "π/%d"%den
+        return "%dπ/%d"%(num, den)
 
     def __repr__(self) -> str:
         num = self.value.numerator
@@ -263,8 +262,8 @@ class Angle(AngleExpr):
         if num == 1:
             if den == 1:
                 return "pi"
-            return "pi/%d" % den
-        return "%d*pi/%d" % (num, den)
+            return "pi/%d"%den
+        return "%d*pi/%d"%(num, den)
 
     @property
     def repr_latex(self) -> str:
@@ -278,15 +277,15 @@ class Angle(AngleExpr):
         if num == 1:
             if den == 1:
                 return "\\pi"
-            return "\\frac{\\pi}{%d}" % den
-        return "\\frac{%d\\pi}{%d}" % (num, den)
+            return "\\frac{\\pi}{%d}"%den
+        return "\\frac{%d\\pi}{%d}"%(num, den)
 
     def _repr_latex_(self) -> str:
         """
             Magic method for IPython/Jupyter pretty-printing.
             See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
         """
-        return "$%s$" % self.repr_latex
+        return "$%s$"%self.repr_latex
 
     def __eq__(self, other: Any) -> bool:
         if other == 0:
@@ -296,12 +295,12 @@ class Angle(AngleExpr):
         return self.value == other.value
 
     def __float__(self) -> float:
-        return float(self.value) * math.pi
+        return float(self.value)*math.pi
 
     @overload
     @staticmethod
     def random(subdivision: int = 4, *,
-               size: Literal[1] = 1,
+               size: Literal[1]=1,
                rng_seed: Optional[int] = None,
                nonzero: bool = False) -> "Angle":
         ...
@@ -336,35 +335,35 @@ class Angle(AngleExpr):
             raise TypeError("RNG seed must be integer or 'None'.")
         rng = np.random.default_rng(seed=rng_seed)
         if nonzero:
-            rs = 1 + rng.integers(2 * subdivision - 1, size=size)  # type: ignore[attr-defined]
+            rs = 1+rng.integers(2*subdivision-1, size=size) # type: ignore[attr-defined]
         else:
-            rs = rng.integers(2 * subdivision, size=size)  # type: ignore[attr-defined]
+            rs = rng.integers(2*subdivision, size=size) # type: ignore[attr-defined]
         if size == 1:
             return Angle(Fraction(int(rs[0]), subdivision))
         return tuple(Angle(Fraction(int(r), subdivision)) for r in rs)
 
-    zero: Final["Angle"]  # type: ignore
+    zero: Final["Angle"] # type: ignore
     """ A constant for the angle 0. """
 
-    pi: Final["Angle"]  # type: ignore
+    pi: Final["Angle"] # type: ignore
     """ A constant for the angle pi. """
 
-
 # Set static constants for Angle:
-Angle.zero = Angle(0)  # type: ignore
-Angle.pi = Angle(1)  # type: ignore
+Angle.zero = Angle(0) # type: ignore
+Angle.pi = Angle(1) # type: ignore
+
 
 pi: Final[Angle] = Angle.pi
 """ Constant for `Angle.pi`. """
 
-π: Final[Angle] = Angle.pi  # pylint: disable=non-ascii-name
+π: Final[Angle] = Angle.pi # pylint: disable=non-ascii-name
 """ Constant for `Angle.pi`. """
 
 
 def SumprodAngleExpr(*exprs: AngleExpr,
                      coeffs: Union[int, Fraction,
                                    Sequence[Union[int, Fraction]]] = 1
-                     ) -> AngleExpr:
+                    ) -> AngleExpr:
     if not isinstance(coeffs, Sequence):
         coeffs = (coeffs,)
     if len(coeffs) != len(exprs):
@@ -374,10 +373,10 @@ def SumprodAngleExpr(*exprs: AngleExpr,
     _const: Angle = Angle.zero
     for e, c in zip(exprs, coeffs):
         if isinstance(e, Angle):
-            _const += e._mul(c)  # pylint: disable = protected-access
+            _const += e._mul(c) # pylint: disable = protected-access
         elif isinstance(e, _SumprodAngleExpr):
             for sub_e, sub_c in e.coeffs.items():
-                new_c = c * sub_c
+                new_c = c*sub_c
                 if sub_e in _coeffs:
                     new_c += _coeffs[sub_e]
                 _coeffs[sub_e] = new_c
@@ -427,7 +426,7 @@ class _SumprodAngleExpr(AngleExpr):
 
     @property
     def to_qiskit(self) -> Any:
-        return sum((c * e.to_qiskit for e, c in self.coeffs.items()), self.const.to_qiskit)
+        return sum((c*e.to_qiskit for e, c in self.coeffs.items()), self.const.to_qiskit)
 
     def __hash__(self) -> int:
         return hash((_SumprodAngleExpr, tuple(self.coeffs.items()), self.const))
@@ -438,12 +437,12 @@ class _SumprodAngleExpr(AngleExpr):
         pos_sub_e = {e: c for e, c in self.coeffs.items() if c > 0}
         neg_sub_e = {e: c for e, c in self.coeffs.items() if c < 0}
         s = "+".join(
-            ("" if c == 1 else str(c)) + f(e)
+            ("" if c == 1 else str(c))+f(e)
             for e, c in pos_sub_e.items()
         )
         if neg_sub_e:
-            s += "-" + "".join(
-                ("-" if c == -1 else str(c)) + f(e)
+            s += "-"+"".join(
+                ("-" if c == -1 else str(c))+f(e)
                 for e, c in pos_sub_e.items()
             )
         if self.const != 0:
@@ -470,12 +469,10 @@ class _SumprodAngleExpr(AngleExpr):
             return False
         return NotImplemented
 
-
 def ModAngleExpr(expr: AngleExpr, mod: AngleExpr) -> AngleExpr:
     if isinstance(expr, Angle) and isinstance(mod, Angle):
-        return expr % mod
+        return expr%mod
     return _ModAngleExpr(expr, mod)
-
 
 class _ModAngleExpr(AngleExpr):
     _expr: AngleExpr
@@ -501,7 +498,7 @@ class _ModAngleExpr(AngleExpr):
 
     @property
     def to_qiskit(self) -> Any:
-        return self.expr.to_qiskit % self.mod.to_qiskit
+        return self.expr.to_qiskit%self.mod.to_qiskit
 
     def __hash__(self) -> int:
         return hash((_ModAngleExpr, self.expr, self.mod))
@@ -526,7 +523,6 @@ class _ModAngleExpr(AngleExpr):
             return False
         return NotImplemented
 
-
 class AngleVar(AngleExpr):
     _global_id: ClassVar[int] = 0
     _qiskit_bindings: ClassVar[Dict[int, Any]]
@@ -548,7 +544,7 @@ class AngleVar(AngleExpr):
             return AngleVar._qiskit_bindings[self._id]
         try:
             # pylint: disable = import-outside-toplevel
-            from qiskit.circuit import Parameter  # type: ignore
+            from qiskit.circuit import Parameter # type: ignore
         except ModuleNotFoundError as e:
             raise ModuleNotFoundError("You must install the 'qiskit' library.") from e
         p = Parameter(self._repr_latex_)
@@ -579,12 +575,12 @@ class AngleVar(AngleExpr):
         return NotImplemented
 
 
+
 def _validate_vec2(vec2: Tuple[int, int]) -> None:
     if not isinstance(vec2, tuple) or len(vec2) != 2:
         raise TypeError("Expected pair.")
     if not all(isinstance(x, int) for x in vec2):
         raise TypeError("Expected pair of integers.")
-
 
 class SVGBuilder:
     """
@@ -680,7 +676,7 @@ class SVGBuilder:
         if not isinstance(font_size, int) or font_size <= 0:
             raise TypeError("Font size must be positive integer.")
         x, y = pos
-        tag = f'<text x="{x}" y="{y + font_size // 4}" font-size="{font_size}">{text}</text>'
+        tag = f'<text x="{x}" y="{y+font_size//4}" font-size="{font_size}">{text}</text>'
         self._tags.append(tag)
         return self
 
@@ -713,7 +709,6 @@ class TempSchedule(Protocol):
     def __call__(self, it: int, num_iters: int) -> float:
         ...
 
-
 @runtime_checkable
 class TempScheduleProvider(Protocol):
     """
@@ -734,10 +729,8 @@ def linear_temp_schedule(t_init: Union[int, float], t_final: Union[int, float]) 
         raise TypeError(f"Expected int or float, found {type(t_init)}.")
     if not isinstance(t_final, (int, float)):
         raise TypeError(f"Expected int or float, found {type(t_final)}.")
-
     def temp_schedule(it: int, num_iters: int) -> float:
-        return t_init + (t_final - t_init) * it / (num_iters - 1)
-
+        return t_init + (t_final-t_init)*it/(num_iters-1)
     return temp_schedule
 
 
@@ -750,10 +743,8 @@ def geometric_temp_schedule(t_init: Union[int, float], t_final: Union[int, float
         raise TypeError(f"Expected int or float, found {type(t_init)}.")
     if not isinstance(t_final, (int, float)):
         raise TypeError(f"Expected int or float, found {type(t_final)}.")
-
     def temp_schedule(it: int, num_iters: int) -> float:
-        return t_init * ((t_final / t_init) ** (it / (num_iters - 1.0)))  # type: ignore[no-any-return]
-
+        return t_init * ((t_final/t_init)**(it/(num_iters-1.0))) # type: ignore[no-any-return]
     return temp_schedule
 
 
@@ -766,12 +757,10 @@ def reciprocal_temp_schedule(t_init: Union[int, float], t_final: Union[int, floa
         raise TypeError(f"Expected int or float, found {type(t_init)}.")
     if not isinstance(t_final, (int, float)):
         raise TypeError(f"Expected int or float, found {type(t_final)}.")
-
     def temp_schedule(it: int, num_iters: int) -> float:
-        num = t_init * t_final * (num_iters - 1)
-        denom = (t_final * num_iters - t_init) + (t_init - t_final) * (it + 1)
-        return num / denom
-
+        num = t_init*t_final*(num_iters-1)
+        denom = (t_final*num_iters-t_init)+(t_init-t_final)*(it+1)
+        return num/denom
     return temp_schedule
 
 
@@ -784,12 +773,10 @@ def log_temp_schedule(t_init: Union[int, float], t_final: Union[int, float]) -> 
         raise TypeError(f"Expected int or float, found {type(t_init)}.")
     if not isinstance(t_final, (int, float)):
         raise TypeError(f"Expected int or float, found {type(t_final)}.")
-
     def temp_schedule(it: int, num_iters: int) -> float:
-        num = t_init * t_final * (math.log(num_iters + 1) - math.log(2))
-        denom = (t_final * math.log(num_iters + 1) - t_init * math.log(2)) + (t_init - t_final) * math.log(it + 2)
-        return num / denom
-
+        num = t_init*t_final*(math.log(num_iters+1)-math.log(2))
+        denom = (t_final*math.log(num_iters+1)-t_init*math.log(2))+(t_init-t_final)*math.log(it+2)
+        return num/denom
     return temp_schedule
 
 
@@ -798,11 +785,13 @@ StandardTempScheduleName = Literal["linear", "geometric", "reciprocal", "log"]
     Names of the standard temperature schedules.
 """
 
+
 StandardTempSchedule = Tuple[StandardTempScheduleName,
                              Union[int, float], Union[int, float]]
 """
     Type for standard temperature schedules.
 """
+
 
 StandardTempSchedules: Final[Mapping[StandardTempScheduleName, TempScheduleProvider]] = {
     "linear": linear_temp_schedule,

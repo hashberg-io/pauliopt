@@ -302,6 +302,7 @@ class Topology:
         mapped_couplings = [{_mapping[x] for x in coupling} for coupling in self._couplings]
         return Topology(self.num_qubits, mapped_couplings)
 
+
     def shortest_path(self, fro: int, to: int):
         """
         Computes the shortest path using the next lookup table from the Floyd–Warshall algorithm
@@ -316,8 +317,7 @@ class Topology:
             return path
 
 
-
-def mapped_bwd(self, mapping: Union[Sequence[int], Dict[int, int]]) -> "Topology":
+    def mapped_bwd(self, mapping: Union[Sequence[int], Dict[int, int]]) -> "Topology":
         """
             Returns a topology with the same couplings, but remapping the qubits using
             the inverse of the given mapping.
