@@ -81,18 +81,18 @@ class PauliGadget:
     def copy(self):
         return PauliGadget(self.angle, self.paulis.copy())
 
-    def two_qubit_count(self, topology, leg_chache=None):
-        if leg_chache is None:
-            leg_chache = {}
+    def two_qubit_count(self, topology, leg_cache=None):
+        if leg_cache is None:
+            leg_cache = {}
 
         column = np.asarray(self.paulis)
         col_binary = np.where(column == Pauli.I, 0, 1)
         col_id = "".join([str(int(el)) for el in col_binary])
-        if col_id in leg_chache.keys():
-            return leg_chache[col_id]
+        if col_id in leg_cache.keys():
+            return leg_cache[col_id]
         else:
             cnot_amount = len(find_minimal_cx_assignment(col_binary, topology)[0])
-            leg_chache[col_id] = cnot_amount
+            leg_cache[col_id] = cnot_amount
         return cnot_amount
 
     def to_qiskit(self, topology=None):

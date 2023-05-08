@@ -19,12 +19,12 @@ def pick_random_gate(num_qubits, G: nx.Graph, gate_set=None):
 
 
 def compute_effect(pp: PauliPolynomial, gate: CliffordGate, topology: Topology,
-                   leg_chache=None):
+                   leg_cache=None):
     pp_ = pp.copy()
     pp_.propagate(gate)
 
-    return pp_.two_qubit_count(topology, leg_chache=leg_chache) - pp.two_qubit_count(
-        topology, leg_chache=leg_chache)
+    return pp_.two_qubit_count(topology, leg_cache=leg_cache) - pp.two_qubit_count(
+        topology, leg_cache=leg_cache)
 
 
 def anneal(pp: PauliPolynomial, topology, schedule=("geometric", 1.0, 0.1),
@@ -38,7 +38,7 @@ def anneal(pp: PauliPolynomial, topology, schedule=("geometric", 1.0, 0.1),
     for it in range(nr_iterations):
         t = schedule(it, nr_iterations)
         gate = pick_random_gate(num_qubits, topology.to_nx)
-        effect = 2 + compute_effect(pp, gate, topology, leg_chache=leg_cache)
+        effect = 2 + compute_effect(pp, gate, topology, leg_cache=leg_cache)
         accept_step = effect < 0 or random_nrs[it] < np.exp(-np.log(2) * effect / t)
         if accept_step:
             clifford_region.add_gate(gate)  # TODO optimize clifford regions
