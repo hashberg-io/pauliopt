@@ -20,10 +20,7 @@ class PauliPolynomial:
         return self
 
     def __repr__(self):
-        rep_ = ""
-        for gadet in self.pauli_gadgets:
-            rep_ += str(gadet) + "\n"
-        return rep_
+        return '\n'.join(map(repr, self.pauli_gadgets))
 
     def __len__(self):
         return self.size
