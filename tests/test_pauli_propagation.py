@@ -17,18 +17,12 @@ from pauliopt.pauli.utils import X, Y, Z, I
 
 from pauliopt.topologies import Topology
 
-
-def pauli_to_tket_pauli(pauli):
-    if pauli == X:
-        return Pauli.X
-    elif pauli == Y:
-        return Pauli.Y
-    elif pauli == Z:
-        return Pauli.Z
-    elif pauli == I:
-        return Pauli.I
-    else:
-        raise Exception("Unknown Pauli Matrix")
+PAULI_TO_TKET = {
+    X: Pauli.X,
+    Y: Pauli.Y,
+    Z: Pauli.Z,
+    I: Pauli.I
+}
 
 
 def tket_to_qiskit(circuit: pytket.Circuit) -> QuantumCircuit:
@@ -39,7 +33,7 @@ def pauli_poly_to_tket(pp: PauliPolynomial):
     circuit = pytket.Circuit(pp.num_qubits)
     for gadget in pp.pauli_gadgets:
         circuit.add_pauliexpbox(
-            PauliExpBox([pauli_to_tket_pauli(p) for p in gadget.paulis],
+            PauliExpBox([PAULI_TO_TKET[p] for p in gadget.paulis],
                         gadget.angle / np.pi),
             list(range(pp.num_qubits)))
     Transform.DecomposeBoxes().apply(circuit)
