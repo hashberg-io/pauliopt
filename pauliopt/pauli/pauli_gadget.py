@@ -1,13 +1,13 @@
 from collections import deque
 from typing import List
 
+import networkx as nx
+import numpy as np
 from qiskit import QuantumCircuit
 
-from pauliopt.pauli.utils import _pauli_to_string, Pauli, X, Y, Z, I
+from pauliopt.pauli.utils import Pauli, X, Y, Z, I
 from pauliopt.topologies import Topology
 from pauliopt.utils import AngleExpr
-import numpy as np
-import networkx as nx
 
 
 def decompose_cnot_ladder_z(ctrl: int, trg: int, arch: Topology):
@@ -76,7 +76,7 @@ class PauliGadget:
         return len(self.paulis)
 
     def __repr__(self):
-        return f"({self.angle}) @ {{ {', '.join([_pauli_to_string(pauli) for pauli in self.paulis])} }}"
+        return f"({self.angle}) @ {{ {', '.join([pauli.value for pauli in self.paulis])} }}"
 
     def copy(self):
         return PauliGadget(self.angle, self.paulis.copy())

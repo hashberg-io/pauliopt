@@ -1,9 +1,10 @@
+from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Collection
+
 import numpy as np
-from pauliopt.pauli.utils import _pauli_to_string, X, Y, Z, I, Pauli
 
 from pauliopt.pauli.pauli_gadget import PauliGadget
+from pauliopt.pauli.utils import X, Y, Z, I
 
 
 class CliffordType(Enum):
@@ -15,30 +16,30 @@ class CliffordType(Enum):
     V = "v"
 
 
-class CliffordGate:
+class CliffordGate(ABC):
     def __init__(self, c_type):
         self.c_type = c_type
 
+    @abstractmethod
     def propagate_pauli(self, gadget: PauliGadget):
-        raise Exception(f"This method is not implemented on object: {self}")
+        ...
 
+    @abstractmethod
     def to_qiskit(self):
-        raise Exception(f"This method is not implemented on object: {self}")
+        ...
 
     @property
+    @abstractmethod
     def num_qubits(self):
-        raise Exception(f"This property is not implemented on object: {self}")
+        ...
 
     @staticmethod
+    @abstractmethod
     def generate_random(num_qubits):
-        raise Exception(f"This method is not implemented")
-
-    @property
-    def to_hash(self):
-        raise Exception(f"This property is not implemented on object: {self}")
+        ...
 
 
-class SingleQubitGate(CliffordGate):
+class SingleQubitGate(CliffordGate, ABC):
     rules = None
 
     def __init__(self, type, qubit):
@@ -48,7 +49,7 @@ class SingleQubitGate(CliffordGate):
     def propagate_pauli(self, gadget: PauliGadget):
         if self.rules is None:
             raise Exception(f"{self} has no rules defined for propagation!")
-        p_string = _pauli_to_string(gadget.paulis[self.qubit])
+        p_string = gadget.paulis[self.qubit].value
         new_p, phase_change = self.rules[p_string]
         gadget.paulis[self.qubit] = new_p
         gadget.angle *= phase_change
@@ -59,7 +60,7 @@ class SingleQubitGate(CliffordGate):
         return self.qubit + 1
 
 
-class ControlGate(CliffordGate):
+class ControlGate(CliffordGate, ABC):
     rules = None
 
     def __init__(self, type, control, target):
@@ -74,8 +75,7 @@ class ControlGate(CliffordGate):
         if self.control >= pauli_size or self.target >= pauli_size:
             raise Exception(
                 f"Control: {self.control} or Target {self.target} out of bounds: {pauli_size}")
-        p_string = _pauli_to_string(gadget.paulis[self.control]) + _pauli_to_string(
-            gadget.paulis[self.target])
+        p_string = gadget.paulis[self.control].value + gadget.paulis[self.target].value
         p_c, p_t, phase_change = self.rules[p_string]
         gadget.paulis[self.control] = p_c
         gadget.paulis[self.target] = p_t
@@ -198,7 +198,6 @@ class CY(ControlGate):
         return CY(control, target)
 
 
-#
 class H(SingleQubitGate):
     rules = {'X': (Z, 1),
              'Y': (Y, -1),

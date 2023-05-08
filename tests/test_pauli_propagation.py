@@ -38,8 +38,10 @@ def tket_to_qiskit(circuit: pytket.Circuit) -> QuantumCircuit:
 def pauli_poly_to_tket(pp: PauliPolynomial):
     circuit = pytket.Circuit(pp.num_qubits)
     for gadget in pp.pauli_gadgets:
-        circuit.add_pauliexpbox(PauliExpBox([pauli_to_tket_pauli(p) for p in gadget.paulis], gadget.angle / np.pi),
-                                list(range(pp.num_qubits)))
+        circuit.add_pauliexpbox(
+            PauliExpBox([pauli_to_tket_pauli(p) for p in gadget.paulis],
+                        gadget.angle / np.pi),
+            list(range(pp.num_qubits)))
     Transform.DecomposeBoxes().apply(circuit)
     return tket_to_qiskit(circuit)
 
@@ -113,4 +115,5 @@ class TestPauliConversion(unittest.TestCase):
                 qc.compose(pp_.to_qiskit(), inplace=True)
                 qc.compose(gate.to_qiskit(), inplace=True)
                 # print(qc)
-                self.assertTrue(verify_equality(inital_qc, qc), "The resulting Quantum Circuits were not equivalent")
+                self.assertTrue(verify_equality(inital_qc, qc),
+                                "The resulting Quantum Circuits were not equivalent")
