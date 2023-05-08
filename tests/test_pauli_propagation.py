@@ -114,6 +114,5 @@ class TestPauliConversion(unittest.TestCase):
                 qc.compose(gate.to_qiskit().inverse(), inplace=True)
                 qc.compose(pp_.to_qiskit(), inplace=True)
                 qc.compose(gate.to_qiskit(), inplace=True)
-                # print(qc)
                 self.assertTrue(verify_equality(inital_qc, qc),
                                 "The resulting Quantum Circuits were not equivalent")
