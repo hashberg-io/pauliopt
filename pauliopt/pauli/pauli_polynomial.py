@@ -56,10 +56,10 @@ class PauliPolynomial:
             pp_ >>= gadget.copy()
         return pp_
 
-    def two_qubit_count(self, topology, leg_chache=None):
-        if leg_chache is None:
-            leg_chache = {}
+    def two_qubit_count(self, topology, leg_cache=None):
+        if leg_cache is None:
+            leg_cache = {}
         count = 0
         for gadget in self.pauli_gadgets:
-            count += gadget.two_qubit_count(topology, leg_chache=leg_chache)
+            count += gadget.two_qubit_count(topology, leg_cache=leg_cache)
         return count
