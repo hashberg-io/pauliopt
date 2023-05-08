@@ -5,17 +5,15 @@ import networkx as nx
 import numpy as np
 import pytket
 from pytket._tket.circuit import PauliExpBox
-from pytket._tket.transform import Transform
-from pytket.extensions.qiskit.qiskit_convert import tk_to_qiskit, qiskit_to_tk
 from pytket._tket.pauli import Pauli
+from pytket._tket.transform import Transform
+from pytket.extensions.qiskit.qiskit_convert import tk_to_qiskit
 from qiskit import QuantumCircuit
 
-from pauliopt.pauli.clifford_gates import CX, CY, CZ, H, S, V, generate_random_clifford, CliffordType, CliffordGate, \
-    ControlGate, SingleQubitGate, clifford_to_qiskit
+from pauliopt.pauli.anneal import anneal
 from pauliopt.pauli.pauli_gadget import PPhase
 from pauliopt.pauli.pauli_polynomial import PauliPolynomial
 from pauliopt.pauli.utils import X, Y, Z, I
-
 from pauliopt.topologies import Topology
 
 PAULI_TO_TKET = {
@@ -85,8 +83,8 @@ def get_two_qubit_count(circ: QuantumCircuit):
     return two_qubit_count
 
 
-class TestPauliConversion(unittest.TestCase):
-    def test_circuit_construction(self):
+class TestPauliAnnealing(unittest.TestCase):
+    def test_simulated_annealing_pauli(self):
         """
         Checks in this Unit test:
         1) If one constructs the Pauli Polynomial with our libary the circuits should match the ones of tket
@@ -99,29 +97,7 @@ class TestPauliConversion(unittest.TestCase):
 
                 topology = topo_creation(pp.num_qubits)
                 tket_pp = pauli_poly_to_tket(pp)
-                our_synth = pp.to_qiskit(topology)
-                self.assertTrue(verify_equality(tket_pp, our_synth),
-                                "The resulting Quantum Circuits were not equivalent")
-                self.assertTrue(check_matching_architecture(our_synth, topology.to_nx),
-                                "The Pauli Polynomial did not match the architecture")
-                self.assertEqual(get_two_qubit_count(our_synth), pp.two_qubit_count(topology),
-                                 "Two qubit count needs to be equivalent to to two qubit count of the circuit")
+                our_synth = anneal(pp, topology)
 
-    def test_gate_propagation(self):
-        """
-        Checks if the clifford Propagation rules are sound for 2, 3, 4 qubits
-        """
-        for num_qubits in [2, 3, 4]:
-            pp = generate_all_combination_pauli_polynomial(n_qubits=num_qubits)
-            inital_qc = pp.to_qiskit()
-            for gate_class in [CliffordType.CX, CliffordType.CY, CliffordType.CZ,
-                               CliffordType.H, CliffordType.S, CliffordType.V]:
-                gate = generate_random_clifford(gate_class, num_qubits)
-                print(gate_class)
-                pp_ = pp.copy().propagate(gate)
-                qc = QuantumCircuit(num_qubits)
-                qc.compose(clifford_to_qiskit(gate).inverse(), inplace=True)
-                qc.compose(pp_.to_qiskit(), inplace=True)
-                qc.compose(clifford_to_qiskit(gate), inplace=True)
-                self.assertTrue(verify_equality(inital_qc, qc),
-                                "The resulting Quantum Circuits were not equivalent")
+                self.assertTrue(verify_equality(tket_pp, our_synth),
+                                "The annealing version returned a wrong circuit")

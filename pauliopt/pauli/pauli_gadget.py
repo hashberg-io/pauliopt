@@ -3,7 +3,6 @@ from typing import List
 
 import networkx as nx
 import numpy as np
-from qiskit import QuantumCircuit
 
 from pauliopt.pauli.utils import Pauli, X, Y, Z, I
 from pauliopt.topologies import Topology
@@ -36,7 +35,6 @@ def find_minimal_cx_assignment(column: np.array, arch: Topology):
             if column[i] != 0 and column[j] != 0 and i != j:
                 G.add_edge(i, j, weight=4 * arch.dist(i, j) - 2)
 
-    # Algorithm by Gogioso et. al. (https://arxiv.org/pdf/2206.11839.pdf) to find qubit assignment with MST
     mst_branches = list(nx.minimum_spanning_edges(G, data=False, algorithm="prim"))
     incident = {q: set() for q in range(len(column))}
     for fst, snd in mst_branches:
@@ -91,7 +89,7 @@ class PauliGadget:
         if col_id in leg_cache.keys():
             return leg_cache[col_id]
         else:
-            cnot_amount = len(find_minimal_cx_assignment(col_binary, topology)[0])
+            cnot_amount = 2 * len(find_minimal_cx_assignment(col_binary, topology)[0])
             leg_cache[col_id] = cnot_amount
         return cnot_amount
 
@@ -99,7 +97,10 @@ class PauliGadget:
         num_qubits = len(self.paulis)
         if topology is None:
             topology = Topology.complete(num_qubits)
-
+        try:
+            from qiskit import QuantumCircuit
+        except:
+            raise Exception("Please install qiskit to export Clifford Regions")
         circ = QuantumCircuit(num_qubits)
 
         column = np.asarray(self.paulis)
