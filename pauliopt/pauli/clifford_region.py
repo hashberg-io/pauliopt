@@ -1,43 +1,9 @@
 from qiskit import QuantumCircuit
 
-from .clifford_gates import *
-import qiskit.quantum_info as qi
+from pauliopt.pauli.clifford_gates import *
 
 
 class CliffordRegion:
-    commutation_rule_set = {('V', 1, 0, 'H', 0, 1),
-                            ('H', 0, 1, 'S', 1, 0),
-                            ('S', 1, 0, 'CX', 1, 0),
-                            ('CX', 0, 1, 'S', 0, 1),
-                            ('H', 1, 0, 'V', 0, 1),
-                            ('S', 0, 1, 'CX', 0, 1),
-                            ('S', 1, 0, 'CZ', 0, 1),
-                            ('S', 1, 0, 'CZ', 1, 0),
-                            ('S', 0, 1, 'H', 1, 0),
-                            ('H', 0, 1, 'V', 1, 0),
-                            ('CX', 0, 1, 'V', 1, 0),
-                            ('V', 0, 1, 'H', 1, 0),
-                            ('S', 1, 0, 'H', 0, 1),
-                            ('V', 1, 0, 'CX', 0, 1),
-                            ('CX', 1, 0, 'V', 0, 1),
-                            ('S', 0, 1, 'V', 1, 0),
-                            ('H', 1, 0, 'S', 0, 1),
-                            ('S', 0, 1, 'CY', 0, 1),
-                            ('CX', 1, 0, 'S', 1, 0),
-                            ('S', 1, 0, 'CY', 1, 0),
-                            ('CZ', 1, 0, 'S', 1, 0),
-                            ('V', 0, 1, 'CX', 1, 0),
-                            ('S', 0, 1, 'CZ', 1, 0),
-                            ('CY', 1, 0, 'S', 1, 0),
-                            ('S', 1, 0, 'V', 0, 1),
-                            ('V', 0, 1, 'S', 1, 0),
-                            ('CY', 0, 1, 'S', 0, 1),
-                            ('CZ', 0, 1, 'S', 0, 1),
-                            ('S', 0, 1, 'CZ', 0, 1),
-                            ('CZ', 0, 1, 'S', 1, 0),
-                            ('CZ', 1, 0, 'S', 0, 1),
-                            ('V', 1, 0, 'S', 0, 1)}
-
     def __init__(self, gates=None):
         if gates is None:
             gates = []

@@ -1,5 +1,5 @@
-from .clifford_gates import CliffordGate
-from .pauli_gadget import PauliGadget
+from pauliopt.pauli.clifford_gates import CliffordGate
+from pauliopt.pauli.pauli_gadget import PauliGadget
 
 from qiskit import QuantumCircuit
 

@@ -1,12 +1,12 @@
 from enum import Enum
 from typing import List, Collection
 import numpy as np
-from .utils import _pauli_to_string, X, Y, Z, I, Pauli
+from pauliopt.pauli.utils import _pauli_to_string, X, Y, Z, I, Pauli
 
-from .pauli_gadget import PauliGadget
+from pauliopt.pauli.pauli_gadget import PauliGadget
 
 
-class CLiffordType(Enum):
+class CliffordType(Enum):
     CX = "cx"
     CY = "cy"
     CZ = "cz"
@@ -72,8 +72,10 @@ class ControlGate(CliffordGate):
             raise Exception(f"{self} has no rules defined for propagation!")
         pauli_size = len(gadget)
         if self.control >= pauli_size or self.target >= pauli_size:
-            raise Exception(f"Control: {self.control} or Target {self.target} out of bounds: {pauli_size}")
-        p_string = _pauli_to_string(gadget.paulis[self.control]) + _pauli_to_string(gadget.paulis[self.target])
+            raise Exception(
+                f"Control: {self.control} or Target {self.target} out of bounds: {pauli_size}")
+        p_string = _pauli_to_string(gadget.paulis[self.control]) + _pauli_to_string(
+            gadget.paulis[self.target])
         p_c, p_t, phase_change = self.rules[p_string]
         gadget.paulis[self.control] = p_c
         gadget.paulis[self.target] = p_t
@@ -104,7 +106,7 @@ class CX(ControlGate):
              'II': (I, I, 1)}
 
     def __init__(self, control, target):
-        super().__init__(CLiffordType.CX, control, target)
+        super().__init__(CliffordType.CX, control, target)
 
     def to_qiskit(self):
         try:
@@ -141,7 +143,7 @@ class CZ(ControlGate):
              'II': (I, I, 1)}
 
     def __init__(self, control, target):
-        super().__init__(CLiffordType.CZ, control, target)
+        super().__init__(CliffordType.CZ, control, target)
 
     def to_qiskit(self):
         try:
@@ -178,7 +180,7 @@ class CY(ControlGate):
              'II': (I, I, 1)}
 
     def __init__(self, control, target):
-        super().__init__(CLiffordType.CY, control, target)
+        super().__init__(CliffordType.CY, control, target)
 
     def to_qiskit(self):
         try:
@@ -204,7 +206,7 @@ class H(SingleQubitGate):
              'I': (I, 1)}
 
     def __init__(self, qubit):
-        super().__init__(CLiffordType.H, qubit)
+        super().__init__(CliffordType.H, qubit)
 
     @staticmethod
     def generate_random(num_qubits):
@@ -228,7 +230,7 @@ class S(SingleQubitGate):
              'I': (I, 1)}
 
     def __init__(self, qubit):
-        super().__init__(CLiffordType.S, qubit)
+        super().__init__(CliffordType.S, qubit)
 
     @staticmethod
     def generate_random(num_qubits):
@@ -253,7 +255,7 @@ class V(SingleQubitGate):
              'I': (I, 1)}
 
     def __init__(self, qubit):
-        super().__init__(CLiffordType.V, qubit)
+        super().__init__(CliffordType.V, qubit)
 
     @staticmethod
     def generate_random(num_qubits):
