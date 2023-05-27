@@ -85,34 +85,25 @@ Layouts: Final[Tuple[str, ...]] = ("circular", "kamada_kawai", "random",
 """
 
 
-def _floyd_warshall(topology: "Topology") -> np.ndarray:
-    """
-        Runs the Floyd–Warshall to compute a matrix of distances between all pairs
-        of qubits in a topology. Raises `ValueError` if topology is not connected.
-    """
-    num_qubits = topology.num_qubits
-    def init_dist(u, v):
-        if u == v:
-            return 0
-        coupling = Coupling(u, v)
-        if coupling in topology.couplings:
-            return 1
-        return num_qubits # a number surely larger than max dist in topology
-    dist = np.zeros(shape=(num_qubits, num_qubits), dtype=np.uint32)
-    for u in topology.qubits:
-        for v in topology.qubits:
-            dist[u, v] = init_dist(u, v)
-    for w in topology.qubits:
-        for u in topology.qubits:
-            for v in topology.qubits:
-                upper_bound = dist[u, w] + dist[w, v]
-                if dist[u, v] > upper_bound:
-                    dist[u, v] = upper_bound
-    for u in topology.qubits:
-        for v in topology.qubits:
-            if dist[u, v] == num_qubits:
-                raise ValueError("Topology is not connected.")
-    return dist
+def _floyd_warshall(topology: "Topology"):
+    next = np.ones((topology.num_qubits, topology.num_qubits), dtype=int)
+    dist = np.inf * np.ones((topology.num_qubits, topology.num_qubits))
+    G = topology.to_nx
+    for (u, v) in G.edges():
+        dist[u, v] = 1.0
+        dist[v, u] = 1.0
+        next[u, v] = v
+        next[v, u] = u
+    for v in G.nodes:
+        dist[v, v] = 0
+        next[v, v] = v
+    for k in G.nodes:
+        for i in G.nodes:
+            for j in G.nodes:
+                if dist[i][j] > dist[i][k] + dist[k][j]:
+                    dist[i][j] = dist[i][k] + dist[k][j]
+                    next[i][j] = next[i][k]
+    return dist, next
 
 
 class Topology:
@@ -137,7 +128,7 @@ class Topology:
             _adjacent[fst].add(snd)
             _adjacent[snd].add(fst)
         self._adjacent = tuple(frozenset(n) for n in _adjacent)
-        self._dist = _floyd_warshall(self)
+        self._dist, self._next = _floyd_warshall(self)
 
     @property
     def num_qubits(self) -> int:
@@ -310,6 +301,21 @@ class Topology:
                              f"found {sorted(_mapping)} instead.")
         mapped_couplings = [{_mapping[x] for x in coupling} for coupling in self._couplings]
         return Topology(self.num_qubits, mapped_couplings)
+
+
+    def shortest_path(self, fro: int, to: int):
+        """
+        Computes the shortest path using the next lookup table from the Floyd–Warshall algorithm
+        """
+        if self._next[fro, to] is None:
+            raise Exception("Unconnected Architecture")
+        else:
+            path = [fro]
+            while fro != to:
+                fro = self._next[fro, to]
+                path.append(fro)
+            return path
+
 
     def mapped_bwd(self, mapping: Union[Sequence[int], Dict[int, int]]) -> "Topology":
         """
