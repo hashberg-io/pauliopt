@@ -43,3 +43,12 @@ pip install --upgrade pauliopt
 **Step 4.** Run a few iterations of simulated annealing and look at the simplified circuit.
 
 <img src="readme-example-4.png" width="800" title="Annealing.">
+
+## Unit tests
+
+
+To run the unit tests, install the additional requirements using our `requirements.txt` (recommended python: 3.9), then to launch then, run:
+
+```bash
+python -m unittest discover -s ./tests/ -p "test_*.py"
+```
