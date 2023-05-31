@@ -106,7 +106,7 @@ class PauliGadget:
         column = np.asarray(self.paulis)
         column_binary = np.where(column == I, 0, 1)
         if np.all(column_binary == 0):
-            circ.global_phase += self.angle
+            circ.global_phase += self.angle.to_qiskit
             return circ
 
         cnot_ladder, q0 = find_minimal_cx_assignment(column_binary, topology)
@@ -126,13 +126,19 @@ class PauliGadget:
             for (pauli_idx, target) in reversed(cnot_ladder):
                 circ.cx(pauli_idx, target)
 
-            circ.rz(self.angle, q0)
+            if isinstance(self.angle, float):
+                circ.rz(self.angle, q0)
+            elif isinstance(self.angle, AngleExpr):
+                circ.rz(self.angle.to_qiskit, q0)
 
             for (pauli_idx, target) in cnot_ladder:
                 circ.cx(pauli_idx, target)
         else:
             target = np.argmax(column_binary)
-            circ.rz(self.angle, target)
+            if isinstance(self.angle, float):
+                circ.rz(self.angle, target)
+            elif isinstance(self.angle, AngleExpr):
+                circ.rz(self.angle.to_qiskit, target)
 
         for pauli_idx in range(len(column)):
             if column[pauli_idx] == Pauli.I:
