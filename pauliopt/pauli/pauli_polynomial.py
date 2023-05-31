@@ -6,8 +6,7 @@ import math
 from pauliopt.pauli.utils import X, Y, Z, I
 from pauliopt.utils import SVGBuilder
 
-LATEX_HEADER = """
-\documentclass[preview]{standalone}
+LATEX_HEADER = """\documentclass[preview]{standalone}
 
 \\usepackage{tikz}
 \\usetikzlibrary{zx-calculus}
