@@ -131,3 +131,6 @@ dmypy.json
 
 .vscode
 .DS_Store
+
+# specific test case .tex filde
+./tests/test.tex
