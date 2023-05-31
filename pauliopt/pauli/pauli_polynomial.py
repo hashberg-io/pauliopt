@@ -6,6 +6,75 @@ import math
 from pauliopt.pauli.utils import X, Y, Z, I
 from pauliopt.utils import SVGBuilder
 
+LATEX_HEADER = """
+\documentclass[preview]{standalone}
+
+\\usepackage{tikz}
+\\usetikzlibrary{zx-calculus}
+\\usetikzlibrary{quantikz}
+\\usepackage{graphicx}
+
+\\tikzset{
+diagonal fill/.style 2 args={fill=#2, path picture={
+\\fill[#1, sharp corners] (path picture bounding box.south west) -|
+                         (path picture bounding box.north east) -- cycle;}},
+reversed diagonal fill/.style 2 args={fill=#2, path picture={
+\\fill[#1, sharp corners] (path picture bounding box.north west) |- 
+                         (path picture bounding box.south east) -- cycle;}}
+}
+
+\\tikzset{
+diagonal fill/.style 2 args={fill=#2, path picture={
+\\fill[#1, sharp corners] (path picture bounding box.south west) -|
+                         (path picture bounding box.north east) -- cycle;}}
+}
+
+\\tikzset{
+pauliY/.style={
+zxAllNodes,
+zxSpiders,
+inner sep=0mm,
+minimum size=2mm,
+shape=rectangle,
+%fill=colorZxX
+diagonal fill={colorZxX}{colorZxZ}
+}
+}
+
+\\tikzset{
+pauliX/.style={
+zxAllNodes,
+zxSpiders,
+inner sep=0mm,
+minimum size=2mm,
+shape=rectangle,
+fill=colorZxX
+}
+}
+
+\\tikzset{
+pauliZ/.style={
+zxAllNodes,
+zxSpiders,
+inner sep=0mm,
+minimum size=2mm,
+shape=rectangle,
+fill=colorZxZ
+}
+}
+
+\\tikzset{
+pauliPhase/.style={
+zxAllNodes,
+zxSpiders,
+inner sep=0.5mm,
+minimum size=2mm,
+shape=rectangle,
+fill=white
+}
+}
+"""
+
 
 class PauliPolynomial:
     def __init__(self, num_qubits):
@@ -167,3 +236,48 @@ class PauliPolynomial:
             See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
         """
         return self.to_svg(svg_code_only=True)
+
+    def to_latex(self, file_name=None):
+        out_str = LATEX_HEADER
+        out_str += "\\begin{document}\n"
+        out_str += "\\begin{ZX}\n"
+
+        angle_line = "\zxNone{} \t\t&"
+
+        angle_pad_max = max(
+            [len(str(gadget.angle.repr_latex)) for gadget in self.pauli_gadgets])
+        lines = {q: "\\zxNone{} \\rar \t&" for q in range(self.num_qubits)}
+        for gadget in self.pauli_gadgets:
+            assert isinstance(gadget, PauliGadget)
+            pad_ = ''.join([' ' for _ in range(self.num_qubits + 26)])
+            pad_angle = "".join([' ' for _ in range(angle_pad_max -
+                                                    len(str(gadget.angle.repr_latex)))])
+            angle_line += f" \\zxNone{{}}  {pad_}&" \
+                          f" |[pauliPhase]| {gadget.angle.repr_latex} {pad_angle}&" \
+                          f" \\zxNone{{}}      &"
+            paulis = gadget.paulis
+            for q in range(self.num_qubits):
+                us = ''.join(['u' for _ in range(q)])
+
+                pad_angle = "".join([' ' for _ in range(angle_pad_max)])
+                if paulis[q] != I:
+                    pad_ = ''.join([' ' for _ in range(self.num_qubits - q)])
+                    lines[q] += f" |[pauli{paulis[q].value}]| " \
+                                f"\\ar[ruu{us}, bend right] \\rar {pad_}&" \
+                                f" \\zxNone{{}} \\rar {pad_angle} &" \
+                                f" \\zxNone{{}} \\rar &"
+                else:
+                    pad_ = ''.join([' ' for _ in range(self.num_qubits + 22)])
+                    lines[q] += f" \\zxNone{{}} \\rar {pad_}& " \
+                                f"\\zxNone{{}} \\rar {pad_angle} & " \
+                                f"\\zxNone{{}} \\rar &"
+        out_str += angle_line + "\\\\ \n"
+        out_str += "\\\\ \n"
+        for q in range(self.num_qubits):
+            out_str += lines[q] + "\\\\ \n"
+        out_str += "\\end{ZX} \n"
+        out_str += "\\end{document}\n"
+        if file_name is not None:
+            with open(f"{file_name}.tex", "w") as f:
+                f.write(out_str)
+        return out_str
