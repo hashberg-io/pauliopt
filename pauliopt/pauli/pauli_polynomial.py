@@ -2,6 +2,77 @@ from pauliopt.pauli.clifford_gates import CliffordGate
 from pauliopt.pauli.pauli_gadget import PauliGadget
 
 from pauliopt.topologies import Topology
+import math
+from pauliopt.pauli.utils import X, Y, Z, I
+from pauliopt.utils import SVGBuilder
+
+LATEX_HEADER = """\documentclass[preview]{standalone}
+
+\\usepackage{tikz}
+\\usetikzlibrary{zx-calculus}
+\\usetikzlibrary{quantikz}
+\\usepackage{graphicx}
+
+\\tikzset{
+diagonal fill/.style 2 args={fill=#2, path picture={
+\\fill[#1, sharp corners] (path picture bounding box.south west) -|
+                         (path picture bounding box.north east) -- cycle;}},
+reversed diagonal fill/.style 2 args={fill=#2, path picture={
+\\fill[#1, sharp corners] (path picture bounding box.north west) |- 
+                         (path picture bounding box.south east) -- cycle;}}
+}
+
+\\tikzset{
+diagonal fill/.style 2 args={fill=#2, path picture={
+\\fill[#1, sharp corners] (path picture bounding box.south west) -|
+                         (path picture bounding box.north east) -- cycle;}}
+}
+
+\\tikzset{
+pauliY/.style={
+zxAllNodes,
+zxSpiders,
+inner sep=0mm,
+minimum size=2mm,
+shape=rectangle,
+%fill=colorZxX
+diagonal fill={colorZxX}{colorZxZ}
+}
+}
+
+\\tikzset{
+pauliX/.style={
+zxAllNodes,
+zxSpiders,
+inner sep=0mm,
+minimum size=2mm,
+shape=rectangle,
+fill=colorZxX
+}
+}
+
+\\tikzset{
+pauliZ/.style={
+zxAllNodes,
+zxSpiders,
+inner sep=0mm,
+minimum size=2mm,
+shape=rectangle,
+fill=colorZxZ
+}
+}
+
+\\tikzset{
+pauliPhase/.style={
+zxAllNodes,
+zxSpiders,
+inner sep=0.5mm,
+minimum size=2mm,
+shape=rectangle,
+fill=white
+}
+}
+"""
 
 
 class PauliPolynomial:
@@ -24,6 +95,10 @@ class PauliPolynomial:
         return '\n'.join(map(repr, self.pauli_gadgets))
 
     def __len__(self):
+        return len(self.pauli_gadgets)
+
+    @property
+    def num_gadgets(self):
         return len(self.pauli_gadgets)
 
     def to_qiskit(self, topology=None):
@@ -60,3 +135,147 @@ class PauliPolynomial:
         for gadget in self.pauli_gadgets:
             count += gadget.two_qubit_count(topology, leg_cache=leg_cache)
         return count
+
+    def to_svg(self, hscale: float = 1.0, vscale: float = 1.0, scale: float = 1.0,
+               svg_code_only=False):
+        vscale *= scale
+        hscale *= scale
+
+        x_color = "#CCFFCC"
+        z_color = "#FF8888"
+        y_color = "ycolor"
+
+        num_qubits = self.num_qubits
+        num_gadgets = self.num_gadgets
+
+        # general width and height of a square
+        square_width = int(math.ceil(20 * vscale))
+        square_height = int(math.ceil(20 * vscale))
+
+        # width of the text of the phases # TODO round floats (!!)
+        text_width = int(math.ceil(50 * vscale))
+
+        bend_degree = int(math.ceil(10))
+
+        # margins between the angle and the legs
+        margin_angle_x = int(math.ceil(20 * hscale))
+        margin_angle_y = int(math.ceil(20 * hscale))
+
+        # margins between each element
+        margin_x = int(math.ceil(10 * hscale))
+        margin_y = int(math.ceil(10 * hscale))
+
+        font_size = int(10)
+
+        width = num_gadgets * (
+                square_width + margin_x + margin_angle_x + text_width) + margin_x
+        height = (num_qubits) * (square_height + margin_y) + (
+                square_height + margin_y + margin_angle_y)
+
+        builder = SVGBuilder(width, height)
+        builder = builder.add_diagonal_fill(x_color, z_color, y_color)
+
+        prev_x = {qubit: 0 for qubit in range(num_qubits)}
+
+        x = margin_x
+
+        for gadget in self.pauli_gadgets:
+            paulis = gadget.paulis
+            y = margin_y
+            text_coords = (square_width + margin_x + margin_angle_x + x, y)
+            text_left_lower_corder = (text_coords[0], text_coords[1] + square_height)
+            for qubit in range(num_qubits):
+                if qubit == 0:
+                    y += square_height + margin_y + margin_angle_y
+                else:
+                    y += square_height + margin_y
+                center_coords = (x + square_width, y)
+                if paulis[qubit] == I:
+                    continue
+
+                builder.line((prev_x[qubit], y + square_height // 2),
+                             (x, y + square_height // 2))
+                prev_x[qubit] = x + square_width
+                builder.line_bend(text_left_lower_corder, center_coords,
+                                  degree=qubit * bend_degree)
+                if paulis[qubit] == X:
+                    builder.square((x, y), square_width, square_height, x_color)
+                elif paulis[qubit] == Y:
+                    builder.square((x, y), square_width, square_height, y_color)
+                elif paulis[qubit] == Z:
+                    builder.square((x, y), square_width, square_height, z_color)
+
+            builder = builder.text_with_square(text_coords, text_width, square_height,
+                                               str(gadget.angle))
+            x += square_width + margin_x + text_width + margin_angle_x
+        y = margin_y
+        for qubit in range(num_qubits):
+            if qubit == 0:
+                y += square_height + margin_y + margin_angle_y
+            else:
+                y += square_height + margin_y
+            builder.line((prev_x[qubit], y + square_height // 2),
+                         (width, y + square_height // 2))
+        svg_code = repr(builder)
+
+        if svg_code_only:
+            return svg_code
+        try:
+            # pylint: disable = import-outside-toplevel
+            from IPython.core.display import SVG  # type: ignore
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError("You must install the 'IPython' library.") from e
+
+        return SVG(svg_code)
+
+    def _repr_svg_(self):
+        """
+            Magic method for IPython/Jupyter pretty-printing.
+            See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
+        """
+        return self.to_svg(svg_code_only=True)
+
+    def to_latex(self, file_name=None):
+        out_str = LATEX_HEADER
+        out_str += "\\begin{document}\n"
+        out_str += "\\begin{ZX}\n"
+
+        angle_line = "\zxNone{} \t\t&"
+
+        angle_pad_max = max(
+            [len(str(gadget.angle.repr_latex)) for gadget in self.pauli_gadgets])
+        lines = {q: "\\zxNone{} \\rar \t&" for q in range(self.num_qubits)}
+        for gadget in self.pauli_gadgets:
+            assert isinstance(gadget, PauliGadget)
+            pad_ = ''.join([' ' for _ in range(self.num_qubits + 26)])
+            pad_angle = "".join([' ' for _ in range(angle_pad_max -
+                                                    len(str(gadget.angle.repr_latex)))])
+            angle_line += f" \\zxNone{{}}  {pad_}&" \
+                          f" |[pauliPhase]| {gadget.angle.repr_latex} {pad_angle}&" \
+                          f" \\zxNone{{}}      &"
+            paulis = gadget.paulis
+            for q in range(self.num_qubits):
+                us = ''.join(['u' for _ in range(q)])
+
+                pad_angle = "".join([' ' for _ in range(angle_pad_max)])
+                if paulis[q] != I:
+                    pad_ = ''.join([' ' for _ in range(self.num_qubits - q)])
+                    lines[q] += f" |[pauli{paulis[q].value}]| " \
+                                f"\\ar[ruu{us}, bend right] \\rar {pad_}&" \
+                                f" \\zxNone{{}} \\rar {pad_angle} &" \
+                                f" \\zxNone{{}} \\rar &"
+                else:
+                    pad_ = ''.join([' ' for _ in range(self.num_qubits + 22)])
+                    lines[q] += f" \\zxNone{{}} \\rar {pad_}& " \
+                                f"\\zxNone{{}} \\rar {pad_angle} & " \
+                                f"\\zxNone{{}} \\rar &"
+        out_str += angle_line + "\\\\ \n"
+        out_str += "\\\\ \n"
+        for q in range(self.num_qubits):
+            out_str += lines[q] + "\\\\ \n"
+        out_str += "\\end{ZX} \n"
+        out_str += "\\end{document}\n"
+        if file_name is not None:
+            with open(f"{file_name}.tex", "w") as f:
+                f.write(out_str)
+        return out_str
