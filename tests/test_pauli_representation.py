@@ -132,7 +132,7 @@ class TestPauliConversion(unittest.TestCase):
 
         self.assertEqual(pp.to_latex(), LATEX_CODE_PAULI)
 
-        pp.to_latex("test")
+        pp.to_latex(file_name="test")
         self.assertTrue(os.path.isfile("./test.tex"))
         with open("./test.tex", "r") as f:
             content = f.read()
