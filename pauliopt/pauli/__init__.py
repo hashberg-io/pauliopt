@@ -4,3 +4,4 @@
 
     Currently in development.
 """
+from pauliopt.pauli.pauli import Pauli
