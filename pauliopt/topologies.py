@@ -333,6 +333,20 @@ class Topology:
         else:
             G = self.to_nx
         return steiner_tree(G, terminals)
+    
+    def non_cutting_qubits(self, subgraph:List[int]=[])-> List[int]:
+        try:
+            # pylint: disable = import-outside-toplevel
+            from networkx import articulation_points
+        except ModuleNotFoundError as _:
+            raise ModuleNotFoundError("You must install the 'networkx' library.")
+        if subgraph:
+            G = self.to_nx.subgraph(subgraph)
+        else:
+            G = self.to_nx
+            subgraph = self.qubits
+        cut_vertices = articulation_points(G)
+        return [q for q in subgraph if q not in cut_vertices]
 
     def mapped_bwd(self, mapping: Union[Sequence[int], Dict[int, int]]) -> "Topology":
         """
