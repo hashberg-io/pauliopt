@@ -316,10 +316,10 @@ class Topology:
                 path.append(fro)
             return path
 
-    def steiner_tree(self, terminals: list[int], exclude: list[int]=[]):
+    def steiner_tree(self, terminals: list[int], subgraph: list[int]=[]):
         """
             Computes the Steiner tree over the topology with given terminals.
-            `exclude` can be used to find the Steiner tree of a subgraph of the topology where the given nodes are excluded.
+            `subgraph` can be used to find the Steiner tree of a subgraph of the topology.
             Requires networkx to be installed to work.
             Returns a networkx Graph.
         """
@@ -328,8 +328,10 @@ class Topology:
             from networkx.algorithms.approximation.steinertree import steiner_tree
         except ModuleNotFoundError as _:
             raise ModuleNotFoundError("You must install the 'networkx' library.")
-        nodes = [n for n in self.qubits if n not in exclude]
-        G = self.to_nx.subgraph(nodes)
+        if subgraph:
+            G = self.to_nx.subgraph(subgraph)
+        else:
+            G = self.to_nx
         return steiner_tree(G, terminals)
 
     def mapped_bwd(self, mapping: Union[Sequence[int], Dict[int, int]]) -> "Topology":
