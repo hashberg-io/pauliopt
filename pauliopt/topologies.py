@@ -345,7 +345,7 @@ class Topology:
         else:
             G = self.to_nx
             subgraph = self.qubits
-        cut_vertices = articulation_points(G)
+        cut_vertices = list(articulation_points(G))
         return [q for q in subgraph if q not in cut_vertices]
 
     def mapped_bwd(self, mapping: Union[Sequence[int], Dict[int, int]]) -> "Topology":
