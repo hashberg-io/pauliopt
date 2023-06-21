@@ -3,7 +3,7 @@
     of circuits of mixed phase gadgets.
 """
 
-from typing import (cast, Collection, Dict, FrozenSet, Iterator, List,
+from typing import (cast, Collection, Dict, FrozenSet, Iterator, List, Any,
                     Optional, overload, Sequence, Tuple, Union, Literal)
 import numpy as np # type: ignore
 from numpy.typing import NDArray
@@ -292,6 +292,18 @@ class CXCircuitLayer:
             Returns a copy of this CX layer.
         """
         return CXCircuitLayer(self.topology, self.gates)
+    
+
+    def to_qiskit(self) -> Any:
+        try:
+            # pylint: disable = import-outside-toplevel
+            from qiskit.circuit import QuantumCircuit
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError("You must install the 'qiskit' library.") from e
+        circuit = QuantumCircuit(self.topology.num_qubits)
+        for ctrl, trgt in self.gates:
+            circuit.cx(ctrl, trgt)
+        return circuit
 
     def draw(self, layout: str = "kamada_kawai", *,
              figsize: Optional[Tuple[int, int]] = None,
@@ -471,6 +483,21 @@ class CXCircuit(Sequence[CXCircuitLayer]):
             Returns a copy of this CX circuit.
         """
         return CXCircuit(self.topology, [l.clone() for l in self])
+
+    def to_qiskit(self, method:Literal["permrowcol", "naive"]="naive", reallocate:bool=False) -> Any:
+        try:
+            # pylint: disable = import-outside-toplevel
+            from qiskit.circuit import QuantumCircuit
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError("You must install the 'qiskit' library.") from e
+        circuit = QuantumCircuit(self.topology.num_qubits)
+        if method == "naive":
+            cxs = self
+        else:
+            cxs = CXCircuit.from_parity_matrix(self.parity_matrix(), self.topology, reallocate=reallocate, method=method)
+        for layer in cxs._layers:
+            circuit.compose(layer.to_qiskit(), inplace=True)
+        return circuit
 
     def draw(self, layout: str = "kamada_kawai", *,
              figsize: Optional[Tuple[int, int]] = None,
