@@ -715,7 +715,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         ]
         return PhaseCircuit(self._num_qubits, remapped_gadgets)
 
-    def to_qiskit(self, topology:Topology, simplified:bool=True, method:Literal["naive", "paritysynth", "steiner-graysynth"]="naive", cx_synth:Literal["permrowcol", "naive"]="naive", return_cx:bool=False) -> Any:
+    def to_qiskit(self, topology:Topology, simplified:bool=True, method:Literal["naive", "paritysynth", "steiner-graysynth"]="naive", cx_synth:Literal["permrowcol", "naive"]="naive", return_cx:bool=False, reallocate:bool=False) -> Any:
         try:
             # pylint: disable = import-outside-toplevel
             from qiskit.circuit import QuantumCircuit
@@ -744,9 +744,13 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             cxs = CXCircuit.from_parity_matrix(cxs.parity_matrix(), topology)
         if return_cx:
             return circuit, cxs
-        # TODO add reallocation.
-        new_cxs = cxs.to_qiskit(method=cx_synth)
-        return circuit.compose(new_cxs)
+        new_cxs = cxs.to_qiskit(method=cx_synth, reallocate=reallocate)
+        circuit.compose(new_cxs, inplace=True)
+        if reallocate:
+            circuit.metadata = {
+                "final_layout": cxs._output_mapping
+            }
+        return circuit
 
     def _paritysynth(self, topology:Topology) -> Tuple[List[Union[PhaseGadget, Tuple[int, int]]], CXCircuit]:
         try:
@@ -1397,12 +1401,18 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             col = self._matrix[basis][:, col_idx]
             yield PhaseGadget(basis, angle, {i for i, b in enumerate(col) if b % 2 == 1})
 
-    def _cx_count(self, topology: Topology, cache: Dict[int, Dict[Tuple[int, ...], int]]) -> int:
+    def _cx_count(self, topology: Topology, cache: Dict[int, Dict[Tuple[int, ...], int]], method:Literal["naive", "paritysynth", "steiner-graysynth"]="naive") -> int:
         """
             Returns the CX count for an implementation of this phase circuit
             on the given topology based on minimum spanning trees (MST).
         """
         # pylint: disable = too-many-locals
+        if method != "naive":
+            circuit = self.to_qiskit(topology, True, method)
+            ops = circuit.count_ops()
+            if "cx" in ops:
+                return ops["cx"]
+            return 0
         count = 0
         for basis in ("Z", "X"):
             basis = cast(Literal["Z", "X"], basis)
