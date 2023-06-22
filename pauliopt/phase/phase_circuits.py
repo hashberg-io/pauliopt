@@ -659,13 +659,24 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         return self
 
     def cx_count(self, topology: Topology, *,
-                 mapping: Optional[Union[Sequence[int], Dict[int, int]]] = None) -> int:
+                 mapping: Optional[Union[Sequence[int], Dict[int, int]]] = None, method:Literal["naive", "paritysynth", "steiner-graysynth"]="naive") -> int:
         """
             Returns the CX count for an implementation of this phase gadget
             on the given topology based on minimum spanning trees (MST).
 
             The optional `mapping` keyword argument can be used to specify a mapping of
             logical (circuit) qubits to phyisical (topology) qubits.
+
+        Args:
+            topology (Topology): Target device topology
+            mapping (Optional[Union[Sequence[int], Dict[int, int]]], optional): Used qubit mapping. Defaults to None.
+            method (Literal[&quot;naive&quot;, &quot;paritysynth&quot;, &quot;steiner, optional): Synthesis method. Defaults to "naive".
+
+        Raises:
+            TypeError: If topology is not a Topology and if mapping is not a permutation of range(self.num_qubits).
+
+        Returns:
+            int: The CX count.
         """
         if not isinstance(topology, Topology):
             raise TypeError(f"Expected Topology, found {type(topology)}.")
@@ -684,6 +695,13 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             topology = topology.mapped_fwd({
                 mapping[i]: i for i in mapping
             })
+
+        if method != "naive":
+            circuit = self.to_qiskit(topology, True, method)
+            ops = circuit.count_ops()
+            if "cx" in ops:
+                return ops["cx"]
+            return 0
         return self._cx_count(topology, {})
 
     def mapped(self, mapping: Union[Sequence[int], Mapping[int, int]]) -> "PhaseCircuit":
@@ -716,6 +734,23 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         return PhaseCircuit(self._num_qubits, remapped_gadgets)
 
     def to_qiskit(self, topology:Topology, simplified:bool=True, method:Literal["naive", "paritysynth", "steiner-graysynth"]="naive", cx_synth:Literal["permrowcol", "naive"]="naive", return_cx:bool=False, reallocate:bool=False) -> Any:
+        """Generates a qiskit QuantumCircuit equivalent to this PhaseCircuit.
+
+        Args:
+            topology (Topology): Target device topology
+            simplified (bool, optional): Simplifiy the PhaseCircuit before synthesis. Defaults to True.
+            method (Literal[&quot;naive&quot;, &quot;paritysynth&quot;, &quot;steiner, optional): Which method of synthesis should be used. Defaults to "naive".
+            cx_synth (Literal[&quot;permrowcol&quot;, &quot;naive&quot;], optional): Which method should be used for synthesizing the final CXCircuit. Defaults to "naive".
+            return_cx (bool, optional): Whether to return the final CXCircuit separately without synthesizing it. Defaults to False.
+            reallocate (bool, optional): Whether qubit reallocation is allowed when synthesizing the final CXCircuit. Defaults to False.
+
+        Raises:
+            ModuleNotFoundError: Requires Qiskit to be installed
+
+        Returns:
+            qiskit.QuantumCircuit: The synthesized equivalent circuit
+            CXCircuit (optional): The final CNOTs of the circuit not yet concatinated to the qiskit circuit.
+        """
         try:
             # pylint: disable = import-outside-toplevel
             from qiskit.circuit import QuantumCircuit
@@ -753,6 +788,22 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         return circuit
 
     def _paritysynth(self, topology:Topology) -> Tuple[List[Union[PhaseGadget, Tuple[int, int]]], CXCircuit]:
+        """Function generating a sequence of CNOTs and single qubit PhaseGadgets representing this PhaseCircuit.
+        For synthesis, the method from [1] is used.
+
+        [1] Vandaele, Vivien, Simon Martiel, and Timothée Goubault de Brugière. "Phase polynomials synthesis algorithms for NISQ architectures and beyond." Quantum Science and Technology 7.4 (2022): 045027.
+        https://iopscience.iop.org/article/10.1088/2058-9565/ac5a0e/pdf?casa_token=wC-rL5mT7eUAAAAA:tlE5CNn64TQR-Xp8eqPxlQEJyjUSUn1jF6Z6pApyJa9DPZKeYvFAnthRuWNnpS1vvz11oLtH0HPG
+
+        Args:
+            topology (Topology): Topology representing the target quantum computer
+
+        Raises:
+            ModuleNotFoundError: Networkx is required to run this.
+
+        Returns:
+            List[Union[PhaseGadget, Tuple[int, int]]]: A list containing single qubit phase gadgets and tuples representing CNOT(ctrl, trgt) 
+            CXCircuit: A CXCircuit containing the cnots to make the linear function of cnots that are optimized out of the phase gadgets.
+        """
         try:
             # pylint: disable = import-outside-toplevel
             import networkx as nx
@@ -840,6 +891,22 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         return gates, cnots_circuit
 
     def _steiner_graysynth(self, topology: Topology) -> Tuple[List[Union[PhaseGadget, Tuple[int, int]]], CXCircuit]:
+        """Function generating a sequence of CNOTs and single qubit PhaseGadgets representing this PhaseCircuit.
+        For synthesis, the method from [1] is used.
+
+        [1] Meijer - van de Griend, Arianne, and Ross Duncan. "Architecture-aware synthesis of phase polynomials for NISQ devices." arXiv preprint arXiv:2004.06052 (2020).
+        https://arxiv.org/pdf/2004.06052.pdf
+
+        Args:
+            topology (Topology): Topology representing the target quantum computer
+
+        Raises:
+            ModuleNotFoundError: Networkx is required to run this.
+
+        Returns:
+            List[Union[PhaseGadget, Tuple[int, int]]]: A list containing single qubit phase gadgets and tuples representing CNOT(ctrl, trgt) 
+            CXCircuit: A CXCircuit containing the cnots to make the linear function of cnots that are optimized out of the phase gadgets.
+        """
         try:
             # pylint: disable = import-outside-toplevel
             import networkx as nx
@@ -1401,18 +1468,12 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             col = self._matrix[basis][:, col_idx]
             yield PhaseGadget(basis, angle, {i for i, b in enumerate(col) if b % 2 == 1})
 
-    def _cx_count(self, topology: Topology, cache: Dict[int, Dict[Tuple[int, ...], int]], method:Literal["naive", "paritysynth", "steiner-graysynth"]="naive") -> int:
+    def _cx_count(self, topology: Topology, cache: Dict[int, Dict[Tuple[int, ...], int]]) -> int:
         """
             Returns the CX count for an implementation of this phase circuit
             on the given topology based on minimum spanning trees (MST).
         """
         # pylint: disable = too-many-locals
-        if method != "naive":
-            circuit = self.to_qiskit(topology, True, method)
-            ops = circuit.count_ops()
-            if "cx" in ops:
-                return ops["cx"]
-            return 0
         count = 0
         for basis in ("Z", "X"):
             basis = cast(Literal["Z", "X"], basis)
