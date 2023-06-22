@@ -497,6 +497,10 @@ class CXCircuit(Sequence[CXCircuitLayer]):
             cxs = CXCircuit.from_parity_matrix(self.parity_matrix(), self.topology, reallocate=reallocate, method=method)
         for layer in cxs._layers:
             circuit.compose(layer.to_qiskit(), inplace=True)
+        if reallocate:
+            circuit.metadata = {
+                "final_layout": cxs._output_mapping
+            }
         return circuit
 
     def draw(self, layout: str = "kamada_kawai", *,

@@ -5,7 +5,7 @@
 
 from collections import deque
 from math import ceil, log10
-from typing import (Callable, Deque, Dict, List, Optional, Protocol,
+from typing import (Callable, Deque, Dict, List, Optional, Protocol, Literal,
                     runtime_checkable, Set, Tuple, TypedDict, Union)
 import numpy as np # type: ignore
 from pauliopt.phase.phase_circuits import PhaseCircuit, PhaseCircuitView
@@ -255,7 +255,7 @@ class OptimizedPhaseCircuit:
         return OptimizedPhaseCircuit(self.phase_block, self.topology, self.cx_block,
                                      circuit_rep=self.circuit_rep, rng_seed=rng_seed)
 
-    def to_qiskit(self):
+    def to_qiskit(self, simplified:bool=True, phase_method:Literal["naive", "paritysynth", "steiner-graysynth"]="naive", cx_method:Literal["permrowcol", "naive"]="naive", reallocate:bool=False):
         """
             Returns the optimized circuit as a Qiskit circuit.
 
@@ -268,16 +268,22 @@ class OptimizedPhaseCircuit:
             from qiskit.circuit import QuantumCircuit # type: ignore
         except ModuleNotFoundError as _:
             raise ModuleNotFoundError("You must install the 'qiskit' library.")
+        if simplified:
+            self.simplify()
         circuit = QuantumCircuit(self.num_qubits)
-        for layer in reversed(self._cx_block):
-            for ctrl, trgt in layer.gates:
-                circuit.cx(ctrl, trgt)
+        synthesized_cx_block1 = self._cx_block.to_qiskit(cx_method, reallocate=reallocate)
+        synthesized_phase_block, cxs = self._phase_block.to_qiskit(self.topology, simplified=False, method=phase_method, cx_synth=cx_method, return_cx=True, reallocate=False)
+        cxs <<= self._cx_block
+        synthesized_cx_block2 = cxs.to_qiskit(cx_method, reallocate=reallocate)
+        circuit.compose(synthesized_cx_block1.inverse(), inplace=True)
         for __ in range(self._circuit_rep):
-            for gadget in self._phase_block.gadgets:
-                gadget.on_qiskit_circuit(self._topology, circuit)
-        for layer in self._cx_block:
-            for ctrl, trgt in layer.gates:
-                circuit.cx(ctrl, trgt)
+            circuit.compose(synthesized_phase_block, inplace=True)
+        circuit.compose(synthesized_cx_block2)
+        if reallocate:
+            circuit.metadata = {
+                "initial_layout": synthesized_cx_block1.metadata["final_layout"],
+                "final_layout": synthesized_cx_block2.metadata["final_layout"]
+            }
         return circuit
 
     def simplify(self):
