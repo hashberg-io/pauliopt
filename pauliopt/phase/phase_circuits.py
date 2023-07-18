@@ -153,12 +153,11 @@ class PhaseGadget:
                 direction = lambda ctrl,trgt: (ctrl,trgt)
             else:
                 direction = lambda ctrl,trgt: (trgt,ctrl)
-            for head, tail in reversed(list(nx.bfs_edges(mst, source=q0))): # Use bfs to help CX depth
+            for head, tail in reversed(list(nx.bfs_edges(mst, source=q0))):
                 trgt, ctrl = direction(head, tail)
                 if bitstring[head] == 0:
                     bitstring[head] = (bitstring[ctrl] + bitstring[trgt])%2
                     steiner_ladder.append((trgt, ctrl))
-                #bitstring[ctrl] = (bitstring[ctrl] + bitstring[trgt])%2
                 upper_ladder.append((ctrl, trgt))
         for ctrl, trgt in steiner_ladder + upper_ladder:
             circuit.cx(ctrl, trgt)
@@ -670,7 +669,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         Args:
             topology (Topology): Target device topology
             mapping (Optional[Union[Sequence[int], Dict[int, int]]], optional): Used qubit mapping. Defaults to None.
-            method (Literal[&quot;naive&quot;, &quot;paritysynth&quot;, &quot;steiner, optional): Synthesis method. Defaults to "naive".
+            method (Literal["naive", "paritysynth", "steiner", optional): Synthesis method. Defaults to "naive".
 
         Raises:
             TypeError: If topology is not a Topology and if mapping is not a permutation of range(self.num_qubits).
@@ -699,9 +698,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         if method != "naive":
             circuit = self.to_qiskit(topology, True, method)
             ops = circuit.count_ops()
-            if "cx" in ops:
-                return ops["cx"]
-            return 0
+            return ops.get("cx", 0)
         return self._cx_count(topology, {})
 
     def mapped(self, mapping: Union[Sequence[int], Mapping[int, int]]) -> "PhaseCircuit":
@@ -739,8 +736,8 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         Args:
             topology (Topology): Target device topology
             simplified (bool, optional): Simplifiy the PhaseCircuit before synthesis. Defaults to True.
-            method (Literal[&quot;naive&quot;, &quot;paritysynth&quot;, &quot;steiner, optional): Which method of synthesis should be used. Defaults to "naive".
-            cx_synth (Literal[&quot;permrowcol&quot;, &quot;naive&quot;], optional): Which method should be used for synthesizing the final CXCircuit. Defaults to "naive".
+            method (Literal["naive", "paritysynth", "steiner", optional): Which method of synthesis should be used. Defaults to "naive".
+            cx_synth (Literal["permrowcol", "naive"], optional): Which method should be used for synthesizing the final CXCircuit. Defaults to "naive".
             return_cx (bool, optional): Whether to return the final CXCircuit separately without synthesizing it. Defaults to False.
             reallocate (bool, optional): Whether qubit reallocation is allowed when synthesizing the final CXCircuit. Defaults to False.
 
@@ -883,7 +880,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                     root = terminals[0]
                 gates.append(PhaseGadget(current_basis, self._angles[self._gadget_idxs[current_basis][index]], [root]))
                 # Sanity check:
-                assert(np.sum(self._matrix[current_basis][:, index]) == 1, "The chosen gadget was not properly reduced and cannot be removed.")
+                assert np.sum(self._matrix[current_basis][:, index]) == 1, "The chosen gadget was not properly reduced and cannot be removed."
                 # Remove that parity from the matrix
                 block.remove(index)
                     

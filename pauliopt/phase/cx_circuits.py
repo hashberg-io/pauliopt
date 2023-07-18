@@ -79,8 +79,8 @@ def permrowcol(matrix:NDArray, topology:Topology, parities_as_columns:bool=False
             # TODO possibly pick the row here now that the full steiner_tree has a 1
             for parent, child in traversal:
                 add_cnot(child, parent, m, cnots)
-        assert(sum(m[:,col]) == 1 )
-        assert(m[row, col] == 1)
+        assert sum(m[:,col]) == 1
+        assert m[row, col] == 1
 
         # Reduce the row
         ones_in_the_row = [i for i in columns_to_eliminate if m[row, i]== 1]
@@ -100,11 +100,11 @@ def permrowcol(matrix:NDArray, topology:Topology, parities_as_columns:bool=False
                     add_cnot(parent, child, m, cnots)
             for parent, child in reversed(traversal):
                 add_cnot(parent, child, m, cnots)
-            assert(m[row, col] == 1)
-            assert(sum(m[row,:]) == 1 )
-        assert(sum(m[:,col]) == 1 )
-        assert(m[row, col] == 1)
-        assert(sum(m[row,:]) == 1 )
+            assert m[row, col] == 1
+            assert sum(m[row,:]) == 1
+        assert sum(m[:,col]) == 1
+        assert m[row, col] == 1
+        assert sum(m[row,:]) == 1
         qubits_to_process.remove(row)
         columns_to_eliminate.remove(col)
         new_mapping[row] = col
@@ -543,7 +543,7 @@ class CXCircuit(Sequence[CXCircuitLayer]):
             topology (Topology): The target device topology
             parities_as_columns (bool, optional): Whether the parities in the matrix are column-wise or row-wise. Defaults to False, i.e. row-wise.
             reallocate (bool, optional): Whether the qubits can be reallocated to different registers, i.e. synthesis up to permutation. Defaults to False.
-            method (Literal[&quot;permrowcol&quot;], optional): Which synthesis method should be used. Currently only permrowcol is available.
+            method (Literal["permrowcol"], optional): Which synthesis method should be used. Currently only permrowcol is available.
 
         Returns:
             CXCircuit: Synthesized circuit
@@ -553,7 +553,7 @@ class CXCircuit(Sequence[CXCircuitLayer]):
         layers = []
         current_layer = []
         for cnot in cnots:
-            assert(cnot[0] in topology.adjacent(cnot[1])) # Double check that the cnot is allowed
+            assert cnot[0] in topology.adjacent(cnot[1]) # Double check that the cnot is allowed
             if any([c in cnot or t in cnot for c,t in current_layer]):
                 layer = CXCircuitLayer(topology, current_layer)
                 layers.append(layer)

@@ -432,12 +432,6 @@ class OptimizedPhaseCircuit:
     def _compute_cx_count(self) -> Tuple[int, int]:
         # pylint: disable = protected-access
         self._output_mapping = [_ for _ in range(self.num_qubits)]
-        #if self._phase_method == "naive" and self._cx_method == "naive":
-        #    phase_block_cost = self._phase_block._cx_count(self.topology,
-        #                                                self._gadget_cx_count_cache)
-        #    cx_blocks_count = 2*self._cx_block.num_gates
-        #    cx_count = self._circuit_rep*phase_block_cost + cx_blocks_count
-        #    return cx_count, cx_blocks_count
         if self._cx_method == "naive":
             front_cx_count = self._cx_block.num_gates
         else:
@@ -648,8 +642,8 @@ def iter_anneal(circuit: PhaseCircuit, topology: Topology,
     # Run iterations:
     for _ in range(num_iters):
         opt = OptimizedPhaseCircuit(circuit, topology, cx_blocks, qubit_mapping=mapping, **opt_kwargs)
-        opt.anneal(num_anneal_iters, **anneal_kwargs) 
-        
+        opt.anneal(num_anneal_iters, **anneal_kwargs)
+
         if best_cx_count is None or best_cx_count > opt.cx_count:
             best_circuit = opt
             best_cx_count = opt.cx_count
