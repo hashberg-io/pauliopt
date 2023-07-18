@@ -3,7 +3,7 @@
     of circuits of mixed phase gadgets.
 """
 
-from typing import (cast, Collection, Dict, FrozenSet, Iterator, List,
+from typing import (cast, Collection, Dict, FrozenSet, Iterator, List, Any,
                     Optional, overload, Sequence, Tuple, Union, Literal)
 import numpy as np # type: ignore
 from numpy.typing import NDArray
@@ -79,8 +79,8 @@ def permrowcol(matrix:NDArray, topology:Topology, parities_as_columns:bool=False
             # TODO possibly pick the row here now that the full steiner_tree has a 1
             for parent, child in traversal:
                 add_cnot(child, parent, m, cnots)
-        assert(sum(m[:,col]) == 1 )
-        assert(m[row, col] == 1)
+        assert sum(m[:,col]) == 1
+        assert m[row, col] == 1
 
         # Reduce the row
         ones_in_the_row = [i for i in columns_to_eliminate if m[row, i]== 1]
@@ -100,11 +100,11 @@ def permrowcol(matrix:NDArray, topology:Topology, parities_as_columns:bool=False
                     add_cnot(parent, child, m, cnots)
             for parent, child in reversed(traversal):
                 add_cnot(parent, child, m, cnots)
-            assert(m[row, col] == 1)
-            assert(sum(m[row,:]) == 1 )
-        assert(sum(m[:,col]) == 1 )
-        assert(m[row, col] == 1)
-        assert(sum(m[row,:]) == 1 )
+            assert m[row, col] == 1
+            assert sum(m[row,:]) == 1
+        assert sum(m[:,col]) == 1
+        assert m[row, col] == 1
+        assert sum(m[row,:]) == 1
         qubits_to_process.remove(row)
         columns_to_eliminate.remove(col)
         new_mapping[row] = col
@@ -292,6 +292,18 @@ class CXCircuitLayer:
             Returns a copy of this CX layer.
         """
         return CXCircuitLayer(self.topology, self.gates)
+    
+
+    def to_qiskit(self) -> Any:
+        try:
+            # pylint: disable = import-outside-toplevel
+            from qiskit.circuit import QuantumCircuit
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError("You must install the 'qiskit' library.") from e
+        circuit = QuantumCircuit(self.topology.num_qubits)
+        for ctrl, trgt in self.gates:
+            circuit.cx(ctrl, trgt)
+        return circuit
 
     def draw(self, layout: str = "kamada_kawai", *,
              figsize: Optional[Tuple[int, int]] = None,
@@ -472,6 +484,21 @@ class CXCircuit(Sequence[CXCircuitLayer]):
         """
         return CXCircuit(self.topology, [l.clone() for l in self])
 
+    def to_qiskit(self, method:Literal["permrowcol", "naive"]="naive", reallocate:bool=False) -> Any:
+        try:
+            # pylint: disable = import-outside-toplevel
+            from qiskit.circuit import QuantumCircuit
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError("You must install the 'qiskit' library.") from e
+        circuit = QuantumCircuit(self.topology.num_qubits)
+        if method == "naive":
+            cxs = self
+        else:
+            cxs = CXCircuit.from_parity_matrix(self.parity_matrix(), self.topology, reallocate=reallocate, method=method)
+        for layer in cxs._layers:
+            circuit.compose(layer.to_qiskit(), inplace=True)
+        return circuit
+
     def draw(self, layout: str = "kamada_kawai", *,
              figsize: Optional[Tuple[int, int]] = None,
              zcolor: str = "#CCFFCC",
@@ -512,7 +539,7 @@ class CXCircuit(Sequence[CXCircuitLayer]):
             topology (Topology): The target device topology
             parities_as_columns (bool, optional): Whether the parities in the matrix are column-wise or row-wise. Defaults to False, i.e. row-wise.
             reallocate (bool, optional): Whether the qubits can be reallocated to different registers, i.e. synthesis up to permutation. Defaults to False.
-            method (Literal[&quot;permrowcol&quot;], optional): Which synthesis method should be used. Currently only permrowcol is available.
+            method (Literal["permrowcol"], optional): Which synthesis method should be used. Currently only permrowcol is available.
 
         Returns:
             CXCircuit: Synthesized circuit
@@ -522,7 +549,7 @@ class CXCircuit(Sequence[CXCircuitLayer]):
         layers = []
         current_layer = []
         for cnot in cnots:
-            assert(cnot[0] in topology.adjacent(cnot[1])) # Double check that the cnot is allowed
+            assert cnot[0] in topology.adjacent(cnot[1]) # Double check that the cnot is allowed
             if any([c in cnot or t in cnot for c,t in current_layer]):
                 layer = CXCircuitLayer(topology, current_layer)
                 layers.append(layer)
