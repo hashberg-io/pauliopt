@@ -539,7 +539,7 @@ class CXCircuit(Sequence[CXCircuitLayer]):
             topology (Topology): The target device topology
             parities_as_columns (bool, optional): Whether the parities in the matrix are column-wise or row-wise. Defaults to False, i.e. row-wise.
             reallocate (bool, optional): Whether the qubits can be reallocated to different registers, i.e. synthesis up to permutation. Defaults to False.
-            method (Literal[&quot;permrowcol&quot;], optional): Which synthesis method should be used. Currently only permrowcol is available.
+            method (Literal["permrowcol"], optional): Which synthesis method should be used. Currently only permrowcol is available.
 
         Returns:
             CXCircuit: Synthesized circuit
