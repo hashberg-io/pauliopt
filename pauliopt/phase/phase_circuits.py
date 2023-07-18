@@ -883,7 +883,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                     root = terminals[0]
                 gates.append(PhaseGadget(current_basis, self._angles[self._gadget_idxs[current_basis][index]], [root]))
                 # Sanity check:
-                assert(np.sum(self._matrix[current_basis][:, index]) == 1, "The chosen gadget was not properly reduced and cannot be removed.")
+                assert np.sum(self._matrix[current_basis][:, index]) == 1, "The chosen gadget was not properly reduced and cannot be removed."
                 # Remove that parity from the matrix
                 block.remove(index)
                     
