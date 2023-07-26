@@ -42,12 +42,12 @@ def permrowcol(matrix:NDArray, topology:Topology, parities_as_columns:bool=False
         raise ModuleNotFoundError("You must install the 'galois' library.")
     cnots = []
     m = np.asarray(matrix, dtype=np.int32)
+    if not parities_as_columns: # This synthesis technique only works when parities are columns.
+        m = m.T
+
     def add_cnot(ctrl, trgt, m, cnots):
         m[ctrl,:] ^= m[trgt,:]
-        if parities_as_columns:
-            cnots.append((ctrl,trgt))
-        else:
-            cnots.append((trgt, ctrl))
+        cnots.append((ctrl,trgt))
     def choose_row(options, m):
         return options[np.argmin([sum(m[o]) for o in options])]
     def choose_column(options, row, m):
@@ -61,7 +61,6 @@ def permrowcol(matrix:NDArray, topology:Topology, parities_as_columns:bool=False
     while len(qubits_to_process) > 1:
         # Pick the pivot location
         possible_qubits = topology.non_cutting_qubits(qubits_to_process)
-        # TODO does this change when parities_as_rows?
         row = choose_row(possible_qubits, m)
         col = choose_column(columns_to_eliminate, row, m)
 
@@ -107,11 +106,8 @@ def permrowcol(matrix:NDArray, topology:Topology, parities_as_columns:bool=False
         assert sum(m[row,:]) == 1
         qubits_to_process.remove(row)
         columns_to_eliminate.remove(col)
-        new_mapping[row] = col
-    new_mapping[qubits_to_process[0]] = columns_to_eliminate[0] #Also map the trivial case.
-
-    if not parities_as_columns:
-        cnots = reversed(cnots)
+        new_mapping[col] = row
+    new_mapping[columns_to_eliminate[0]] = qubits_to_process[0] 
     return cnots, new_mapping
 
 class CXCircuitLayer:
@@ -430,7 +426,10 @@ class CXCircuit(Sequence[CXCircuitLayer]):
                 raise ValueError("Layer topology different from circuit topology.")
         self._topology = topology
         self._layers = list(layers)
-        self._output_mapping = output_mapping
+        if output_mapping is None:
+            self._output_mapping = list(range(topology.num_qubits))
+        else:
+            self._output_mapping = output_mapping
 
     @property
     def topology(self) -> Topology:
@@ -462,13 +461,13 @@ class CXCircuit(Sequence[CXCircuitLayer]):
         """
         m = np.identity(self.topology.num_qubits)
         if parities_as_columns:
+            for layer in reversed(self._layers):
+                for ctrl, trgt in layer.gates:
+                    m[ctrl, :] = (m[ctrl,:] + m[trgt,:]) % 2
+        else:
             for layer in self._layers:
                 for ctrl, trgt in layer.gates:
-                    m[:,trgt] = (m[:,ctrl] + m[:,trgt]) % 2
-        else:
-            for layer in reversed(self._layers):
-                for trgt, ctrl in layer.gates:
-                    m[:,trgt] = (m[:,ctrl] + m[:,trgt]) % 2
+                    m[trgt, :] = (m[ctrl,:] + m[trgt,:]) % 2
         return m
 
     def dag(self) -> "CXCircuit":
@@ -484,7 +483,7 @@ class CXCircuit(Sequence[CXCircuitLayer]):
         """
         return CXCircuit(self.topology, [l.clone() for l in self])
 
-    def to_qiskit(self, method:Literal["permrowcol", "naive"]="naive", reallocate:bool=False) -> Any:
+    def to_qiskit(self, method:Literal["permrowcol", "naive"]="naive", reallocate:bool=False, parities_as_columns:bool = False) -> Any:
         try:
             # pylint: disable = import-outside-toplevel
             from qiskit.circuit import QuantumCircuit
@@ -494,13 +493,12 @@ class CXCircuit(Sequence[CXCircuitLayer]):
         if method == "naive":
             cxs = self
         else:
-            cxs = CXCircuit.from_parity_matrix(self.parity_matrix(), self.topology, reallocate=reallocate, method=method)
+            cxs = CXCircuit.from_parity_matrix(self.parity_matrix(parities_as_columns=parities_as_columns), self.topology, reallocate=reallocate, method=method,parities_as_columns=parities_as_columns)
         for layer in cxs._layers:
             circuit.compose(layer.to_qiskit(), inplace=True)
-        if reallocate:
-            circuit.metadata = {
-                "final_layout": cxs._output_mapping
-            }
+        circuit.metadata = {
+            "final_layout": cxs._output_mapping
+        }
         return circuit
 
     def draw(self, layout: str = "kamada_kawai", *,
@@ -535,7 +533,7 @@ class CXCircuit(Sequence[CXCircuitLayer]):
         plt.show()
 
     @staticmethod
-    def from_parity_matrix(matrix:NDArray, topology:Topology, parities_as_columns:bool = False, reallocate:bool=False, method: Literal["permrowcol"]="permrowcol" ) -> "CXCircuit":
+    def from_parity_matrix(matrix:NDArray, topology:Topology, parities_as_columns:bool=False, reallocate:bool=False, method: Literal["permrowcol"]="permrowcol" ) -> "CXCircuit":
         """ Generates a CXCircuit from a given parity matrix, constrained by the given topology
 
         Args:
