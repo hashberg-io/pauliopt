@@ -643,16 +643,13 @@ def iter_anneal(circuit: PhaseCircuit, topology: Topology, cx_blocks,
                 anneal_kwargs:Dict = {}) -> OptimizedPhaseCircuit:
     topology = Topology(topology.num_qubits, topology.couplings)
     best_circuit, best_cx_count = None, None
-    mapping = None
     for _ in range(num_iters):
-        opt = OptimizedPhaseCircuit(circuit.copy(), topology, cx_blocks, qubit_mapping=mapping, **opt_kwargs)
+        opt = OptimizedPhaseCircuit(circuit.copy(), topology, cx_blocks, **opt_kwargs)
         opt.anneal(num_anneal_iters, **anneal_kwargs)
 
         if best_cx_count is None or best_cx_count > opt.cx_count:
             best_circuit = opt
             best_cx_count = opt.cx_count
-
-        mapping = opt._output_mapping
     return best_circuit
 
 def reverse_traversal_anneal(circuit: PhaseCircuit, topology: Topology, cx_blocks,
@@ -684,9 +681,11 @@ def reverse_traversal_anneal(circuit: PhaseCircuit, topology: Topology, cx_block
         mapping = opt._output_mapping
         reversed_circuit = not reversed_circuit
     if best_reversed:
-        reversed_phase = PhaseCircuit(opt.num_qubits, list(reversed(opt._phase_block)))
-        reversed_cx_blocks = CXCircuit(topology, list(reversed(opt._cx_block)))
-        best_circuit = OptimizedPhaseCircuit(reversed_phase, topology, reversed_cx_blocks, **opt_kwargs)
+        reversed_phase = PhaseCircuit(best_circuit.num_qubits, list(reversed(best_circuit._phase_block)))
+        reversed_cx_blocks = CXCircuit(best_circuit.topology, list(reversed(best_circuit._cx_block)))
+        mapping = best_circuit._qubit_mapping
+        best_circuit = OptimizedPhaseCircuit(reversed_phase, best_circuit.topology, reversed_cx_blocks, **opt_kwargs)
+        best_circuit._qubit_mapping = mapping
     return best_circuit
 
 def reverse_traversal(circuit: PhaseCircuit, topology: Topology, cx_blocks,
