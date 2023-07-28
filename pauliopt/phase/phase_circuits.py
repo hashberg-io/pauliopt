@@ -810,6 +810,8 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             raise ModuleNotFoundError("You must install the 'networkx' library.")
         blocks = []
         block = []
+        if len(self.gadgets) == 0:
+            return [], CXCircuit(topology, [])
         basis = self._rev_gadget_idxs[0][0]
         for b, idx in self._rev_gadget_idxs:
             if b == basis:
@@ -914,6 +916,8 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         
         blocks = []
         block = []
+        if len(self.gadgets) == 0:
+            return [], CXCircuit(topology, [])
         basis = self._rev_gadget_idxs[0][0]
         for b, idx in self._rev_gadget_idxs:
             if b == basis:
