@@ -25,11 +25,14 @@ jobs:
     - name: Install PauliOpt and check for false imports
       working-directory: ./
       run: |
+        pip install --upgrade pip
         pip install .
         python scripts/check_imports.py
     - name: Unit tests
       working-directory: ./
       run: |
+        pip install --upgrade pip
+        pip install .
         pip install requirements-dev.txt
         python -m unittest discover -s ./tests/ -p "test_*.py"
 
