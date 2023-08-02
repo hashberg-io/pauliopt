@@ -316,7 +316,7 @@ class Topology:
                 path.append(fro)
             return path
 
-    def steiner_tree(self, terminals: list[int], exclude: list[int]=[]):
+    def steiner_tree(self, terminals: List[int], exclude: List[int]=[]):
         """
             Computes the Steiner tree over the topology with given terminals.
             `exclude` can be used to find the Steiner tree of a subgraph of the topology where the given nodes are excluded.
