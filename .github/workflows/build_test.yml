@@ -25,8 +25,8 @@ jobs:
     - name: Install PauliOpt and check for false imports
       working-directory: ./
       run: |
-        echo $PWD
-        ls
+        pip install .
+        python scripts/check_imports.py
     - name: Unit tests
       working-directory: ./
       run: |
