@@ -73,8 +73,8 @@ class PauliPolynomial:
         vscale *= scale
         hscale *= scale
 
-        x_color = "#CCFFCC"
-        z_color = "#FF8888"
+        x_color = "#FF8888"
+        z_color = "#CCFFCC"
         y_color = "ycolor"
 
         num_qubits = self.num_qubits
