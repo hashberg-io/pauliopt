@@ -26,6 +26,7 @@ jobs:
       working-directory: ./
       run: |
         echo $PWD
+        ls
     - name: Unit tests
       working-directory: ./
       run: |
