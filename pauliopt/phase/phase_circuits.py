@@ -741,15 +741,15 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         ]
         return PhaseCircuit(self._num_qubits, flipped_gadgets)
 
-    def inverse(self) -> "PhaseCircuit":
+    def dagger(self) -> "PhaseCircuit":
         """
             Returns a new phase circuit with the same gadgets but having
             all angles negated.
         """
-        inverted_gadgets = [
+        inverted_gadgets = ([
             PhaseGadget(g.basis, -g.angle, g.qubits)
-            for g in self.gadgets
-        ]
+            for g in reversed(self.gadgets)
+        ])
         return PhaseCircuit(self._num_qubits, inverted_gadgets)
 
     def normalize(self) -> "PhaseCircuit":
