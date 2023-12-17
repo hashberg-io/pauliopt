@@ -120,7 +120,6 @@ class TestPauliConversion(unittest.TestCase):
             for gate_class in [CliffordType.CX, CliffordType.CY, CliffordType.CZ,
                                CliffordType.H, CliffordType.S, CliffordType.V]:
                 gate = generate_random_clifford(gate_class, num_qubits)
-                print(gate_class)
                 pp_ = pp.copy().propagate(gate)
                 qc = QuantumCircuit(num_qubits)
                 qc.compose(clifford_to_qiskit(gate).inverse(), inplace=True)

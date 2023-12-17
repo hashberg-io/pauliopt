@@ -3,14 +3,116 @@
     of circuits of mixed phase gadgets.
 """
 
-from typing import (cast, Collection, Dict, FrozenSet, Iterator, List,
-                    Optional, overload, Sequence, Tuple, Union)
+from typing import (cast, Collection, Dict, FrozenSet, Iterator, List, Any,
+                    Optional, overload, Sequence, Tuple, Union, Literal)
 import numpy as np # type: ignore
+from numpy.typing import NDArray
 from pauliopt.topologies import Coupling, Topology, Matching
 
 
 GateLike = Union[List[int], Tuple[int, int]]
+synthesis_methods = ["permrowcol"]
 
+def permrowcol(matrix:NDArray, topology:Topology, parities_as_columns:bool=False, reallocate:bool=False) -> Tuple[List[Tuple[int]], List[int]]:
+    """Generates a sequence of CNOTs reallizing the given parity matrix up to permutation (if reallocate=True) using 
+    the algorithm from https://arxiv.org/abs/2205.00724.
+
+    Args:
+        matrix (numpy.NDArray): The binary parity matrix
+        topology (Topology): The target device topology
+        parities_as_columns (bool): Whether the parities in the matrix are row-wise or column-wise. Defaults to False, i.e. row-wise.
+        reallocate (bool, optional): Whether to qubits can re reallocated. Defaults to False. 
+
+    Raises:
+        ModuleNotFoundError: If 'networkx' or 'galois' is not installed.
+
+    Returns:
+        List[Tuple[int]]: List of CNOTs realizing the given parity matrix
+        List[int]: The output permutation of the qubit mapping. Equals [0..n] if reallocate==False.
+    """
+    try:
+        # pylint: disable = import-outside-toplevel
+        import networkx as nx
+    except ModuleNotFoundError as _:
+        raise ModuleNotFoundError("You must install the 'networkx' library.")
+    try:
+        # pylint: disable = import-outside-toplevel
+        import galois
+    except ModuleNotFoundError as _:
+        raise ModuleNotFoundError("You must install the 'galois' library.")
+    cnots = []
+    m = np.asarray(matrix, dtype=np.int32)
+    def add_cnot(ctrl, trgt, m, cnots):
+        m[ctrl,:] ^= m[trgt,:]
+        if parities_as_columns:
+            cnots.append((ctrl,trgt))
+        else:
+            cnots.append((trgt, ctrl))
+    def choose_row(options, m):
+        return options[np.argmin([sum(m[o]) for o in options])]
+    def choose_column(options, row, m):
+        if reallocate:
+            return options[np.argmin([sum(m[:,o]) if m[row, o]==1 else topology.num_qubits for o in options])]
+        return row
+    
+    qubits_to_process = list(range(topology.num_qubits))
+    columns_to_eliminate = list(range(topology.num_qubits))
+    new_mapping = [-1]*topology.num_qubits
+    while len(qubits_to_process) > 1:
+        # Pick the pivot location
+        possible_qubits = topology.non_cutting_qubits(qubits_to_process)
+        # TODO does this change when parities_as_rows?
+        row = choose_row(possible_qubits, m)
+        col = choose_column(columns_to_eliminate, row, m)
+
+        # Reduce the column
+        col_nodes = [i for i in qubits_to_process if m[i, col]==1]
+        if m[row, col] == 0:
+            col_nodes.append(row)
+            
+        steiner_tree = topology.steiner_tree(col_nodes, qubits_to_process)
+        if len(col_nodes) > 1:
+            traversal = list(reversed(list(nx.bfs_edges(steiner_tree, source=row))))
+            for parent, child in traversal:
+                if m[parent, col] == 0:
+                    add_cnot(parent, child, m, cnots)
+            # TODO possibly pick the row here now that the full steiner_tree has a 1
+            for parent, child in traversal:
+                add_cnot(child, parent, m, cnots)
+        assert sum(m[:,col]) == 1
+        assert m[row, col] == 1
+
+        # Reduce the row
+        ones_in_the_row = [i for i in columns_to_eliminate if m[row, i]== 1]
+        if len(ones_in_the_row) > 1:
+            submatrix = [[ m[i,j] for i in qubits_to_process if i != row] for j in columns_to_eliminate if j != col]
+            A = galois.GF(2)(submatrix)
+            A_inv = np.linalg.inv(A)
+            b = galois.GF(2)([m[row, i] for i in columns_to_eliminate if i != col], dtype=np.int32)
+            X1 = np.matmul(A_inv, b)
+            # Add the row that we removed back in for easier indexing.
+            X = np.insert(X1, qubits_to_process.index(row), 1)
+            row_nodes = [qubits_to_process[i] for i in range(len(qubits_to_process)) if X[i] == 1]
+            steiner_tree = topology.steiner_tree(row_nodes, qubits_to_process)
+            traversal = list(nx.bfs_edges(steiner_tree, source=row))
+            for parent, child in traversal:
+                if child not in row_nodes:
+                    add_cnot(parent, child, m, cnots)
+            for parent, child in reversed(traversal):
+                add_cnot(parent, child, m, cnots)
+            assert m[row, col] == 1
+            assert sum(m[row,:]) == 1
+        assert sum(m[:,col]) == 1
+        assert m[row, col] == 1
+        assert sum(m[row,:]) == 1
+        qubits_to_process.remove(row)
+        columns_to_eliminate.remove(col)
+        new_mapping[row] = col
+    new_mapping[qubits_to_process[0]] = columns_to_eliminate[0] #Also map the trivial case.
+
+    if not parities_as_columns:
+        cnots = reversed(cnots)
+    return cnots, new_mapping
 
 class CXCircuitLayer:
     """
@@ -190,6 +292,18 @@ class CXCircuitLayer:
             Returns a copy of this CX layer.
         """
         return CXCircuitLayer(self.topology, self.gates)
+    
+
+    def to_qiskit(self) -> Any:
+        try:
+            # pylint: disable = import-outside-toplevel
+            from qiskit.circuit import QuantumCircuit
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError("You must install the 'qiskit' library.") from e
+        circuit = QuantumCircuit(self.topology.num_qubits)
+        for ctrl, trgt in self.gates:
+            circuit.cx(ctrl, trgt)
+        return circuit
 
     def draw(self, layout: str = "kamada_kawai", *,
              figsize: Optional[Tuple[int, int]] = None,
@@ -304,7 +418,7 @@ class CXCircuit(Sequence[CXCircuitLayer]):
     _topology: Topology
     _layers: List[CXCircuitLayer]
 
-    def __init__(self, topology: Topology, layers: Sequence[CXCircuitLayer] = tuple()):
+    def __init__(self, topology: Topology, layers: Sequence[CXCircuitLayer] = tuple(), output_mapping: Sequence[int]=None):
         if not isinstance(topology, Topology):
             raise TypeError(f"Expected Topology, found {type(topology)}.")
         if not isinstance(layers, Sequence):
@@ -316,6 +430,7 @@ class CXCircuit(Sequence[CXCircuitLayer]):
                 raise ValueError("Layer topology different from circuit topology.")
         self._topology = topology
         self._layers = list(layers)
+        self._output_mapping = output_mapping
 
     @property
     def topology(self) -> Topology:
@@ -332,6 +447,29 @@ class CXCircuit(Sequence[CXCircuitLayer]):
             CX circuit.
         """
         return sum((layer.num_gates for layer in self), 0)
+    
+    def parity_matrix(self, parities_as_columns:bool = False) -> NDArray:
+        """
+        Generates the parity matrix representing this CX circuit.
+
+        Args:
+            parities_as_columns (bool, optional): Boolean determining whether the 
+                parity matrix should be represented with parities as columns in the matrix.
+                Defaults to False, meaning that the parities are rows in the matrix.
+
+        Returns:
+            numpy.NDArray containing 1s and 0s.
+        """
+        m = np.identity(self.topology.num_qubits)
+        if parities_as_columns:
+            for layer in self._layers:
+                for ctrl, trgt in layer.gates:
+                    m[:,trgt] = (m[:,ctrl] + m[:,trgt]) % 2
+        else:
+            for layer in reversed(self._layers):
+                for trgt, ctrl in layer.gates:
+                    m[:,trgt] = (m[:,ctrl] + m[:,trgt]) % 2
+        return m
 
     def dag(self) -> "CXCircuit":
         """
@@ -345,6 +483,21 @@ class CXCircuit(Sequence[CXCircuitLayer]):
             Returns a copy of this CX circuit.
         """
         return CXCircuit(self.topology, [l.clone() for l in self])
+
+    def to_qiskit(self, method:Literal["permrowcol", "naive"]="naive", reallocate:bool=False) -> Any:
+        try:
+            # pylint: disable = import-outside-toplevel
+            from qiskit.circuit import QuantumCircuit
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError("You must install the 'qiskit' library.") from e
+        circuit = QuantumCircuit(self.topology.num_qubits)
+        if method == "naive":
+            cxs = self
+        else:
+            cxs = CXCircuit.from_parity_matrix(self.parity_matrix(), self.topology, reallocate=reallocate, method=method)
+        for layer in cxs._layers:
+            circuit.compose(layer.to_qiskit(), inplace=True)
+        return circuit
 
     def draw(self, layout: str = "kamada_kawai", *,
              figsize: Optional[Tuple[int, int]] = None,
@@ -376,6 +529,35 @@ class CXCircuit(Sequence[CXCircuitLayer]):
         if filename is not None:
             plt.savefig(filename)
         plt.show()
+
+    @staticmethod
+    def from_parity_matrix(matrix:NDArray, topology:Topology, parities_as_columns:bool = False, reallocate:bool=False, method: Literal["permrowcol"]="permrowcol" ) -> "CXCircuit":
+        """ Generates a CXCircuit from a given parity matrix, constrained by the given topology
+
+        Args:
+            matrix (np.typing.NDArray): The parity matrix to be synthesized
+            topology (Topology): The target device topology
+            parities_as_columns (bool, optional): Whether the parities in the matrix are column-wise or row-wise. Defaults to False, i.e. row-wise.
+            reallocate (bool, optional): Whether the qubits can be reallocated to different registers, i.e. synthesis up to permutation. Defaults to False.
+            method (Literal["permrowcol"], optional): Which synthesis method should be used. Currently only permrowcol is available.
+
+        Returns:
+            CXCircuit: Synthesized circuit
+        """
+        if method == "permrowcol":
+            cnots, permutation = permrowcol(matrix, topology, parities_as_columns=parities_as_columns, reallocate=reallocate)
+        layers = []
+        current_layer = []
+        for cnot in cnots:
+            assert cnot[0] in topology.adjacent(cnot[1]) # Double check that the cnot is allowed
+            if any([c in cnot or t in cnot for c,t in current_layer]):
+                layer = CXCircuitLayer(topology, current_layer)
+                layers.append(layer)
+                current_layer = []
+            current_layer.append(cnot)
+        if current_layer:
+            layers.append(CXCircuitLayer(topology, current_layer))
+        return CXCircuit(topology, layers, output_mapping = permutation)
 
     @overload
     def __getitem__(self, layer_idx: int) -> CXCircuitLayer:
