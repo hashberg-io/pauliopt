@@ -61,8 +61,7 @@ class CliffordTableau:
                2 * self.tableau[row + self.n_qubits, col + self.n_qubits]
 
     def prepend_h(self, qubit):
-        self.signs[[qubit, self.n_qubits + qubit]] = \
-            self.signs[[self.n_qubits + qubit, qubit]]
+        self.signs[[qubit, self.n_qubits + qubit]] =  self.signs[[self.n_qubits + qubit, qubit]]
         self.tableau[[self.n_qubits + qubit, qubit], :] = \
             self.tableau[[qubit, self.n_qubits + qubit], :]
 
