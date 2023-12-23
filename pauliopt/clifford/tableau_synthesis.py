@@ -1,8 +1,3 @@
-try:
-    from qiskit import QuantumCircuit
-except:
-    raise Exception("Please install qiskit to use this module")
-
 import networkx as nx
 from networkx.algorithms.approximation import steiner_tree
 
@@ -318,6 +313,13 @@ def synthesize_tableau(tableau: CliffordTableau, topo: Topology, include_swaps=T
     [1] Winderl, Huang, et al. "Architecture-Aware Synthesis of Stabilizer Circuits from Clifford Tableaus." arXiv preprint arXiv:2309.08972 (2023).
 
     """
+
+    try:
+        from qiskit import QuantumCircuit
+    except:
+        raise Exception("Please install qiskit to use this module")
+
+
     qc = QuantumCircuit(tableau.n_qubits)
 
     remaining = tableau.inverse()
