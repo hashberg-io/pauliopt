@@ -1,5 +1,4 @@
 import numpy as np
-import qiskit
 
 
 def mult_paulis(p1, p2, sign1, sign2, n_qubits):
