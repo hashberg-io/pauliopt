@@ -7,7 +7,7 @@ from qiskit import QuantumCircuit, transpile
 from pauliopt.clifford.tableau import CliffordTableau
 from pauliopt.clifford.tableau_synthesis import synthesize_tableau
 from pauliopt.topologies import Topology
-from test import random_hscx_circuit, verify_equality
+from tests.utils import verify_equality, random_hscx_circuit
 
 EXPECTED_STR = """T: 
 Z/X I/I I/I I/I I/I 
