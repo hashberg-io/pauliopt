@@ -84,7 +84,34 @@ opt_circ = OptimizedPhaseCircuit(circ, topology, num_cx_layers, rng_seed=0)
 
 ### Example 2: Synthesis of Clifford tableau's
 
-TODO
+You can create a clifford tableau and append/prepend operations (H, S, CX), with the
+following code fragment:
+
+```python
+from pauliopt.clifford.tableau import CliffordTableau
+
+ct = CliffordTableau(3)
+
+ct.append_h(0)
+ct.append_cnot(0, 2)
+ct.append_s(1)
+```
+
+You can visualize the tableau with the following code fragment:
+
+```python
+print(ct)
+```
+
+To synthesize the circuit, you can use the following code fragment (note we have used to topology from above):
+
+```python
+from pauliopt.clifford.tableau_synthesis import synthesize_tableau
+
+
+qc = synthesize_tableau(ct, topo)
+print(qc)
+```
 
 ## Unit tests
 
