@@ -1,4 +1,7 @@
 import numpy as np
+import qiskit.quantum_info
+
+qiskit.quantum_info.Clifford
 
 
 def mult_paulis(p1, p2, sign1, sign2, n_qubits):
@@ -24,22 +27,34 @@ def mult_paulis(p1, p2, sign1, sign2, n_qubits):
 
 class CliffordTableau:
     def __init__(self, n_qubits):
-        self.tableau = np.eye(2*n_qubits)
-        self.signs = np.zeros((2*n_qubits))
+        self.tableau = np.eye(2 * n_qubits)
+        self.signs = np.zeros((2 * n_qubits))
         self.n_qubits = n_qubits
-
-    @classmethod
-    def register(cls, rust_class):
-        cls.factorial = rust_class.factorial
-
-    @staticmethod
-    def identity(n_qubits: int):
-        return CliffordTableau(np.eye(2 * n_qubits), np.zeros((2 * n_qubits)))
 
     def __str__(self) -> str:
         out = "T: \n"
         out += str(self.string_repr) + "\n"
         return out
+
+    @staticmethod
+    def from_tableau(tableau, signs):
+        n_qubits = tableau.shape[0] // 2
+        if not (tableau.shape == (2 * n_qubits, 2 * n_qubits) and signs.shape == (
+                2 * n_qubits,)):
+            raise ValueError("Tableau and signs must have shape "
+                             "(2 * n_qubits, 2 * n_qubits) and (2 * n_qubits,)")
+        ct = CliffordTableau(n_qubits)
+        ct.tableau = tableau
+        ct.signs = signs
+        return ct
+
+    @staticmethod
+    def from_qiskit_tableau(qiskit_ct: "qiskit.quantum_info.Clifford"):
+        n_qubits = qiskit_ct.num_qubits
+        ct = CliffordTableau(n_qubits)
+        ct.tableau = qiskit_ct.symplectic_matrix
+        ct.signs = qiskit_ct.phase
+        return ct
 
     @property
     def string_repr(self):
@@ -61,7 +76,8 @@ class CliffordTableau:
                2 * self.tableau[row + self.n_qubits, col + self.n_qubits]
 
     def prepend_h(self, qubit):
-        self.signs[[qubit, self.n_qubits + qubit]] =  self.signs[[self.n_qubits + qubit, qubit]]
+        self.signs[[qubit, self.n_qubits + qubit]] = self.signs[
+            [self.n_qubits + qubit, qubit]]
         self.tableau[[self.n_qubits + qubit, qubit], :] = \
             self.tableau[[qubit, self.n_qubits + qubit], :]
 
@@ -137,3 +153,66 @@ class CliffordTableau:
                                                             row, i + self.n_qubits] + 1) % 2
         if (self.signs[row] + p_sing) % 2 == 1:
             self.signs[row] = (self.signs[row] + 1) % 2
+
+    def inverse(self):
+        n_qubits = self.n_qubits
+
+        x2x = self.tableau[:n_qubits, :n_qubits].copy()
+        z2z = self.tableau[n_qubits:2 * n_qubits, n_qubits:2 * n_qubits].copy()
+
+        x2z = self.tableau[:n_qubits, n_qubits:2 * n_qubits].copy()
+        z2x = self.tableau[n_qubits:2 * n_qubits, :n_qubits].copy()
+
+        top_row = np.hstack((z2z.T, x2z.T))
+        bottom_row = np.hstack((z2x.T, x2x.T))
+        new_tableau = np.vstack((top_row, bottom_row))
+
+        ct_new = CliffordTableau.from_tableau(new_tableau, self.signs.copy())
+
+        ct_intermediate = self.apply(ct_new)
+
+        ct_new.signs = (ct_new.signs + ct_intermediate.signs) % 2
+        return ct_new
+
+    def apply(self, other: "CliffordTableau"):
+        new_tableau = np.dot(self.tableau, other.tableau) % 2
+
+        phase = np.mod(other.tableau.dot(self.signs) + other.signs, 2)
+
+        # Correcting for phase due to Pauli multiplication
+        ifacts = np.zeros(2 * self.n_qubits, dtype=int)
+
+        for k in range(2 * self.n_qubits):
+
+            row2 = other.tableau[k]
+            x2 = other.tableau[k, 0:self.n_qubits]
+            z2 = other.tableau[k, self.n_qubits:2 * self.n_qubits]
+
+            # Adding a factor of i for each Y in the image of an operator under the
+            # first operation, since Y=iXZ
+
+            ifacts[k] += np.sum(x2 * z2)
+
+            # Adding factors of i due to qubit-wise Pauli multiplication
+
+            for j in range(self.n_qubits):
+                x = 0
+                z = 0
+                for i in range(2 * self.n_qubits):
+                    if row2[i]:
+                        x1 = self.tableau[i, j]
+                        z1 = self.tableau[i, j + self.n_qubits]
+                        if (x == 1 or z == 1) and (x1 == 1 or z1 == 1):
+                            val = np.mod(np.abs(3 * z1 - x1) - np.abs(3 * z - x) - 1, 3)
+                            if val == 0:
+                                ifacts[k] += 1
+                            elif val == 1:
+                                ifacts[k] -= 1
+                        x = np.mod(x + x1, 2)
+                        z = np.mod(z + z1, 2)
+
+        p = np.mod(ifacts, 4) // 2
+
+        phase = np.mod(phase + p, 2)
+
+        return CliffordTableau.from_tableau(new_tableau, phase)
