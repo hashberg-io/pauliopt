@@ -13,26 +13,26 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ 3.9, 3.10 ]
+        python-version: [ "3.9", "3.10" ]
     outputs:
       error-check: ${{ steps.error-check.conclusion }}
     steps:
-    - uses: actions/checkout@v3
-    - name: Setup Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install PauliOpt and check for false imports
-      working-directory: ./
-      run: |
-        pip install --upgrade pip
-        pip install .
-        python scripts/check_imports.py
-    - name: Unit tests
-      working-directory: ./
-      run: |
-        pip install --upgrade pip
-        pip install .
-        pip install -r requirements-dev.txt
-        python -m unittest discover -s ./tests/ -p "test_*.py"
+      - uses: actions/checkout@v3
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Check imports
+        working-directory: ./
+        run: |
+          pip install --upgrade pip
+          pip install .
+          python scripts/check_imports.py
+      - name: Unit tests
+        working-directory: ./
+        run: |
+          pip install --upgrade pip
+          pip install .
+          pip install -r requirements-dev.txt
+          python -m unittest discover -s ./tests/ -p "test_*.py"
 
