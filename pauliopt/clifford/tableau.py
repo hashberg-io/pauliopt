@@ -1,8 +1,6 @@
 import numpy as np
 import qiskit.quantum_info
 
-qiskit.quantum_info.Clifford
-
 
 def mult_paulis(p1, p2, sign1, sign2, n_qubits):
     x_1 = p1[:n_qubits].copy()
