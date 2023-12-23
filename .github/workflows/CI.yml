@@ -1,12 +1,11 @@
 name: CI
 
 on:
-  on:
-    pull_request:
-      types:
-        - closed
-      branches:
-        - 'releases/**'
+  pull_request:
+    types:
+      - closed
+    branches:
+      - 'releases/**'
 
 
 permissions:
