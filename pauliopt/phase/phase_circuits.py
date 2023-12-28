@@ -159,13 +159,14 @@ class PhaseGadget:
                     bitstring[head] = (bitstring[ctrl] + bitstring[trgt])%2
                     steiner_ladder.append((trgt, ctrl))
                 upper_ladder.append((ctrl, trgt))
-        for ctrl, trgt in steiner_ladder + upper_ladder:
+        cnot_ladder = steiner_ladder + upper_ladder
+        for ctrl, trgt in cnot_ladder:
             circuit.cx(ctrl, trgt)
         if self.basis == "Z":
             circuit.rz(self.angle.to_qiskit, q0)
         else:
             circuit.rx(self.angle.to_qiskit, q0)
-        for ctrl, trgt in reversed(steiner_ladder + upper_ladder):
+        for ctrl, trgt in reversed(cnot_ladder):
             circuit.cx(ctrl, trgt)
 
     def print_impl_info(self, topology: Topology) -> None:
@@ -656,6 +657,10 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         self._angles.append(gadget.angle)
         self._gadget_legs_cache[basis].append(tuple(sorted(gadget.qubits)))
         return self
+    
+    def copy(self):
+        gadgets = [PhaseGadget(g.basis, g.angle, list(g.qubits)) for g in self.gadgets]
+        return PhaseCircuit(self.num_qubits, gadgets)
 
     def cx_count(self, topology: Topology, *,
                  mapping: Optional[Union[Sequence[int], Dict[int, int]]] = None, method:Literal["naive", "paritysynth", "steiner-graysynth"]="naive") -> int:
@@ -811,18 +816,15 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                 gate.on_qiskit_circuit(topology, circuit)
             else:
                 circuit.cx(*gate)
-        if cx_synth == "naive":
-            pass # Do not resynthesize
-        elif cx_synth == "permrowcol":
-            cxs = CXCircuit.from_parity_matrix(cxs.parity_matrix(), topology)
+        if cx_synth != "naive":
+            cxs = CXCircuit.from_parity_matrix(cxs.parity_matrix(), topology, method=cx_synth, reallocate=reallocate)
         if return_cx:
             return circuit, cxs
-        new_cxs = cxs.to_qiskit(method=cx_synth, reallocate=reallocate)
+        new_cxs = cxs.to_qiskit(method="naive")
         circuit.compose(new_cxs, inplace=True)
-        if reallocate:
-            circuit.metadata = {
-                "final_layout": cxs._output_mapping
-            }
+        circuit.metadata = {
+            "final_layout": new_cxs.metadata["final_layout"]
+        }
         return circuit
 
     def _paritysynth(self, topology:Topology) -> Tuple[List[Union[PhaseGadget, Tuple[int, int]]], CXCircuit]:
@@ -849,6 +851,8 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             raise ModuleNotFoundError("You must install the 'networkx' library.")
         blocks = []
         block = []
+        if len(self.gadgets) == 0:
+            return [], CXCircuit(topology, [])
         basis = self._rev_gadget_idxs[0][0]
         for b, idx in self._rev_gadget_idxs:
             if b == basis:
@@ -953,6 +957,8 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         
         blocks = []
         block = []
+        if len(self.gadgets) == 0:
+            return [], CXCircuit(topology, [])
         basis = self._rev_gadget_idxs[0][0]
         for b, idx in self._rev_gadget_idxs:
             if b == basis:
@@ -980,11 +986,13 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                 place_cnot(trgt, ctrl, "Z")
 
         def ones_recursion(gadgets, subgraph, row, basis):
+            to_remove = []
             for g in gadgets: # Remove trivial gadgets
                 bitstring = idx2bitstring(g, basis)
                 if np.sum(bitstring) == 1:
                     gates.append(PhaseGadget(basis, self._angles[self._gadget_idxs[basis][g]], [q for q in range(topology.num_qubits) if bitstring[q] == 1]))
-                    gadgets.remove(g)
+                    to_remove.append(g)
+            [gadgets.remove(g) for g in to_remove]
             if gadgets:
                 neighbors = [q for q in iter(topology.adjacent(row)) if q in subgraph]
                 n = neighbors[np.argmax([len([g for g in gadgets if idx2bitstring(g, basis)[q] == 1 ]) for q in neighbors])]
