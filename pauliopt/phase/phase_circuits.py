@@ -2,7 +2,7 @@
     This module contains code to create circuits of mixed ZX phase gadgets.
 """
 
-from collections import deque
+from collections import OrderedDict, deque
 from itertools import islice
 from math import ceil, log10
 from typing import (Any, Callable, cast, Collection, Dict, FrozenSet, Iterator, List,
@@ -729,6 +729,47 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             for g in self.gadgets
         ]
         return PhaseCircuit(self._num_qubits, remapped_gadgets)
+
+    def color_flip(self) -> "PhaseCircuit":
+        """
+            Returns a new phase circuit with the same gadgets but having
+            all basis switched from Z to X and vice versa.
+        """
+        flipped_gadgets = [
+            PhaseGadget("X" if g.basis == "Z" else "Z", g.angle, g.qubits)
+            for g in self.gadgets
+        ]
+        return PhaseCircuit(self._num_qubits, flipped_gadgets)
+
+    def inverse(self) -> "PhaseCircuit":
+        """
+            Returns a new phase circuit with the same gadgets but having
+            all angles negated.
+        """
+        inverted_gadgets = [
+            PhaseGadget(g.basis, -g.angle, g.qubits)
+            for g in self.gadgets
+        ]
+        return PhaseCircuit(self._num_qubits, inverted_gadgets)
+
+    def normalize(self) -> "PhaseCircuit":
+        """ Fuse and reorder gadgets of the same basis. """
+        d = OrderedDict()
+        basis = None
+        circ = PhaseCircuit(self._num_qubits)
+        for g in self.gadgets:
+            if g.basis != basis:
+                for legs, angle in d.items():
+                    circ >>= PhaseGadget(basis, angle, legs)
+                basis = g.basis
+            else:
+                if g.qubits not in d:
+                    d[g.qubits] = 0
+                d[g.qubits] += g.angle
+        for legs, angle in d.items():
+            circ >>= PhaseGadget(basis, angle, legs)
+
+        return circ
 
     def to_qiskit(self, topology:Topology, simplified:bool=True, method:Literal["naive", "paritysynth", "steiner-graysynth"]="naive", cx_synth:Literal["permrowcol", "naive"]="naive", return_cx:bool=False, reallocate:bool=False) -> Any:
         """Generates a qiskit QuantumCircuit equivalent to this PhaseCircuit.
@@ -1512,6 +1553,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                angle_subdivision: int = 4,
                min_legs: int = 1,
                max_legs: Optional[int] = None,
+               diagonal: bool = False,
                rng_seed: Optional[int] = None) -> "PhaseCircuit":
         """
             Generates a random circuit of mixed ZX phase gadgets on the given number of qubits,
@@ -1548,7 +1590,10 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                 parametric = lambda i: AngleVar(f"{s}[{i}]", f"{s}_{i}")
         rng = np.random.default_rng(seed=rng_seed)
         angle_rng_seed = int(rng.integers(65536)) # type: ignore[attr-defined]
-        basis_idxs = rng.integers(2, size=num_gadgets) # type: ignore[attr-defined]
+        if diagonal:
+            basis_idxs = np.zeros(num_gadgets, dtype=int)
+        else:
+            basis_idxs = rng.integers(2, size=num_gadgets) # type: ignore[attr-defined]
         num_legs = rng.integers(min_legs, max_legs+1, size=num_gadgets) # type: ignore[attr-defined]
         legs_list: List[npt.NDArray[int]] = [
             rng.choice(num_qubits, num_legs[i], replace=False) for i in range(num_gadgets)
