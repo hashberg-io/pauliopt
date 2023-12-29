@@ -109,7 +109,8 @@ To synthesize the circuit, you can use the following code fragment (note we have
 from pauliopt.clifford.tableau_synthesis import synthesize_tableau
 
 
-qc = synthesize_tableau(ct, topo)
+qc, perm = synthesize_tableau(ct, topo, include_swaps=False)
+qc = qc.to_qiskit()
 print(qc)
 ```
 
