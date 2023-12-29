@@ -1,7 +1,21 @@
 import numpy as np
+import qiskit.quantum_info
 
 
 def mult_paulis(p1, p2, sign1, sign2, n_qubits):
+    """
+    Small helper function to multiply two Pauli strings and correctly update the sign.
+
+    Args:
+        p1 (np.ndarray): Pauli string 1
+        p2 (np.ndarray): Pauli string 2
+        sign1 (int): Sign of Pauli string 1
+        sign2 (int): Sign of Pauli string 2
+        n_qubits (int): Number of qubits in the Pauli strings
+
+    Returns:
+        np.ndarray: Pauli string 1 * Pauli string 2
+    """
     x_1 = p1[:n_qubits].copy()
     z_1 = p1[n_qubits:].copy()
     x_2 = p2[:n_qubits].copy()
@@ -23,6 +37,51 @@ def mult_paulis(p1, p2, sign1, sign2, n_qubits):
 
 
 class CliffordTableau:
+    """
+    Class for storing and manipulating Clifford tableau.
+    A Clifford tableau is a representation of a Clifford circuit as a
+    2n x 2n binary matrix, where n is the number of qubits. The first n rows
+    represent the stabilizers, and the last n rows represent the destabilizers.
+    The first n columns represent the X operators, and the last n columns
+    represent the Z operators. The (i, j) entry of the matrix is 1 if the
+    operator in row i anticommutes with the operator in column j, and 0
+    otherwise. The sign of the operator in row i is given by the i-th entry of
+    the sign vector. The sign of the operator in column j is given by the
+    (n + j)-th entry of the sign vector.
+
+    A more readable representation of the tableau is given by the string:
+    ```python
+    >>> from pauliopt.clifford.tableau import CliffordTableau
+    >>> ct = CliffordTableau(2)
+    >>> print(ct)
+    # Expected Output:
+    # X/Z I/I | +
+    # I/I X/Z | +
+    >>> ct.append_h(0)
+    >>> print(ct)
+    # Expected Output:
+    # Z/X I/I | +
+    # I/I X/Z | +
+    ```
+
+    To get the raw $2n \times 2n$ matrix representation of the tableau, use:
+    ```python
+    >>> ct.tableau
+    # Expected Output:
+    # array([[0, 0, 1, 0],
+    #        [0, 1, 0, 0],
+    #        [1, 0, 0, 0],
+    #        [0, 0, 0, 1]], dtype=uint8)
+    ```
+    To get the sign vector, use:
+    ```python
+    >>> ct.signs
+    # Expected Output:
+    # array([0, 0, 0, 0], dtype=uint8)
+    ```
+
+    """
+
     def __init__(self, n_qubits):
         self.tableau = np.eye(2 * n_qubits, dtype=np.uint8)
         self.signs = np.zeros((2 * n_qubits), dtype=np.uint8)
@@ -34,6 +93,16 @@ class CliffordTableau:
 
     @staticmethod
     def from_tableau(tableau, signs):
+        """
+        Create a CliffordTableau from a tableau and sign vector.
+
+        Args:
+            tableau (np.ndarray): $2n \times 2n$ binary matrix representing the tableau.
+            signs (np.ndarray): $2n$-dimensional binary vector representing the sign vector.
+
+        Returns:
+            CliffordTableau: CliffordTableau object.
+        """
         n_qubits = tableau.shape[0] // 2
         if not (tableau.shape == (2 * n_qubits, 2 * n_qubits) and signs.shape == (
                 2 * n_qubits,)):
@@ -46,16 +115,30 @@ class CliffordTableau:
 
     @staticmethod
     def from_qiskit_tableau(qiskit_ct: "qiskit.quantum_info.Clifford"):
+        """
+        Create a CliffordTableau from a qiskit Clifford object.
+
+        Args:
+            qiskit_ct (qiskit.quantum_info.Clifford): Clifford object.
+
+        Returns:
+            CliffordTableau: CliffordTableau object.
+        """
         n_qubits = qiskit_ct.num_qubits
         ct = CliffordTableau(n_qubits)
         ct.tableau = qiskit_ct.symplectic_matrix
         ct.signs = qiskit_ct.phase
         return ct
 
-    def to_svg(self):
-        pass
-
     def string_repr(self, sep=" ", sign_sep="| "):
+        """
+        Get a string representation of the tableau.
+
+        Args:
+            sep (str): Separator between the pauli operators
+            sign_sep (str): Separator between operators and sign.
+
+        """
         out = ""
         for i in range(self.n_qubits):
             for j in range(self.n_qubits):
@@ -66,20 +149,46 @@ class CliffordTableau:
         return out
 
     def x_out(self, row, col):
+        """
+        Get the X operator in row `row` and column `col`.
+
+        Args:
+            row (int): Row index.
+            col (int): Column index.
+        """
         return self.tableau[row, col] + \
                2 * self.tableau[row, col + self.n_qubits]
 
     def z_out(self, row, col):
+        """
+        Get the Z operator in row `row` and column `col`.
+
+        Args:
+            row (int): Row index.
+            col (int): Column index.
+        """
         return self.tableau[row + self.n_qubits, col] + \
                2 * self.tableau[row + self.n_qubits, col + self.n_qubits]
 
     def prepend_h(self, qubit):
+        """
+        Prepend a Hadamard gate to the tableau.
+
+        Args:
+            qubit (int): Qubit the hadamard gate is applied to.
+        """
         self.signs[[qubit, self.n_qubits + qubit]] = self.signs[
             [self.n_qubits + qubit, qubit]]
         self.tableau[[self.n_qubits + qubit, qubit], :] = \
             self.tableau[[qubit, self.n_qubits + qubit], :]
 
     def append_h(self, qubit):
+        """
+        Append a Hadamard gate to the tableau.
+
+        Args:
+            qubit (int): Qubit the hadamard gate is applied to.
+        """
         self.signs = (self.signs + self.tableau[:, qubit] * self.tableau[:,
                                                             self.n_qubits + qubit]) % 2
 
@@ -87,6 +196,12 @@ class CliffordTableau:
                                                           [qubit, self.n_qubits + qubit]]
 
     def prepend_s(self, qubit):
+        """
+        Prepend a S gate to the tableau.
+
+        Args:
+            qubit (int): Qubit the S gate is applied to.
+        """
         stabilizer = self.tableau[qubit, :]
         destabilizer = self.tableau[qubit + self.n_qubits, :]
         stab_sign = self.signs[qubit]
@@ -97,6 +212,12 @@ class CliffordTableau:
         self.insert_pauli_row(destabilizer, destab_sign, qubit)
 
     def append_s(self, qubit):
+        """
+        Append a S gate to the tableau.
+
+        Args:
+            qubit (int): Qubit the S gate is applied to.
+        """
         self.signs = (self.signs + self.tableau[:, qubit] *
                       self.tableau[:, self.n_qubits + qubit]) % 2
 
@@ -104,6 +225,13 @@ class CliffordTableau:
                                                   self.tableau[:, qubit]) % 2
 
     def prepend_cnot(self, control, target):
+        """
+        Prepend a CNOT gate to the tableau.
+
+        Args:
+            control (int): Control qubit.
+            target (int): Target qubit.
+        """
         stab_ctrl = self.tableau[control, :]
         stab_target = self.tableau[target, :]
         stab_sign_ctrl = self.signs[control]
@@ -126,6 +254,13 @@ class CliffordTableau:
         self.insert_pauli_row(destab_target, destab_sign_target, target + self.n_qubits)
 
     def append_cnot(self, control, target):
+        """
+        Append a CNOT gate to the tableau.
+
+        Args:
+            control (int): Control qubit.
+            target (int): Target qubit.
+        """
         x_ia = self.tableau[:, control]
         x_ib = self.tableau[:, target]
 
@@ -142,6 +277,15 @@ class CliffordTableau:
         self.signs = (self.signs + x_ia * z_ib * tmp_sum) % 2
 
     def insert_pauli_row(self, pauli, p_sing, row):
+        """
+        Insert a Pauli row into the tableau.
+
+        Args:
+            pauli (np.array): Pauli to be inserted.
+            p_sing (int): Sign of the Pauli.
+            row (int): Row to insert the Pauli.
+
+        """
         for i in range(self.n_qubits):
             if (self.tableau[row, i] + pauli[i]) % 2 == 1:
                 self.tableau[row, i] = (self.tableau[row, i] + 1) % 2
@@ -153,6 +297,16 @@ class CliffordTableau:
             self.signs[row] = (self.signs[row] + 1) % 2
 
     def inverse(self):
+        """
+        Invert the tableau.
+
+
+        Note: this is will create a deep copy of the tableau.
+
+        Returns:
+            CliffordTableau: Inverted tableau.
+
+        """
         n_qubits = self.n_qubits
 
         x2x = self.tableau[:n_qubits, :n_qubits].copy()
@@ -173,6 +327,17 @@ class CliffordTableau:
         return ct_new
 
     def apply(self, other: "CliffordTableau"):
+        """
+        Apply a CliffordTableau to the current tableau.
+
+        Note: this is will create a deep copy of the tableau.
+
+        Args:
+            other (CliffordTableau): CliffordTableau to apply.
+
+        Returns:
+            CliffordTableau: Applied CliffordTableau.
+        """
         new_tableau = np.dot(self.tableau, other.tableau) % 2
 
         phase = np.mod(other.tableau.dot(self.signs) + other.signs, 2)
@@ -214,10 +379,3 @@ class CliffordTableau:
         phase = np.mod(phase + p, 2)
 
         return CliffordTableau.from_tableau(new_tableau, phase)
-
-    def _repr_svg_(self):
-        """
-            Magic method for IPython/Jupyter pretty-printing.
-            See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
-        """
-        return self.to_svg(svg_code_only=True)
