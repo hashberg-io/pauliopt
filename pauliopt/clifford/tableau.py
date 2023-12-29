@@ -24,13 +24,12 @@ def mult_paulis(p1, p2, sign1, sign2, n_qubits):
 
 class CliffordTableau:
     def __init__(self, n_qubits):
-        self.tableau = np.eye(2 * n_qubits)
-        self.signs = np.zeros((2 * n_qubits))
+        self.tableau = np.eye(2 * n_qubits, dtype=np.uint8)
+        self.signs = np.zeros((2 * n_qubits), dtype=np.uint8)
         self.n_qubits = n_qubits
 
     def __str__(self) -> str:
-        out = "T: \n"
-        out += str(self.string_repr) + "\n"
+        out = str(self.string_repr(sep=" "))
         return out
 
     @staticmethod
@@ -53,15 +52,17 @@ class CliffordTableau:
         ct.signs = qiskit_ct.phase
         return ct
 
-    @property
-    def string_repr(self):
+    def to_svg(self):
+        pass
+
+    def string_repr(self, sep=" ", sign_sep="| "):
         out = ""
         for i in range(self.n_qubits):
             for j in range(self.n_qubits):
                 x_str = ["I", "X", "Z", "Y"][int(self.x_out(i, j))]
                 z_str = ["I", "X", "Z", "Y"][int(self.z_out(i, j))]
-                out += f"{x_str}/{z_str}" + " "
-            out += "\n"
+                out += f"{x_str}/{z_str}" + sep
+            out += sign_sep + f"{'+' if self.signs[i] == 0 else '-'} \n"
         return out
 
     def x_out(self, row, col):
@@ -213,3 +214,10 @@ class CliffordTableau:
         phase = np.mod(phase + p, 2)
 
         return CliffordTableau.from_tableau(new_tableau, phase)
+
+    def _repr_svg_(self):
+        """
+            Magic method for IPython/Jupyter pretty-printing.
+            See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
+        """
+        return self.to_svg(svg_code_only=True)

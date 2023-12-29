@@ -234,6 +234,9 @@ class X:
     _angle: AngleExpr
 
     def __init__(self, angle: AngleExpr):
+
+
+
         if not isinstance(angle, AngleExpr):
             raise TypeError(f"angle should be `AngleExpr`, "
                             f"found {angle} of type {type(angle)} instead.")

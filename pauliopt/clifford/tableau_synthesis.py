@@ -1,7 +1,9 @@
 import networkx as nx
 from networkx.algorithms.approximation import steiner_tree
 
+from pauliopt.circuits import Circuit
 from pauliopt.clifford.tableau import CliffordTableau
+from pauliopt.gates import CX, H, S
 from pauliopt.topologies import Topology
 
 
@@ -314,13 +316,7 @@ def synthesize_tableau(tableau: CliffordTableau, topo: Topology, include_swaps=T
 
     """
 
-    try:
-        from qiskit import QuantumCircuit
-    except:
-        raise Exception("Please install qiskit to use this module")
-
-
-    qc = QuantumCircuit(tableau.n_qubits)
+    qc = Circuit(tableau.n_qubits)
 
     remaining = tableau.inverse()
     permutation = {v: v for v in range(tableau.n_qubits)}
@@ -333,7 +329,7 @@ def synthesize_tableau(tableau: CliffordTableau, topo: Topology, include_swaps=T
     def apply(gate_name: str, gate_data: tuple):
         if gate_name == "CNOT":
             remaining.append_cnot(gate_data[0], gate_data[1])
-            qc.cx(gate_data[0], gate_data[1])
+            qc.add_gate(CX(gate_data[0], gate_data[1]))
             if gate_data[0] in swappable_nodes:
                 swappable_nodes.remove(gate_data[0])
             if gate_data[1] in swappable_nodes:
@@ -341,10 +337,10 @@ def synthesize_tableau(tableau: CliffordTableau, topo: Topology, include_swaps=T
             G[gate_data[0]][gate_data[1]]["weight"] = 2
         elif gate_name == "H":
             remaining.append_h(gate_data[0])
-            qc.h(gate_data[0])
+            qc.add_gate(H(gate_data[0]))
         elif gate_name == "S":
             remaining.append_s(gate_data[0])
-            qc.s(gate_data[0])
+            qc.add_gate(S(gate_data[0]))
         else:
             raise Exception("Unknown Gate")
 

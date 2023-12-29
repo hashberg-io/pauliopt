@@ -1,15 +1,16 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from itertools import combinations
 from math import ceil
 
-from pauliopt.phase import pi
-from pauliopt.phase import Z as ZHead
 from pauliopt.phase import X as XHead
+from pauliopt.phase import Z as ZHead
+from pauliopt.phase import pi
 from pauliopt.phase.phase_circuits import PhaseGadget
 
 
 class Gate(ABC):
     """ Base class for quantum gates. """
+
     def __init__(self, *qubits):
         self.qubits = qubits
         self.name = self.__class__.__name__
@@ -29,7 +30,7 @@ class Gate(ABC):
             return n_columns * 20 + 40
 
         vscale = 1.0
-        line_height = int(ceil(30*vscale))
+        line_height = int(ceil(30 * vscale))
         min_qubit = min(self.qubits)
         max_qubit = max(self.qubits)
         text = repr(self)
@@ -108,6 +109,10 @@ class Gate(ABC):
         ]
         return gadgets
 
+    @abstractmethod
+    def to_qiskit(self):
+        pass
+
 
 class PhaseGate(Gate):
     def __init__(self, phase, *qubits):
@@ -135,8 +140,16 @@ class H(Gate):
         hcolor = params['hcolor']
         qubit = self.qubits[0]
         x = base[0] + row_width / 2
-        y = base[1] + (qubit+1)*line_height
-        builder.rect((x, y), 1.5*r, 1.5*r, hcolor)
+        y = base[1] + (qubit + 1) * line_height
+        builder.rect((x, y), 1.5 * r, 1.5 * r, hcolor)
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import HGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return HGate(), self.qubits
 
 
 class X(Gate):
@@ -147,6 +160,14 @@ class X(Gate):
     def decomp(self):
         return [XHead(pi) @ {self.qubits[0]}]
 
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import XGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return XGate(), self.qubits
+
 
 class Z(Gate):
     n_qubits = 1
@@ -155,6 +176,14 @@ class Z(Gate):
     @property
     def decomp(self):
         return [ZHead(pi) @ {self.qubits[0]}]
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import ZGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return ZGate(), self.qubits
 
 
 class Y(Gate):
@@ -166,6 +195,14 @@ class Y(Gate):
         # TODO check this
         return [ZHead(pi) @ {self.qubits[0]}, XHead(pi) @ {self.qubits[0]}]
 
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import YGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return YGate(), self.qubits
+
 
 class S(Gate):
     n_qubits = 1
@@ -174,6 +211,31 @@ class S(Gate):
     @property
     def decomp(self):
         return [ZHead(pi / 2) @ {self.qubits[0]}]
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import SGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return SGate(), self.qubits
+
+
+class Sdg(Gate):
+    n_qubits = 1
+    draw_as_zx = True
+
+    @property
+    def decomp(self):
+        return [ZHead(-pi / 2) @ {self.qubits[0]}]
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import SdgGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return SdgGate(), self.qubits
 
 
 class T(Gate):
@@ -184,6 +246,31 @@ class T(Gate):
     def decomp(self):
         return [ZHead(pi / 4) @ {self.qubits[0]}]
 
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import TGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return TGate(), self.qubits
+
+
+class Tdg(Gate):
+    n_qubits = 1
+    draw_as_zx = True
+
+    @property
+    def decomp(self):
+        return [ZHead(-pi / 4) @ {self.qubits[0]}]
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import TdgGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return TdgGate(), self.qubits
+
 
 class SWAP(Gate):
     n_qubits = 2
@@ -193,6 +280,14 @@ class SWAP(Gate):
     def decomp(self):
         q0, q1 = self.qubits
         return [CX(q0, q1), CX(q1, q0), CX(q0, q1)]
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import SwapGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return SwapGate(), self.qubits
 
 
 class CX(Gate):
@@ -213,11 +308,19 @@ class CX(Gate):
 
         ctrl, trgt = self.qubits
         x = base[0] + row_width / 2
-        y_ctrl = base[1] + (ctrl+1)*line_height
-        y_trgt = base[1] + (trgt+1)*line_height
+        y_ctrl = base[1] + (ctrl + 1) * line_height
+        y_trgt = base[1] + (trgt + 1) * line_height
         builder.line((x, y_ctrl), (x, y_trgt))
         builder.circle((x, y_ctrl), r, zcolor)
         builder.circle((x, y_trgt), r, xcolor)
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import CXGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return CXGate(), self.qubits
 
 
 class CY(Gate):
@@ -227,7 +330,15 @@ class CY(Gate):
     @property
     def decomp(self):
         q0, q1 = self.qubits
-        return [XHead(pi/2) @ {q1}, CZ(q0, q1), XHead(-pi/2) @ {q1}]
+        return [XHead(pi / 2) @ {q1}, CZ(q0, q1), XHead(-pi / 2) @ {q1}]
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import CYGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return CYGate(), self.qubits
 
 
 class CZ(Gate):
@@ -237,7 +348,7 @@ class CZ(Gate):
     @property
     def decomp(self):
         q0, q1 = self.qubits
-        return [ZHead(pi/2) @ {q0, q1}]
+        return [ZHead(pi / 2) @ {q0, q1}]
 
     def draw(self, builder, base, row_width, params):
         r = params['r']
@@ -247,13 +358,21 @@ class CZ(Gate):
 
         ctrl, trgt = self.qubits
         x = base[0] + row_width / 2
-        y_ctrl = base[1] + (ctrl+1)*line_height
-        y_trgt = base[1] + (trgt+1)*line_height
+        y_ctrl = base[1] + (ctrl + 1) * line_height
+        y_trgt = base[1] + (trgt + 1) * line_height
         y_mid = (y_ctrl + y_trgt) / 2
         builder.line((x, y_ctrl), (x, y_trgt))
         builder.circle((x, y_ctrl), r, zcolor)
         builder.circle((x, y_trgt), r, zcolor)
         builder.rect((x, y_mid), r, r, hcolor)
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import CZGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return CZGate(), self.qubits
 
 
 class CCX(Gate):
@@ -264,6 +383,14 @@ class CCX(Gate):
     def decomp(self):
         q0, q1, q2 = self.qubits
         return [H(q2), CCZ(q0, q1, q2), H(q2)]
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import CCXGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return CCXGate(), self.qubits
 
 
 class CCZ(Gate):
@@ -276,8 +403,16 @@ class CCZ(Gate):
 
         for i in range(1, self.n_qubits + 1):
             for qs in combinations(self.qubits, i):
-                gs.append(ZHead(-1 ** len(qs) * pi/2) @ set(qs))
+                gs.append(ZHead(-1 ** len(qs) * pi / 2) @ set(qs))
         return gs
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import CCZGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return CCZGate(), self.qubits
 
 
 class Rx(PhaseGate):
@@ -289,6 +424,14 @@ class Rx(PhaseGate):
         q, = self.qubits
         return [XHead(self.phase) @ {q}]
 
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import RXGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return RXGate(self.phase), self.qubits
+
 
 class Ry(PhaseGate):
     n_qubits = 1
@@ -297,7 +440,15 @@ class Ry(PhaseGate):
     @property
     def decomp(self):
         q, = self.qubits
-        return [XHead(pi/2) @ {q}, ZHead(self.phase) @ {q}, XHead(-pi/2) @ {q}]
+        return [XHead(pi / 2) @ {q}, ZHead(self.phase) @ {q}, XHead(-pi / 2) @ {q}]
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import RYGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return RYGate(self.phase), self.qubits
 
 
 class Rz(PhaseGate):
@@ -308,6 +459,14 @@ class Rz(PhaseGate):
     def decomp(self):
         q, = self.qubits
         return [ZHead(self.phase) @ {q}]
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import RZGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return RZGate(self.phase), self.qubits
 
 
 class CRx(PhaseGate):
@@ -320,6 +479,14 @@ class CRx(PhaseGate):
         q0, q1 = self.qubits
         return [H(q1), CRz(p, q0, q1), H(q1)]
 
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import CRXGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return CRXGate(self.phase), self.qubits
+
 
 class CRy(PhaseGate):
     n_qubits = 2
@@ -329,7 +496,15 @@ class CRy(PhaseGate):
     def decomp(self):
         p = self.phase
         q0, q1 = self.qubits
-        return [XHead(pi/2, q1), CRz(p, q0, q1), XHead(-pi/2, q1)]
+        return [XHead(pi / 2, q1), CRz(p, q0, q1), XHead(-pi / 2, q1)]
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import CRYGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return CRYGate(self.phase), self.qubits
 
 
 class CRz(PhaseGate):
@@ -340,7 +515,15 @@ class CRz(PhaseGate):
     def decomp(self):
         p = self.phase
         q0, q1 = self.qubits
-        return [ZHead(-p/2) @ {q0, q1}, ZHead(p/2) @ {q1}]
+        return [ZHead(-p / 2) @ {q0, q1}, ZHead(p / 2) @ {q1}]
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import CRZGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return CRZGate(self.phase), self.qubits
 
 
 CNOT = CX
@@ -363,11 +546,11 @@ def draw_gadget(builder, base, row_width, params, gadget, text_above=True):
     body = min(gadget.qubits) + 0.5
     x = base[0]
     x_body = x + step
-    y_body = base[1] + (body+1) * line_height
+    y_body = base[1] + (body + 1) * line_height
 
     if len(gadget.qubits) > 1:
         for q in gadget.qubits:
-            y = base[1] + (q+1)*line_height
+            y = base[1] + (q + 1) * line_height
             builder.line((x, y), (x_body, y_body))
             builder.circle((x, y), r, color1)
         builder.line((x_body, y_body), (x_body + step, y_body))
@@ -379,7 +562,7 @@ def draw_gadget(builder, base, row_width, params, gadget, text_above=True):
     else:
         assert len(gadget.qubits) == 1
         q = tuple(gadget.qubits)[0]
-        y = base[1] + (q+1)*line_height
+        y = base[1] + (q + 1) * line_height
         builder.circle((x, y), r, color1)
 
         text_x = x + text_off_x

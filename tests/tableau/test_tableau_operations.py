@@ -7,6 +7,7 @@ from qiskit import QuantumCircuit, transpile
 from pauliopt.clifford.tableau import CliffordTableau
 from pauliopt.clifford.tableau_synthesis import synthesize_tableau
 from pauliopt.topologies import Topology
+from tests.tableau.utils import tableau_from_circuit_prepend, tableau_from_circuit
 from tests.utils import verify_equality, random_hscx_circuit
 
 EXPECTED_STR = """T: 
@@ -17,34 +18,6 @@ I/I I/I I/Z X/Z X/I
 I/I I/I I/Z I/Z X/Z 
 
 """
-
-
-def tableau_from_circuit(tableau, circ: QuantumCircuit):
-    for op in circ:
-        if op.operation.name == "h":
-            tableau.append_h(op.qubits[0].index)
-        elif op.operation.name == "s":
-            tableau.append_s(op.qubits[0].index)
-        elif op.operation.name == "cx":
-            tableau.append_cnot(op.qubits[0].index, op.qubits[1].index)
-        else:
-            raise TypeError(
-                f"Unrecongnized Gate type: {op.operation.name} for Clifford Tableaus")
-    return tableau
-
-
-def tableau_from_circuit_prepend(tableau, circ: QuantumCircuit):
-    for op in circ:
-        if op.operation.name == "h":
-            tableau.prepend_h(op.qubits[0].index)
-        elif op.operation.name == "s":
-            tableau.prepend_s(op.qubits[0].index)
-        elif op.operation.name == "cx":
-            tableau.prepend_cnot(op.qubits[0].index, op.qubits[1].index)
-        else:
-            raise TypeError(
-                f"Unrecongnized Gate type: {op.operation.name} for Clifford Tableaus")
-    return tableau
 
 
 class TestTableauOperations(unittest.TestCase):
@@ -107,7 +80,7 @@ class TestTableauOperations(unittest.TestCase):
         ct = tableau_from_circuit_prepend(ct, circuit)
 
         qc, perm = synthesize_tableau(ct, topo, include_swaps=False)
-
+        qc = qc.to_qiskit()
         self.assertTrue(verify_equality(circuit.reverse_ops(), qc),
                         "The Synthesized circuit does not equal "
                         "to the original with reversed ops")

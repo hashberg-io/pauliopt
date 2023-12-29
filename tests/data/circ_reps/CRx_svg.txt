@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="180" height="140"><path fill="none" stroke="black" d="M 34, 50 L 146, 50"/>
+<text x="0" y="53" font-size="12">0</text>
+<text x="152" y="53" font-size="12">0</text>
+<path fill="none" stroke="black" d="M 34, 80 L 146, 80"/>
+<text x="0" y="83" font-size="12">1</text>
+<text x="152" y="83" font-size="12">1</text>
+<path fill="none" stroke="black" d="M 34, 110 L 146, 110"/>
+<text x="0" y="113" font-size="12">2</text>
+<text x="152" y="113" font-size="12">2</text>
+<rect fill="#FFFFFF" stroke="black" x="34.0" y="45.0" width="112" height="40"/>
+<text x="90.0" y="68.0" font-size="12" text-anchor="middle">CRx(π/2, 0, 1)</text>
+</svg>
