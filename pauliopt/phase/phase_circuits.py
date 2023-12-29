@@ -2,7 +2,7 @@
     This module contains code to create circuits of mixed ZX phase gadgets.
 """
 
-from collections import deque
+from collections import OrderedDict, deque
 from itertools import islice
 from math import ceil, log10
 from typing import (Any, Callable, cast, Collection, Dict, FrozenSet, Iterator, List,
@@ -159,13 +159,14 @@ class PhaseGadget:
                     bitstring[head] = (bitstring[ctrl] + bitstring[trgt])%2
                     steiner_ladder.append((trgt, ctrl))
                 upper_ladder.append((ctrl, trgt))
-        for ctrl, trgt in steiner_ladder + upper_ladder:
+        cnot_ladder = steiner_ladder + upper_ladder
+        for ctrl, trgt in cnot_ladder:
             circuit.cx(ctrl, trgt)
         if self.basis == "Z":
             circuit.rz(self.angle.to_qiskit, q0)
         else:
             circuit.rx(self.angle.to_qiskit, q0)
-        for ctrl, trgt in reversed(steiner_ladder + upper_ladder):
+        for ctrl, trgt in reversed(cnot_ladder):
             circuit.cx(ctrl, trgt)
 
     def print_impl_info(self, topology: Topology) -> None:
@@ -656,6 +657,10 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         self._angles.append(gadget.angle)
         self._gadget_legs_cache[basis].append(tuple(sorted(gadget.qubits)))
         return self
+    
+    def copy(self):
+        gadgets = [PhaseGadget(g.basis, g.angle, list(g.qubits)) for g in self.gadgets]
+        return PhaseCircuit(self.num_qubits, gadgets)
 
     def cx_count(self, topology: Topology, *,
                  mapping: Optional[Union[Sequence[int], Dict[int, int]]] = None, method:Literal["naive", "paritysynth", "steiner-graysynth"]="naive") -> int:
@@ -730,6 +735,47 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         ]
         return PhaseCircuit(self._num_qubits, remapped_gadgets)
 
+    def color_flip(self) -> "PhaseCircuit":
+        """
+            Returns a new phase circuit with the same gadgets but having
+            all basis switched from Z to X and vice versa.
+        """
+        flipped_gadgets = [
+            PhaseGadget("X" if g.basis == "Z" else "Z", g.angle, g.qubits)
+            for g in self.gadgets
+        ]
+        return PhaseCircuit(self._num_qubits, flipped_gadgets)
+
+    def dagger(self) -> "PhaseCircuit":
+        """
+            Returns a new phase circuit with the same gadgets but having
+            all angles negated.
+        """
+        inverted_gadgets = ([
+            PhaseGadget(g.basis, -g.angle, g.qubits)
+            for g in reversed(self.gadgets)
+        ])
+        return PhaseCircuit(self._num_qubits, inverted_gadgets)
+
+    def normalize(self) -> "PhaseCircuit":
+        """ Fuse and reorder gadgets of the same basis. """
+        d = OrderedDict()
+        basis = None
+        circ = PhaseCircuit(self._num_qubits)
+        for g in self.gadgets:
+            if g.basis != basis:
+                for legs, angle in d.items():
+                    circ >>= PhaseGadget(basis, angle, legs)
+                basis = g.basis
+            else:
+                if g.qubits not in d:
+                    d[g.qubits] = 0
+                d[g.qubits] += g.angle
+        for legs, angle in d.items():
+            circ >>= PhaseGadget(basis, angle, legs)
+
+        return circ
+
     def to_qiskit(self, topology:Topology, simplified:bool=True, method:Literal["naive", "paritysynth", "steiner-graysynth"]="naive", cx_synth:Literal["permrowcol", "naive"]="naive", return_cx:bool=False, reallocate:bool=False) -> Any:
         """Generates a qiskit QuantumCircuit equivalent to this PhaseCircuit.
 
@@ -770,18 +816,15 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                 gate.on_qiskit_circuit(topology, circuit)
             else:
                 circuit.cx(*gate)
-        if cx_synth == "naive":
-            pass # Do not resynthesize
-        elif cx_synth == "permrowcol":
-            cxs = CXCircuit.from_parity_matrix(cxs.parity_matrix(), topology)
+        if cx_synth != "naive":
+            cxs = CXCircuit.from_parity_matrix(cxs.parity_matrix(), topology, method=cx_synth, reallocate=reallocate)
         if return_cx:
             return circuit, cxs
-        new_cxs = cxs.to_qiskit(method=cx_synth, reallocate=reallocate)
+        new_cxs = cxs.to_qiskit(method="naive")
         circuit.compose(new_cxs, inplace=True)
-        if reallocate:
-            circuit.metadata = {
-                "final_layout": cxs._output_mapping
-            }
+        circuit.metadata = {
+            "final_layout": new_cxs.metadata["final_layout"]
+        }
         return circuit
 
     def _paritysynth(self, topology:Topology) -> Tuple[List[Union[PhaseGadget, Tuple[int, int]]], CXCircuit]:
@@ -808,6 +851,8 @@ class PhaseCircuit(Sequence[PhaseGadget]):
             raise ModuleNotFoundError("You must install the 'networkx' library.")
         blocks = []
         block = []
+        if len(self.gadgets) == 0:
+            return [], CXCircuit(topology, [])
         basis = self._rev_gadget_idxs[0][0]
         for b, idx in self._rev_gadget_idxs:
             if b == basis:
@@ -912,6 +957,8 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         
         blocks = []
         block = []
+        if len(self.gadgets) == 0:
+            return [], CXCircuit(topology, [])
         basis = self._rev_gadget_idxs[0][0]
         for b, idx in self._rev_gadget_idxs:
             if b == basis:
@@ -939,11 +986,13 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                 place_cnot(trgt, ctrl, "Z")
 
         def ones_recursion(gadgets, subgraph, row, basis):
+            to_remove = []
             for g in gadgets: # Remove trivial gadgets
                 bitstring = idx2bitstring(g, basis)
                 if np.sum(bitstring) == 1:
                     gates.append(PhaseGadget(basis, self._angles[self._gadget_idxs[basis][g]], [q for q in range(topology.num_qubits) if bitstring[q] == 1]))
-                    gadgets.remove(g)
+                    to_remove.append(g)
+            [gadgets.remove(g) for g in to_remove]
             if gadgets:
                 neighbors = [q for q in iter(topology.adjacent(row)) if q in subgraph]
                 n = neighbors[np.argmax([len([g for g in gadgets if idx2bitstring(g, basis)[q] == 1 ]) for q in neighbors])]
@@ -1512,6 +1561,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                angle_subdivision: int = 4,
                min_legs: int = 1,
                max_legs: Optional[int] = None,
+               diagonal: bool = False,
                rng_seed: Optional[int] = None) -> "PhaseCircuit":
         """
             Generates a random circuit of mixed ZX phase gadgets on the given number of qubits,
@@ -1548,7 +1598,10 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                 parametric = lambda i: AngleVar(f"{s}[{i}]", f"{s}_{i}")
         rng = np.random.default_rng(seed=rng_seed)
         angle_rng_seed = int(rng.integers(65536)) # type: ignore[attr-defined]
-        basis_idxs = rng.integers(2, size=num_gadgets) # type: ignore[attr-defined]
+        if diagonal:
+            basis_idxs = np.zeros(num_gadgets, dtype=int)
+        else:
+            basis_idxs = rng.integers(2, size=num_gadgets) # type: ignore[attr-defined]
         num_legs = rng.integers(min_legs, max_legs+1, size=num_gadgets) # type: ignore[attr-defined]
         legs_list: List[npt.NDArray[int]] = [
             rng.choice(num_qubits, num_legs[i], replace=False) for i in range(num_gadgets)

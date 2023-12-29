@@ -602,8 +602,8 @@ class AngleVar(AngleExpr):
 def _validate_vec2(vec2: Tuple[int, int]) -> None:
     if not isinstance(vec2, tuple) or len(vec2) != 2:
         raise TypeError("Expected pair.")
-    if not all(isinstance(x, int) for x in vec2):
-        raise TypeError("Expected pair of integers.")
+    if not all(isinstance(x, (int, float)) for x in vec2):
+        raise TypeError("Expected pair of integers or floats.")
 
 
 class SVGBuilder:
@@ -745,8 +745,22 @@ class SVGBuilder:
         self._tags.append(tag)
         return self
 
-    def text(self, pos: Tuple[int, int], text: str, *,
-             font_size: int = 10) -> "SVGBuilder":
+
+    def rect(self, centre: Tuple[int, int], width: int, height: int, fill: str) -> "SVGBuilder":
+        """
+            Draws a rectangle with given centre, width and height.
+        """
+        _validate_vec2(centre)
+        if not isinstance(fill, str):
+            raise TypeError("Fill must be string.")
+        x, y = centre
+        tag = (f'<rect fill="{fill}" stroke="black"'
+               f' x="{x-width//2}" y="{y-height//2}"'
+               f' width="{width}" height="{height}"/>')
+        self._tags.append(tag)
+        return self
+
+    def text(self, pos: Tuple[int, int], text: str, *, font_size: int = 10, center=False) -> "SVGBuilder":
         """
             Draws text at the given position (stroke/fill not used).
         """
@@ -756,7 +770,9 @@ class SVGBuilder:
         if not isinstance(font_size, int) or font_size <= 0:
             raise TypeError("Font size must be positive integer.")
         x, y = pos
-        tag = f'<text x="{x}" y="{y + font_size // 4}" font-size="{font_size}">{text}</text>'
+        attrs =  f'x="{x}" y="{y+font_size//4}" font-size="{font_size}"'
+        attrs += f' text-anchor="middle"' if center else ""
+        tag = f'<text {attrs}>{text}</text>'
         self._tags.append(tag)
         return self
 
