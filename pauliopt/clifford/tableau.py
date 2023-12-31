@@ -43,11 +43,15 @@ class CliffordTableau:
     2n x 2n binary matrix, where n is the number of qubits. The first n rows
     represent the stabilizers, and the last n rows represent the destabilizers.
     The first n columns represent the X operators, and the last n columns
-    represent the Z operators. The (i, j) entry of the matrix is 1 if the
-    operator in row i anticommutes with the operator in column j, and 0
-    otherwise. The sign of the operator in row i is given by the i-th entry of
-    the sign vector. The sign of the operator in column j is given by the
-    (n + j)-th entry of the sign vector.
+    represent the Z operators.
+    The sign of the operator in row i is given by the i-th entry of
+    the sign vector.
+
+    The tableau is initialized as the identity matrix with a zero sign vector.
+
+    Args:
+        n_qubits (int): Number of qubits in the tableau.
+
 
     A more readable representation of the tableau is given by the string:
     ```python
