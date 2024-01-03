@@ -174,6 +174,23 @@ class CliffordTableau:
         return self.tableau[row + self.n_qubits, col] + \
                2 * self.tableau[row + self.n_qubits, col + self.n_qubits]
 
+    def xor_row(self, i, j):
+        """
+        XOR the value of row j to row i.
+
+        Args:
+            i (int): Row index.
+            j (int): Row index.
+        """
+        row_i = self.tableau[i, :]
+        row_j = self.tableau[j, :]
+        sign_i = self.signs[i]
+        sign_j = self.signs[j]
+
+        n = self.n_qubits
+        row_j, sign_j = mult_paulis(row_i, row_j, sign_i, sign_j, n)
+        self.insert_pauli_row(row_j, sign_j, i)
+
     def prepend_h(self, qubit):
         """
         Prepend a Hadamard gate to the tableau.
@@ -181,10 +198,9 @@ class CliffordTableau:
         Args:
             qubit (int): Qubit the hadamard gate is applied to.
         """
-        self.signs[[qubit, self.n_qubits + qubit]] = self.signs[
-            [self.n_qubits + qubit, qubit]]
-        self.tableau[[self.n_qubits + qubit, qubit], :] = \
-            self.tableau[[qubit, self.n_qubits + qubit], :]
+        idx0, idx1 = qubit, self.n_qubits + qubit
+        self.signs[[idx0, idx1]] = self.signs[[idx1, idx0]]
+        self.tableau[[idx0, idx1], :] = self.tableau[[idx1, idx0], :]
 
     def append_h(self, qubit):
         """
@@ -193,11 +209,10 @@ class CliffordTableau:
         Args:
             qubit (int): Qubit the hadamard gate is applied to.
         """
-        self.signs = (self.signs + self.tableau[:, qubit] * self.tableau[:,
-                                                            self.n_qubits + qubit]) % 2
-
-        self.tableau[:, [self.n_qubits + qubit, qubit]] = self.tableau[:,
-                                                          [qubit, self.n_qubits + qubit]]
+        idx0, idx1 = qubit, self.n_qubits + qubit
+        self.signs += self.tableau[:, idx0] * self.tableau[:, idx1]
+        self.signs %= 2
+        self.tableau[:, [idx0, idx1]] = self.tableau[:, [idx1, idx0]]
 
     def prepend_s(self, qubit):
         """
@@ -206,14 +221,7 @@ class CliffordTableau:
         Args:
             qubit (int): Qubit the S gate is applied to.
         """
-        stabilizer = self.tableau[qubit, :]
-        destabilizer = self.tableau[qubit + self.n_qubits, :]
-        stab_sign = self.signs[qubit]
-        destab_sign = self.signs[qubit + self.n_qubits]
-
-        destabilizer, destab_sign = \
-            mult_paulis(stabilizer, destabilizer, stab_sign, destab_sign, self.n_qubits)
-        self.insert_pauli_row(destabilizer, destab_sign, qubit)
+        self.xor_row(qubit, qubit + self.n_qubits)
 
     def append_s(self, qubit):
         """
@@ -222,11 +230,10 @@ class CliffordTableau:
         Args:
             qubit (int): Qubit the S gate is applied to.
         """
-        self.signs = (self.signs + self.tableau[:, qubit] *
-                      self.tableau[:, self.n_qubits + qubit]) % 2
-
-        self.tableau[:, self.n_qubits + qubit] = (self.tableau[:, self.n_qubits + qubit] +
-                                                  self.tableau[:, qubit]) % 2
+        idx0, idx1 = qubit, self.n_qubits + qubit
+        self.signs += self.tableau[:, idx0] * self.tableau[:, idx1]
+        self.signs %= 2
+        self.tableau[:, idx1] ^= self.tableau[:, idx0]
 
     def prepend_cnot(self, control, target):
         """
@@ -236,26 +243,9 @@ class CliffordTableau:
             control (int): Control qubit.
             target (int): Target qubit.
         """
-        stab_ctrl = self.tableau[control, :]
-        stab_target = self.tableau[target, :]
-        stab_sign_ctrl = self.signs[control]
-        stab_sign_target = self.signs[target]
-
-        destab_ctrl = self.tableau[control + self.n_qubits, :]
-        destab_target = self.tableau[target + self.n_qubits, :]
-        destab_sign_ctrl = self.signs[control + self.n_qubits]
-        destab_sign_target = self.signs[target + self.n_qubits]
-
-        stab_ctrl, stab_sign_ctrl = \
-            mult_paulis(stab_ctrl, stab_target, stab_sign_ctrl, stab_sign_target,
-                        self.n_qubits)
-
-        destab_target, destab_sign_target = \
-            mult_paulis(destab_target, destab_ctrl, destab_sign_target, destab_sign_ctrl,
-                        self.n_qubits)
-
-        self.insert_pauli_row(stab_ctrl, stab_sign_ctrl, control)
-        self.insert_pauli_row(destab_target, destab_sign_target, target + self.n_qubits)
+        self.signs = self.signs.astype(int)
+        self.xor_row(control, target)
+        self.xor_row(target + self.n_qubits, control + self.n_qubits)
 
     def append_cnot(self, control, target):
         """
@@ -271,34 +261,27 @@ class CliffordTableau:
         z_ia = self.tableau[:, self.n_qubits + control]
         z_ib = self.tableau[:, self.n_qubits + target]
 
-        self.tableau[:, target] = \
-            (self.tableau[:, target] + self.tableau[:, control]) % 2
-        self.tableau[:, self.n_qubits + control] = \
-            (self.tableau[:, self.n_qubits + control] + self.tableau[:,
-                                                        self.n_qubits + target]) % 2
+        control_n = control + self.n_qubits
+        target_n = target + self.n_qubits
 
-        tmp_sum = ((x_ib + z_ia) % 2 + np.ones(z_ia.shape)) % 2
-        self.signs = (self.signs + x_ia * z_ib * tmp_sum) % 2
+        self.tableau[:, target] ^= self.tableau[:, control]
+        self.tableau[:, control_n] ^= self.tableau[:, target_n]
 
-    def insert_pauli_row(self, pauli, p_sing, row):
+        self.signs += x_ia * z_ib * (x_ib + z_ia + 1)
+        self.signs %= 2
+
+    def insert_pauli_row(self, pauli, p_sign, row):
         """
         Insert a Pauli row into the tableau.
 
         Args:
             pauli (np.array): Pauli to be inserted.
-            p_sing (int): Sign of the Pauli.
+            p_sign (int): Sign of the Pauli.
             row (int): Row to insert the Pauli.
 
         """
-        for i in range(self.n_qubits):
-            if (self.tableau[row, i] + pauli[i]) % 2 == 1:
-                self.tableau[row, i] = (self.tableau[row, i] + 1) % 2
-
-            if (self.tableau[row, i + self.n_qubits] + pauli[i + self.n_qubits]) % 2 == 1:
-                self.tableau[row, i + self.n_qubits] = (self.tableau[
-                                                            row, i + self.n_qubits] + 1) % 2
-        if (self.signs[row] + p_sing) % 2 == 1:
-            self.signs[row] = (self.signs[row] + 1) % 2
+        self.tableau[row] = pauli.copy()
+        self.signs[row] = p_sign
 
     def inverse(self):
         """
@@ -312,22 +295,22 @@ class CliffordTableau:
 
         """
         n_qubits = self.n_qubits
+        assert self.tableau.shape == (2 * n_qubits, 2 * n_qubits)
 
         x2x = self.tableau[:n_qubits, :n_qubits].copy()
-        z2z = self.tableau[n_qubits:2 * n_qubits, n_qubits:2 * n_qubits].copy()
+        z2z = self.tableau[n_qubits:, n_qubits:].copy()
 
-        x2z = self.tableau[:n_qubits, n_qubits:2 * n_qubits].copy()
-        z2x = self.tableau[n_qubits:2 * n_qubits, :n_qubits].copy()
+        x2z = self.tableau[:n_qubits, n_qubits:].copy()
+        z2x = self.tableau[n_qubits:, :n_qubits].copy()
 
         top_row = np.hstack((z2z.T, x2z.T))
         bottom_row = np.hstack((z2x.T, x2x.T))
         new_tableau = np.vstack((top_row, bottom_row))
 
         ct_new = CliffordTableau.from_tableau(new_tableau, self.signs.copy())
-
         ct_intermediate = self.apply(ct_new)
-
         ct_new.signs = (ct_new.signs + ct_intermediate.signs) % 2
+
         return ct_new
 
     def apply(self, other: "CliffordTableau"):
@@ -342,18 +325,17 @@ class CliffordTableau:
         Returns:
             CliffordTableau: Applied CliffordTableau.
         """
-        new_tableau = np.dot(self.tableau, other.tableau) % 2
+        new_tableau = (self.tableau @ other.tableau) % 2
 
-        phase = np.mod(other.tableau.dot(self.signs) + other.signs, 2)
+        phase = (other.tableau.dot(self.signs) + other.signs) % 2
 
         # Correcting for phase due to Pauli multiplication
         ifacts = np.zeros(2 * self.n_qubits, dtype=int)
 
         for k in range(2 * self.n_qubits):
-
             row2 = other.tableau[k]
-            x2 = other.tableau[k, 0:self.n_qubits]
-            z2 = other.tableau[k, self.n_qubits:2 * self.n_qubits]
+            x2 = other.tableau[k, :self.n_qubits]
+            z2 = other.tableau[k, self.n_qubits:]
 
             # Adding a factor of i for each Y in the image of an operator under the
             # first operation, since Y=iXZ
@@ -370,16 +352,16 @@ class CliffordTableau:
                         x1 = self.tableau[i, j]
                         z1 = self.tableau[i, j + self.n_qubits]
                         if (x == 1 or z == 1) and (x1 == 1 or z1 == 1):
+                            # what's happening here?
                             val = np.mod(np.abs(3 * z1 - x1) - np.abs(3 * z - x) - 1, 3)
                             if val == 0:
                                 ifacts[k] += 1
                             elif val == 1:
                                 ifacts[k] -= 1
-                        x = np.mod(x + x1, 2)
-                        z = np.mod(z + z1, 2)
+                        x ^= x1
+                        z ^= z1
 
         p = np.mod(ifacts, 4) // 2
-
         phase = np.mod(phase + p, 2)
 
         return CliffordTableau.from_tableau(new_tableau, phase)
