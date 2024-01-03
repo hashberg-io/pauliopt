@@ -1,5 +1,4 @@
 import numpy as np
-import qiskit.quantum_info
 
 
 def mult_paulis(p1, p2, sign1, sign2, n_qubits):
@@ -352,7 +351,8 @@ class CliffordTableau:
                         x1 = self.tableau[i, j]
                         z1 = self.tableau[i, j + self.n_qubits]
                         if (x == 1 or z == 1) and (x1 == 1 or z1 == 1):
-                            # what's happening here?
+                            # determine the phase change due to the product of Pauli matrices,
+                            # accounting for the possibilities of i, -i, and no phase change
                             val = np.mod(np.abs(3 * z1 - x1) - np.abs(3 * z - x) - 1, 3)
                             if val == 0:
                                 ifacts[k] += 1
