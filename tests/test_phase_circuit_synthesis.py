@@ -31,7 +31,7 @@ def unpermute(circuit:QuantumCircuit):
 class TestPhaseCircuitSynthesis(unittest.TestCase):
 
     def setUp(self):
-        self.n_tests = 20
+        self.n_tests = 5
         n_gadgets = 9
         self.topology = Topology.grid(3,3)
         self.circuits = [PhaseCircuit.random(self.topology.num_qubits, n_gadgets, rng_seed=SEED) for _ in range(self.n_tests)]

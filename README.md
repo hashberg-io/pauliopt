@@ -103,11 +103,11 @@ You can visualize the tableau with the following code fragment:
 print(ct)
 ```
 
-To synthesize the circuit, you can use the following code fragment (note we have used to topology from above):
+To synthesize the circuit, you can use the following code fragment (note we have used to
+topology from above):
 
 ```python
 from pauliopt.clifford.tableau_synthesis import synthesize_tableau
-
 
 qc, perm = synthesize_tableau(ct, topo, include_swaps=False)
 qc = qc.to_qiskit()
@@ -121,5 +121,7 @@ our `requirements-dev.txt` (
 recommended python: 3.9), then to launch then, run:
 
 ```bash
-python -m unittest discover -s ./tests/ -p "test_*.py"
+python -m unittest discover -s ./tests/ -p "test_*.py" -v 
 ```
+
+(You must run this command from the root directory of the repository.)

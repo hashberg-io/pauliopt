@@ -1,3 +1,4 @@
+import os
 import unittest
 
 from parameterized import parameterized
@@ -32,18 +33,12 @@ class TestCircuitConstruction(unittest.TestCase):
     def test_circuit_representation_cli(self, name, gate):
         circ = Circuit(3).add_gate(gate)
 
-        with open(f"data/circ_reps/{gate.name}_svg.txt", "w") as f:
-            f.write(circ._to_svg(svg_code_only=True))
-
-        with open(f"data/circ_reps/{gate.name}_cli.txt", "w") as f:
-            f.write(circ.__str__())
-
-        with open(f"data/circ_reps/{gate.name}_cli.txt", "r") as f:
+        with open(f"{os.getcwd()}/tests/data/circ_reps/{gate.name}_cli.txt", "r") as f:
             self.assertEqual(f.read(), circ.__str__(),
                              f"The CLI representation of {gate.name} "
                              f"is incorrect or changed!")
 
-        with open(f"data/circ_reps/{gate.name}_svg.txt", "r") as f:
+        with open(f"{os.getcwd()}/tests/data/circ_reps/{gate.name}_svg.txt", "r") as f:
             self.assertEqual(f.read(), circ._to_svg(svg_code_only=True),
                              f"The SVG representation of {gate.name} "
                              f"is incorrect or changed!")

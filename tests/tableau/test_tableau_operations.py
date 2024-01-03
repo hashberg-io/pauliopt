@@ -1,3 +1,4 @@
+import os
 import unittest
 
 import numpy as np
@@ -84,7 +85,6 @@ class TestTableauOperations(unittest.TestCase):
         ct.append_cnot(2, 4)
         ct.append_cnot(3, 4)
 
-        with open("./data/clifford/representation.txt", "w") as f:
-            f.write(str(ct))
-            # self.assertEqual(str(ct), f.read(),
-            #                  "The string representation of the tableau is incorrect")
+        with open(f"{os.getcwd()}/tests/data/clifford/representation.txt", "r") as f:
+            self.assertEqual(str(ct), f.read(),
+                             "The string representation of the tableau is incorrect")

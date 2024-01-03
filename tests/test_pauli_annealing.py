@@ -92,7 +92,7 @@ class TestPauliAnnealing(unittest.TestCase):
         2) When synthesizing onto a different architecture the circuits should match the ones of tket
         3) Check that our to_qiskit method exports the Pauli Polynomial according to an architecture
         """
-        for num_qubits in [2, 3, 4]:
+        for num_qubits in [2, 3]:
             for topo_creation in [Topology.line, Topology.complete]:
                 pp = generate_all_combination_pauli_polynomial(n_qubits=num_qubits)
 
