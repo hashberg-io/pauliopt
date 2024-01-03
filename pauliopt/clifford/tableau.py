@@ -173,9 +173,9 @@ class CliffordTableau:
         return self.tableau[row + self.n_qubits, col] + \
                2 * self.tableau[row + self.n_qubits, col + self.n_qubits]
 
-    def xor_row(self, i, j):
+    def _xor_row(self, i, j):
         """
-        XOR the value of row j to row i.
+        XOR the value of row j to row i and adjust the signs accordingly.
 
         Args:
             i (int): Row index.
@@ -220,7 +220,7 @@ class CliffordTableau:
         Args:
             qubit (int): Qubit the S gate is applied to.
         """
-        self.xor_row(qubit, qubit + self.n_qubits)
+        self._xor_row(qubit, qubit + self.n_qubits)
 
     def append_s(self, qubit):
         """
@@ -243,8 +243,8 @@ class CliffordTableau:
             target (int): Target qubit.
         """
         self.signs = self.signs.astype(int)
-        self.xor_row(control, target)
-        self.xor_row(target + self.n_qubits, control + self.n_qubits)
+        self._xor_row(control, target)
+        self._xor_row(target + self.n_qubits, control + self.n_qubits)
 
     def append_cnot(self, control, target):
         """

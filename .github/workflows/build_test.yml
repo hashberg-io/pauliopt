@@ -34,5 +34,6 @@ jobs:
           pip install --upgrade pip
           pip install .
           pip install -r requirements-dev.txt
-          python -m unittest discover -s ./tests/ -p "test_*.py"
+          cd tests
+          python -m unittest discover -s . -p "test_*.py"
 
