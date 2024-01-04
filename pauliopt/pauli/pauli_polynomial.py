@@ -87,7 +87,7 @@ class PauliPolynomial:
         # width of the text of the phases # TODO round floats (!!)
         text_width = int(math.ceil(50 * vscale))
 
-        bend_degree = int(math.ceil(10))
+        bend_degree = 10
 
         # margins between the angle and the legs
         margin_angle_x = int(math.ceil(20 * hscale))
@@ -97,12 +97,10 @@ class PauliPolynomial:
         margin_x = int(math.ceil(10 * hscale))
         margin_y = int(math.ceil(10 * hscale))
 
-        font_size = int(10)
-
         width = num_gadgets * (
                 square_width + margin_x + margin_angle_x + text_width) + margin_x
         height = (num_qubits) * (square_height + margin_y) + (
-                square_height + margin_y + margin_angle_y)
+                square_height + margin_y + margin_angle_y) + margin_y
 
         builder = SVGBuilder(width, height)
         builder = builder.add_diagonal_fill(x_color, z_color, y_color)
@@ -115,7 +113,8 @@ class PauliPolynomial:
             paulis = gadget.paulis
             y = margin_y
             text_coords = (square_width + margin_x + margin_angle_x + x, y)
-            text_left_lower_corder = (text_coords[0], text_coords[1] + square_height)
+            text_lower_mid = (text_coords[0] + square_width,
+                              text_coords[1] + square_height)
             for qubit in range(num_qubits):
                 if qubit == 0:
                     y += square_height + margin_y + margin_angle_y
@@ -128,7 +127,7 @@ class PauliPolynomial:
                 builder.line((prev_x[qubit], y + square_height // 2),
                              (x, y + square_height // 2))
                 prev_x[qubit] = x + square_width
-                builder.line_bend(text_left_lower_corder, center_coords,
+                builder.line_bend(text_lower_mid, center_coords,
                                   degree=qubit * bend_degree)
                 if paulis[qubit] == X:
                     builder.square((x, y), square_width, square_height, x_color)
@@ -140,6 +139,7 @@ class PauliPolynomial:
             builder = builder.text_with_square(text_coords, text_width, square_height,
                                                str(gadget.angle))
             x += square_width + margin_x + text_width + margin_angle_x
+
         y = margin_y
         for qubit in range(num_qubits):
             if qubit == 0:
