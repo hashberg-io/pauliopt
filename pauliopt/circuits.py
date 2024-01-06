@@ -12,7 +12,8 @@ from pauliopt.gates import Gate
 
 
 class Circuit:
-    """ Class for representing quantum circuits. """
+    """Class for representing quantum circuits."""
+
     def __init__(self, n_qubits, _gates=None):
         self.n_qubits = n_qubits
         self._gates = [] if _gates is None else _gates
@@ -31,6 +32,7 @@ class Circuit:
 
     def to_phase_circuit(self):
         from pauliopt.phase import Circuit as PhaseCircuit
+
         gadgets = [g for gate in self._gates for g in gate.gadgets]
         return PhaseCircuit(self.n_qubits, gadgets)
 
@@ -48,14 +50,17 @@ class Circuit:
     def __repr__(self) -> str:
         return f"Circuit({self.n_qubits}, {self._gates})"
 
-    def _to_svg(self, *,
-                zcolor: str = "#CCFFCC",
-                xcolor: str = "#FF8888",
-                hcolor: str = "#FFFF00",
-                hscale: float = 1.0, vscale: float = 1.0,
-                scale: float = 1.0,
-                svg_code_only: bool = False
-                ):
+    def _to_svg(
+        self,
+        *,
+        zcolor: str = "#CCFFCC",
+        xcolor: str = "#FF8888",
+        hcolor: str = "#FFFF00",
+        hscale: float = 1.0,
+        vscale: float = 1.0,
+        scale: float = 1.0,
+        svg_code_only: bool = False,
+    ):
         # pylint: disable = too-many-locals, too-many-statements, too-many-branches
         num_qubits = self.n_qubits
         vscale *= scale
@@ -69,35 +74,35 @@ class Circuit:
         for gate in gates:
             m = min(gate.qubits)
             M = max(gate.qubits)
-            d = max(_layers[q] for q in range(m, M+1))
+            d = max(_layers[q] for q in range(m, M + 1))
             ds.append(d)
-            max_gates_depth = max(max_gates_depth, d+1)
-            for q in range(m, M+1):
-                _layers[q] = d+1
+            max_gates_depth = max(max_gates_depth, d + 1)
+            for q in range(m, M + 1):
+                _layers[q] = d + 1
 
-            gate_width = getattr(gate, 'width', int(ceil(40*hscale)))
+            gate_width = getattr(gate, "width", int(ceil(40 * hscale)))
             row_widths[d] = max(row_widths[d], gate_width)
         num_digits = int(ceil(log10(num_qubits)))
-        line_height = int(ceil(30*vscale))
-        pad_x = int(ceil(10*hscale))
-        pad_y = int(ceil(20*vscale))
+        line_height = int(ceil(30 * vscale))
+        pad_x = int(ceil(10 * hscale))
+        pad_y = int(ceil(20 * vscale))
         r = 6
         total_gate_width = sum(row_widths)
-        font_size = 2*r
-        pad_x += font_size*(num_digits+1)
+        font_size = 2 * r
+        pad_x += font_size * (num_digits + 1)
         width = total_gate_width
-        height = pad_y + line_height*(num_qubits+1)
+        height = pad_y + line_height * (num_qubits + 1)
         builder = SVGBuilder(width, height)
         row_pos = np.cumsum([pad_x] + row_widths).tolist()
 
         params = {
-            'text_off': (10 * hscale, -10 * vscale),
-            'zcolor': zcolor,
-            'xcolor': xcolor,
-            'hcolor': hcolor,
-            'line_height': line_height,
-            'font_size': font_size,
-            'r': r,
+            "text_off": (10 * hscale, -10 * vscale),
+            "zcolor": zcolor,
+            "xcolor": xcolor,
+            "hcolor": hcolor,
+            "line_height": line_height,
+            "font_size": font_size,
+            "r": r,
         }
 
         # draw gate
@@ -109,11 +114,11 @@ class Circuit:
         width = pad_x + total_gate_width + pad_x
         _builder = SVGBuilder(width, height)
         for q in range(num_qubits):
-            y = pad_y + (q+1) * line_height
+            y = pad_y + (q + 1) * line_height
             txt = f"{str(q):>{num_digits}}"
-            _builder.line((pad_x, y), (width-pad_x, y))
+            _builder.line((pad_x, y), (width - pad_x, y))
             _builder.text((0, y), txt, font_size=font_size)
-            _builder.text((width-pad_x+r, y), txt, font_size=font_size)
+            _builder.text((width - pad_x + r, y), txt, font_size=font_size)
         _builder >>= builder
         svg_code = repr(_builder)
         if svg_code_only:

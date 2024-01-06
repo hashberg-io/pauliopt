@@ -10,20 +10,27 @@ from pytket.extensions.qiskit.qiskit_convert import tk_to_qiskit, qiskit_to_tk
 from pytket._tket.pauli import Pauli
 from qiskit import QuantumCircuit
 
-from pauliopt.pauli.clifford_gates import CX, CY, CZ, H, S, V, generate_random_clifford, CliffordType, CliffordGate, \
-    ControlGate, SingleQubitGate, clifford_to_qiskit
+from pauliopt.pauli.clifford_gates import (
+    CX,
+    CY,
+    CZ,
+    H,
+    S,
+    V,
+    generate_random_clifford,
+    CliffordType,
+    CliffordGate,
+    ControlGate,
+    SingleQubitGate,
+    clifford_to_qiskit,
+)
 from pauliopt.pauli.pauli_gadget import PPhase
 from pauliopt.pauli.pauli_polynomial import PauliPolynomial
 from pauliopt.pauli.utils import X, Y, Z, I
 
 from pauliopt.topologies import Topology
 
-PAULI_TO_TKET = {
-    X: Pauli.X,
-    Y: Pauli.Y,
-    Z: Pauli.Z,
-    I: Pauli.I
-}
+PAULI_TO_TKET = {X: Pauli.X, Y: Pauli.Y, Z: Pauli.Z, I: Pauli.I}
 
 
 def tket_to_qiskit(circuit: pytket.Circuit) -> QuantumCircuit:
@@ -34,9 +41,11 @@ def pauli_poly_to_tket(pp: PauliPolynomial):
     circuit = pytket.Circuit(pp.num_qubits)
     for gadget in pp.pauli_gadgets:
         circuit.add_pauliexpbox(
-            PauliExpBox([PAULI_TO_TKET[p] for p in gadget.paulis],
-                        gadget.angle / np.pi),
-            list(range(pp.num_qubits)))
+            PauliExpBox(
+                [PAULI_TO_TKET[p] for p in gadget.paulis], gadget.angle / np.pi
+            ),
+            list(range(pp.num_qubits)),
+        )
     Transform.DecomposeBoxes().apply(circuit)
     return tket_to_qiskit(circuit)
 
@@ -52,8 +61,9 @@ def verify_equality(qc_in, qc_out):
         from qiskit.quantum_info import Statevector
     except:
         raise Exception("Please install qiskit to compare to quantum circuits")
-    return Statevector.from_instruction(qc_in) \
-        .equiv(Statevector.from_instruction(qc_out))
+    return Statevector.from_instruction(qc_in).equiv(
+        Statevector.from_instruction(qc_out)
+    )
 
 
 def generate_all_combination_pauli_polynomial(n_qubits=2):
@@ -68,7 +78,10 @@ def check_matching_architecture(qc: QuantumCircuit, G: nx.Graph):
     for gate in qc:
         if gate.operation.num_qubits == 2:
             ctrl, target = gate.qubits
-            ctrl, target = ctrl._index, target._index  # TODO refactor this to a non deprecated way
+            ctrl, target = (
+                ctrl._index,
+                target._index,
+            )  # TODO refactor this to a non deprecated way
             if not G.has_edge(ctrl, target):
                 return False
     return True
@@ -100,12 +113,19 @@ class TestPauliConversion(unittest.TestCase):
                 topology = topo_creation(pp.num_qubits)
                 tket_pp = pauli_poly_to_tket(pp)
                 our_synth = pp.to_qiskit(topology)
-                self.assertTrue(verify_equality(tket_pp, our_synth),
-                                "The resulting Quantum Circuits were not equivalent")
-                self.assertTrue(check_matching_architecture(our_synth, topology.to_nx),
-                                "The Pauli Polynomial did not match the architecture")
-                self.assertEqual(get_two_qubit_count(our_synth), pp.two_qubit_count(topology),
-                                 "Two qubit count needs to be equivalent to to two qubit count of the circuit")
+                self.assertTrue(
+                    verify_equality(tket_pp, our_synth),
+                    "The resulting Quantum Circuits were not equivalent",
+                )
+                self.assertTrue(
+                    check_matching_architecture(our_synth, topology.to_nx),
+                    "The Pauli Polynomial did not match the architecture",
+                )
+                self.assertEqual(
+                    get_two_qubit_count(our_synth),
+                    pp.two_qubit_count(topology),
+                    "Two qubit count needs to be equivalent to to two qubit count of the circuit",
+                )
 
     def test_gate_propagation(self):
         """
@@ -114,13 +134,21 @@ class TestPauliConversion(unittest.TestCase):
         for num_qubits in [2, 3, 4]:
             pp = generate_all_combination_pauli_polynomial(n_qubits=num_qubits)
             inital_qc = pp.to_qiskit()
-            for gate_class in [CliffordType.CX, CliffordType.CY, CliffordType.CZ,
-                               CliffordType.H, CliffordType.S, CliffordType.V]:
+            for gate_class in [
+                CliffordType.CX,
+                CliffordType.CY,
+                CliffordType.CZ,
+                CliffordType.H,
+                CliffordType.S,
+                CliffordType.V,
+            ]:
                 gate = generate_random_clifford(gate_class, num_qubits)
                 pp_ = pp.copy().propagate(gate)
                 qc = QuantumCircuit(num_qubits)
                 qc.compose(clifford_to_qiskit(gate).inverse(), inplace=True)
                 qc.compose(pp_.to_qiskit(), inplace=True)
                 qc.compose(clifford_to_qiskit(gate), inplace=True)
-                self.assertTrue(verify_equality(inital_qc, qc),
-                                "The resulting Quantum Circuits were not equivalent")
+                self.assertTrue(
+                    verify_equality(inital_qc, qc),
+                    "The resulting Quantum Circuits were not equivalent",
+                )

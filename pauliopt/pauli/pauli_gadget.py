@@ -123,12 +123,12 @@ class PauliGadget:
                 raise Exception(f"unknown column type: {column[pauli_idx]}")
 
         if len(cnot_ladder) > 0:
-            for (pauli_idx, target) in reversed(cnot_ladder):
+            for pauli_idx, target in reversed(cnot_ladder):
                 circ.cx(pauli_idx, target)
 
             circ.rz(self.angle, q0)
 
-            for (pauli_idx, target) in cnot_ladder:
+            for pauli_idx, target in cnot_ladder:
                 circ.cx(pauli_idx, target)
         else:
             target = np.argmax(column_binary)

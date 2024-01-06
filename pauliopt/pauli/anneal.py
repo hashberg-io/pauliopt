@@ -1,6 +1,10 @@
 import numpy as np
 
-from pauliopt.pauli.clifford_gates import CliffordGate, CliffordType, generate_random_clifford
+from pauliopt.pauli.clifford_gates import (
+    CliffordGate,
+    CliffordType,
+    generate_random_clifford,
+)
 from pauliopt.pauli.clifford_region import CliffordRegion
 from pauliopt.pauli.pauli_polynomial import PauliPolynomial
 from pauliopt.phase.optimized_circuits import _validate_temp_schedule
@@ -16,17 +20,20 @@ def pick_random_gate(num_qubits, gate_set=None):
     return generate_random_clifford(gate, num_qubits)
 
 
-def compute_effect(pp: PauliPolynomial, gate: CliffordGate, topology: Topology,
-                   leg_cache=None):
+def compute_effect(
+    pp: PauliPolynomial, gate: CliffordGate, topology: Topology, leg_cache=None
+):
     pp_ = pp.copy()
     pp_.propagate(gate)
 
     return pp_.two_qubit_count(topology, leg_cache=leg_cache) - pp.two_qubit_count(
-        topology, leg_cache=leg_cache)
+        topology, leg_cache=leg_cache
+    )
 
 
-def anneal(pp: PauliPolynomial, topology, schedule=("geometric", 1.0, 0.1),
-           nr_iterations=100):
+def anneal(
+    pp: PauliPolynomial, topology, schedule=("geometric", 1.0, 0.1), nr_iterations=100
+):
     leg_cache = {}
     clifford_region = CliffordRegion(pp.num_qubits)
 

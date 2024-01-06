@@ -16,12 +16,7 @@ from pauliopt.pauli.pauli_polynomial import PauliPolynomial
 from pauliopt.pauli.utils import X, Y, Z, I
 from pauliopt.topologies import Topology
 
-PAULI_TO_TKET = {
-    X: Pauli.X,
-    Y: Pauli.Y,
-    Z: Pauli.Z,
-    I: Pauli.I
-}
+PAULI_TO_TKET = {X: Pauli.X, Y: Pauli.Y, Z: Pauli.Z, I: Pauli.I}
 
 
 def tket_to_qiskit(circuit: pytket.Circuit) -> QuantumCircuit:
@@ -32,9 +27,11 @@ def pauli_poly_to_tket(pp: PauliPolynomial):
     circuit = pytket.Circuit(pp.num_qubits)
     for gadget in pp.pauli_gadgets:
         circuit.add_pauliexpbox(
-            PauliExpBox([PAULI_TO_TKET[p] for p in gadget.paulis],
-                        gadget.angle / np.pi),
-            list(range(pp.num_qubits)))
+            PauliExpBox(
+                [PAULI_TO_TKET[p] for p in gadget.paulis], gadget.angle / np.pi
+            ),
+            list(range(pp.num_qubits)),
+        )
     Transform.DecomposeBoxes().apply(circuit)
     return tket_to_qiskit(circuit)
 
@@ -50,8 +47,9 @@ def verify_equality(qc_in, qc_out):
         from qiskit.quantum_info import Statevector
     except:
         raise Exception("Please install qiskit to compare to quantum circuits")
-    return Statevector.from_instruction(qc_in) \
-        .equiv(Statevector.from_instruction(qc_out))
+    return Statevector.from_instruction(qc_in).equiv(
+        Statevector.from_instruction(qc_out)
+    )
 
 
 def generate_all_combination_pauli_polynomial(n_qubits=2):
@@ -66,7 +64,10 @@ def check_matching_architecture(qc: QuantumCircuit, G: nx.Graph):
     for gate in qc:
         if gate.operation.num_qubits == 2:
             ctrl, target = gate.qubits
-            ctrl, target = ctrl._index, target._index  # TODO refactor this to a non deprecated way
+            ctrl, target = (
+                ctrl._index,
+                target._index,
+            )  # TODO refactor this to a non deprecated way
             if not G.has_edge(ctrl, target):
                 return False
     return True
@@ -99,5 +100,7 @@ class TestPauliAnnealing(unittest.TestCase):
                 tket_pp = pauli_poly_to_tket(pp)
                 our_synth = anneal(pp, topology)
 
-                self.assertTrue(verify_equality(tket_pp, our_synth),
-                                "The annealing version returned a wrong circuit")
+                self.assertTrue(
+                    verify_equality(tket_pp, our_synth),
+                    "The annealing version returned a wrong circuit",
+                )

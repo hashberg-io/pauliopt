@@ -24,4 +24,8 @@ class TestPauliConversion(unittest.TestCase):
         pp_ = PauliPolynomial(num_qubits=4)
         pp_ >> pp
 
-        self.assertEqual(pp.__repr__(), pp_.__repr__(), "Right shift resulted in different pauli Polynomials.")
+        self.assertEqual(
+            pp.__repr__(),
+            pp_.__repr__(),
+            "Right shift resulted in different pauli Polynomials.",
+        )
