@@ -55,7 +55,8 @@ class ControlGate(CliffordGate, ABC):
         pauli_size = len(gadget)
         if self.control >= pauli_size or self.target >= pauli_size:
             raise Exception(
-                f"Control: {self.control} or Target {self.target} out of bounds: {pauli_size}")
+                f"Control: {self.control} or Target {self.target} out of bounds: {pauli_size}"
+            )
         p_string = gadget.paulis[self.control].value + gadget.paulis[self.target].value
         p_c, p_t, phase_change = self.rules[p_string]
         gadget.paulis[self.control] = p_c
@@ -65,96 +66,93 @@ class ControlGate(CliffordGate, ABC):
 
 
 class CX(ControlGate):
-    rules = {'XX': (X, I, 1),
-             'XY': (Y, Z, 1),
-             'XZ': (Y, Y, -1),
-             'XI': (X, X, 1),
-             'YX': (Y, I, 1),
-             'YY': (X, Z, -1),
-             'YZ': (X, Y, 1),
-             'YI': (Y, X, 1),
-             'ZX': (Z, X, 1),
-             'ZY': (I, Y, 1),
-             'ZZ': (I, Z, 1),
-             'ZI': (Z, I, 1),
-             'IX': (I, X, 1),
-             'IY': (Z, Y, 1),
-             'IZ': (Z, Z, 1),
-             'II': (I, I, 1)}
+    rules = {
+        "XX": (X, I, 1),
+        "XY": (Y, Z, 1),
+        "XZ": (Y, Y, -1),
+        "XI": (X, X, 1),
+        "YX": (Y, I, 1),
+        "YY": (X, Z, -1),
+        "YZ": (X, Y, 1),
+        "YI": (Y, X, 1),
+        "ZX": (Z, X, 1),
+        "ZY": (I, Y, 1),
+        "ZZ": (I, Z, 1),
+        "ZI": (Z, I, 1),
+        "IX": (I, X, 1),
+        "IY": (Z, Y, 1),
+        "IZ": (Z, Z, 1),
+        "II": (I, I, 1),
+    }
 
     def __init__(self, control, target):
         super().__init__(CliffordType.CX, control, target)
 
 
 class CZ(ControlGate):
-    rules = {'XX': (Y, Y, 1),
-             'XY': (Y, X, -1),
-             'XZ': (X, I, 1),
-             'XI': (X, Z, 1),
-             'YX': (X, Y, -1),
-             'YY': (X, X, 1),
-             'YZ': (Y, I, 1),
-             'YI': (Y, Z, 1),
-             'ZX': (I, X, 1),
-             'ZY': (I, Y, 1),
-             'ZZ': (Z, Z, 1),
-             'ZI': (Z, I, 1),
-             'IX': (Z, X, 1),
-             'IY': (Z, Y, 1),
-             'IZ': (I, Z, 1),
-             'II': (I, I, 1)}
+    rules = {
+        "XX": (Y, Y, 1),
+        "XY": (Y, X, -1),
+        "XZ": (X, I, 1),
+        "XI": (X, Z, 1),
+        "YX": (X, Y, -1),
+        "YY": (X, X, 1),
+        "YZ": (Y, I, 1),
+        "YI": (Y, Z, 1),
+        "ZX": (I, X, 1),
+        "ZY": (I, Y, 1),
+        "ZZ": (Z, Z, 1),
+        "ZI": (Z, I, 1),
+        "IX": (Z, X, 1),
+        "IY": (Z, Y, 1),
+        "IZ": (I, Z, 1),
+        "II": (I, I, 1),
+    }
 
     def __init__(self, control, target):
         super().__init__(CliffordType.CZ, control, target)
 
 
 class CY(ControlGate):
-    rules = {'XX': (Y, Z, -1),
-             'XY': (X, I, 1),
-             'XZ': (Y, X, 1),
-             'XI': (X, Y, 1),
-             'YX': (X, Z, 1),
-             'YY': (Y, I, 1),
-             'YZ': (X, X, -1),
-             'YI': (Y, Y, 1),
-             'ZX': (I, X, 1),
-             'ZY': (Z, Y, 1),
-             'ZZ': (I, Z, 1),
-             'ZI': (Z, I, 1),
-             'IX': (Z, X, 1),
-             'IY': (I, Y, 1),
-             'IZ': (Z, Z, 1),
-             'II': (I, I, 1)}
+    rules = {
+        "XX": (Y, Z, -1),
+        "XY": (X, I, 1),
+        "XZ": (Y, X, 1),
+        "XI": (X, Y, 1),
+        "YX": (X, Z, 1),
+        "YY": (Y, I, 1),
+        "YZ": (X, X, -1),
+        "YI": (Y, Y, 1),
+        "ZX": (I, X, 1),
+        "ZY": (Z, Y, 1),
+        "ZZ": (I, Z, 1),
+        "ZI": (Z, I, 1),
+        "IX": (Z, X, 1),
+        "IY": (I, Y, 1),
+        "IZ": (Z, Z, 1),
+        "II": (I, I, 1),
+    }
 
     def __init__(self, control, target):
         super().__init__(CliffordType.CY, control, target)
 
 
 class H(SingleQubitGate):
-    rules = {'X': (Z, 1),
-             'Y': (Y, -1),
-             'Z': (X, 1),
-             'I': (I, 1)}
+    rules = {"X": (Z, 1), "Y": (Y, -1), "Z": (X, 1), "I": (I, 1)}
 
     def __init__(self, qubit):
         super().__init__(CliffordType.H, qubit)
 
 
 class S(SingleQubitGate):
-    rules = {'X': (Y, -1),
-             'Y': (X, 1),
-             'Z': (Z, 1),
-             'I': (I, 1)}
+    rules = {"X": (Y, -1), "Y": (X, 1), "Z": (Z, 1), "I": (I, 1)}
 
     def __init__(self, qubit):
         super().__init__(CliffordType.S, qubit)
 
 
 class V(SingleQubitGate):
-    rules = {'X': (X, 1),
-             'Y': (Z, -1),
-             'Z': (Y, 1),
-             'I': (I, 1)}
+    rules = {"X": (X, 1), "Y": (Z, -1), "Z": (Y, 1), "I": (I, 1)}
 
     def __init__(self, qubit):
         super().__init__(CliffordType.V, qubit)

@@ -11,10 +11,16 @@ class CliffordRegion:
     def add_gate(self, gate: CliffordGate):
         if isinstance(gate, SingleQubitGate) and gate.qubit >= self.num_qubits:
             raise Exception(
-                f"Gate with {gate.qubit} is out of bounds for Clifford Region with Qubits: {self.num_qubits}")
-        if isinstance(gate, ControlGate) and gate.control >= self.num_qubits and gate.target >= self.num_qubits:
+                f"Gate with {gate.qubit} is out of bounds for Clifford Region with Qubits: {self.num_qubits}"
+            )
+        if (
+            isinstance(gate, ControlGate)
+            and gate.control >= self.num_qubits
+            and gate.target >= self.num_qubits
+        ):
             raise Exception(
-                f"Control Gate  with {gate.control}, {gate.target} is out of bounds for Clifford Region with Qubits: {self.num_qubits}")
+                f"Control Gate  with {gate.control}, {gate.target} is out of bounds for Clifford Region with Qubits: {self.num_qubits}"
+            )
         self.gates.append(gate)
 
     def to_qiskit(self):

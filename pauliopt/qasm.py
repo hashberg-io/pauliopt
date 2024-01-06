@@ -4,13 +4,23 @@
 
 from fractions import Fraction
 import re
-from typing import cast, Dict, Iterator, List, Optional, overload, Sequence, Tuple, Union
+from typing import (
+    cast,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    overload,
+    Sequence,
+    Tuple,
+    Union,
+)
 from pauliopt.utils import Angle
 
 
 def assert_same_size_targets(*trgts: "QASM.RegTarget"):
     """
-        Asserts that all register targets have the same size.
+    Asserts that all register targets have the same size.
     """
     size: Optional[int] = None
     for trgt in trgts:
@@ -19,14 +29,16 @@ def assert_same_size_targets(*trgts: "QASM.RegTarget"):
         if size is None:
             size = trgt.size
         elif size != trgt.size:
-            raise ValueError(f"Expected all targets of size {size}, "
-                             f"found a target of size {trgt.size} instead.")
+            raise ValueError(
+                f"Expected all targets of size {size}, "
+                f"found a target of size {trgt.size} instead."
+            )
 
 
 class QASM(Sequence["QASM.Statement"]):
     """
-        QASM program.
-        Based on the QASM spec from [arXiv: 1707.03429](https://arxiv.org/abs/1707.03429)
+    QASM program.
+    Based on the QASM spec from [arXiv: 1707.03429](https://arxiv.org/abs/1707.03429)
     """
 
     _statements: Tuple["QASM.Statement", ...]
@@ -46,8 +58,10 @@ class QASM(Sequence["QASM.Statement"]):
                 version_declared = True
                 continue
             if not version_declared and not isinstance(s, QASM.Comment):
-                raise ValueError(f"The first non-comment statement must be the OPENQASM version"
-                                 f"declaration. Instead, found: '{s}'")
+                raise ValueError(
+                    f"The first non-comment statement must be the OPENQASM version"
+                    f"declaration. Instead, found: '{s}'"
+                )
             if isinstance(s, (QASM.QReg, QASM.CReg)):
                 if s.name in self._registers:
                     raise ValueError(f"Repeated register declaration: {s.name}")
@@ -61,17 +75,21 @@ class QASM(Sequence["QASM.Statement"]):
 
     @property
     def num_qubits(self) -> int:
-        """ Number of qubits in this circuit. """
-        return sum(reg.size for reg in self._registers.values() if isinstance(reg, QASM.QReg))
+        """Number of qubits in this circuit."""
+        return sum(
+            reg.size for reg in self._registers.values() if isinstance(reg, QASM.QReg)
+        )
 
     @property
     def num_bits(self) -> int:
-        """ Number of bits in this circuit. """
-        return sum(reg.size for reg in self._registers.values() if isinstance(reg, QASM.CReg))
+        """Number of bits in this circuit."""
+        return sum(
+            reg.size for reg in self._registers.values() if isinstance(reg, QASM.CReg)
+        )
 
     @property
     def registers(self) -> Iterator[Union["QASM.QReg", "QASM.CReg"]]:
-        """ Iterator over the registers of this QASM program. """
+        """Iterator over the registers of this QASM program."""
         return (reg for _, reg in self._registers.items())
 
     def __iter__(self) -> Iterator["QASM.Statement"]:
@@ -92,25 +110,25 @@ class QASM(Sequence["QASM.Statement"]):
         return self._statements[idx]
 
     def __str__(self) -> str:
-        return "\n".join(str(statement) for statement in self)+"\n"
+        return "\n".join(str(statement) for statement in self) + "\n"
 
     class Statement:
-        """ QASM statement. """
+        """QASM statement."""
 
         @property
         def registers(self) -> Sequence["QASM.Reg"]:
-            """ List of registers involved in this statement. """
+            """List of registers involved in this statement."""
             return []
 
         @staticmethod
         def parse(line: str) -> "QASM.Statement":
             """
-                Attempts to parse a QASM statement from a line of code.
+            Attempts to parse a QASM statement from a line of code.
             """
             ...
 
     class Version(Statement):
-        """ QASM version statement. """
+        """QASM version statement."""
 
         _version: str
 
@@ -121,14 +139,14 @@ class QASM(Sequence["QASM.Statement"]):
 
         @property
         def version(self) -> str:
-            """ QASM version. """
+            """QASM version."""
             return self._version
 
         def __str__(self):
             return f"OPENQASM {self.version};"
 
     class Reg(Statement):
-        """ Register. """
+        """Register."""
 
         _name: str
         _size: int
@@ -143,21 +161,21 @@ class QASM(Sequence["QASM.Statement"]):
 
         @property
         def registers(self) -> Sequence["QASM.Reg"]:
-            """ List of registers involved in this statement. """
+            """List of registers involved in this statement."""
             return [self]
 
         @property
         def name(self):
-            """ Register name. """
+            """Register name."""
             return self._name
 
         @property
         def size(self):
-            """ Register size. """
+            """Register size."""
             return self._size
 
     class QReg(Reg):
-        """ Quantum register. """
+        """Quantum register."""
 
         def __init__(self, name: str, size: int):
             super().__init__(name, size)
@@ -171,7 +189,7 @@ class QASM(Sequence["QASM.Statement"]):
             return self.name == other.name and self.size == other.size
 
     class CReg(Reg):
-        """ Classical register. """
+        """Classical register."""
 
         def __init__(self, name: str, size: int):
             super().__init__(name, size)
@@ -185,7 +203,7 @@ class QASM(Sequence["QASM.Statement"]):
             return self.name == other.name and self.size == other.size
 
     class Include(Statement):
-        """ QASM include statement. """
+        """QASM include statement."""
 
         _filename: str
 
@@ -196,14 +214,14 @@ class QASM(Sequence["QASM.Statement"]):
 
         @property
         def filename(self) -> str:
-            """ Filename. """
+            """Filename."""
             return self._filename
 
         def __str__(self):
-            return f"include \"{self.filename}\";"
+            return f'include "{self.filename}";'
 
     class Comment(Statement):
-        """ QASM comment statement. """
+        """QASM comment statement."""
 
         _text: str
 
@@ -214,19 +232,21 @@ class QASM(Sequence["QASM.Statement"]):
 
         @property
         def text(self) -> str:
-            """ Comment text. """
+            """Comment text."""
             return self._text
 
         def __str__(self):
             return f"// {self.text}"
 
     class RegTarget:
-        """ A qreg or creg target. """
+        """A qreg or creg target."""
 
         _register: Union["QASM.QReg", "QASM.CReg"]
         _pos: Optional[int]
 
-        def __init__(self, register: Union["QASM.QReg", "QASM.CReg"], pos: Optional[int] = None):
+        def __init__(
+            self, register: Union["QASM.QReg", "QASM.CReg"], pos: Optional[int] = None
+        ):
             if not isinstance(register, (QASM.QReg, QASM.CReg)):
                 raise TypeError(f"Invalid register {register}")
             if pos is not None and (not isinstance(pos, int) or pos < 0):
@@ -236,22 +256,22 @@ class QASM(Sequence["QASM.Statement"]):
 
         @property
         def registers(self) -> Sequence["QASM.Reg"]:
-            """ List of registers involved in this statement. """
+            """List of registers involved in this statement."""
             return [self.register]
 
         @property
         def register(self) -> Union["QASM.QReg", "QASM.CReg"]:
-            """ Register. """
+            """Register."""
             return self._register
 
         @property
         def pos(self) -> Optional[int]:
-            """ Optional register position. """
+            """Optional register position."""
             return self._pos
 
         @property
         def size(self):
-            """ Size of this target"""
+            """Size of this target"""
             return 1 if self.pos is not None else self.register.size
 
         def __str__(self):
@@ -260,7 +280,7 @@ class QASM(Sequence["QASM.Statement"]):
             return f"{self.register.name}"
 
     class QRegTarget(RegTarget):
-        """ A qreg target. """
+        """A qreg target."""
 
         def __init__(self, register: "QASM.QReg", pos: Optional[int] = None):
             if not isinstance(register, QASM.QReg):
@@ -269,11 +289,11 @@ class QASM(Sequence["QASM.Statement"]):
 
         @property
         def register(self) -> "QASM.QReg":
-            """ Register. """
+            """Register."""
             return cast(QASM.QReg, self._register)
 
     class CRegTarget(RegTarget):
-        """ A creg target. """
+        """A creg target."""
 
         def __init__(self, register: "QASM.CReg", pos: Optional[int] = None):
             if not isinstance(register, QASM.CReg):
@@ -282,19 +302,20 @@ class QASM(Sequence["QASM.Statement"]):
 
         @property
         def register(self) -> "QASM.CReg":
-            """ Register. """
+            """Register."""
             return cast(QASM.CReg, self._register)
 
     class UGate(Statement):
-        """ Statement for a U3 gate. """
+        """Statement for a U3 gate."""
 
         _theta: Angle
         _phi: Angle
         _lam: Angle
         _qubit: "QASM.QRegTarget"
 
-        def __init__(self, theta: Angle, phi: Angle, lam: Angle,
-                     qubit: "QASM.QRegTarget"):
+        def __init__(
+            self, theta: Angle, phi: Angle, lam: Angle, qubit: "QASM.QRegTarget"
+        ):
             if not isinstance(theta, Angle):
                 raise TypeError(f"Invalid angle expression {theta}")
             if not isinstance(phi, Angle):
@@ -310,37 +331,39 @@ class QASM(Sequence["QASM.Statement"]):
 
         @property
         def registers(self) -> Sequence["QASM.Reg"]:
-            """ List of registers involved in this statement. """
+            """List of registers involved in this statement."""
             return [self.qubit.register]
 
         @property
         def theta(self) -> Angle:
-            """ Theta angle for the U3 gate. """
+            """Theta angle for the U3 gate."""
             return self._theta
 
         @property
         def phi(self) -> Angle:
-            """ Phi angle for the U3 gate. """
+            """Phi angle for the U3 gate."""
             return self._phi
 
         @property
         def lam(self) -> Angle:
-            """ Lambda angle for the U3 gate. """
+            """Lambda angle for the U3 gate."""
             return self._lam
 
         @property
         def qubit(self) -> "QASM.QRegTarget":
-            """ Qubit/qreg for the U3 gate. """
+            """Qubit/qreg for the U3 gate."""
             return self._qubit
 
         def __str__(self):
-            return (f"U({QASM._angle_str(self.theta)}, "
-                    f"{QASM._angle_str(self.phi)}, "
-                    f"{QASM._angle_str(self.lam)})"
-                    f" {self.qubit};")
+            return (
+                f"U({QASM._angle_str(self.theta)}, "
+                f"{QASM._angle_str(self.phi)}, "
+                f"{QASM._angle_str(self.lam)})"
+                f" {self.qubit};"
+            )
 
     class CXGate(Statement):
-        """ Statement for a CX gate. """
+        """Statement for a CX gate."""
 
         _control: "QASM.QRegTarget"
         _target: "QASM.QRegTarget"
@@ -352,29 +375,35 @@ class QASM(Sequence["QASM.Statement"]):
                 raise TypeError(f"Invalid qubit/qreg {target}")
             self._control = control
             self._target = target
-            if control.pos is None and target.pos is None and control.size != target.size:
-                raise ValueError(f"Mismatched register sizes: {control.size} vs {target.size}.")
+            if (
+                control.pos is None
+                and target.pos is None
+                and control.size != target.size
+            ):
+                raise ValueError(
+                    f"Mismatched register sizes: {control.size} vs {target.size}."
+                )
 
         @property
         def registers(self) -> Sequence["QASM.Reg"]:
-            """ List of registers involved in this statement. """
+            """List of registers involved in this statement."""
             return [self.control.register, self.target.register]
 
         @property
         def control(self) -> "QASM.QRegTarget":
-            """ Control qubit/qreg for the CX gate. """
+            """Control qubit/qreg for the CX gate."""
             return self._control
 
         @property
         def target(self) -> "QASM.QRegTarget":
-            """ Target qubit/qreg for the CX gate. """
+            """Target qubit/qreg for the CX gate."""
             return self._target
 
         def __str__(self):
             return f"CX {self.control} {self.target};"
 
     class Measure(Statement):
-        """ Statement for a measurement. """
+        """Statement for a measurement."""
 
         _qubit: "QASM.QRegTarget"
         _bit: "QASM.CRegTarget"
@@ -390,24 +419,24 @@ class QASM(Sequence["QASM.Statement"]):
 
         @property
         def registers(self) -> Sequence["QASM.Reg"]:
-            """ List of registers involved in this statement. """
+            """List of registers involved in this statement."""
             return [self.qubit.register, self.bit.register]
 
         @property
         def qubit(self) -> "QASM.QRegTarget":
-            """ Qubit/qreg to be measured. """
+            """Qubit/qreg to be measured."""
             return self._qubit
 
         @property
         def bit(self) -> "QASM.CRegTarget":
-            """ Bit/creg to store measurement outcome. """
+            """Bit/creg to store measurement outcome."""
             return self._bit
 
         def __str__(self):
             return f"measure {self.qubit} -> {self.bit};"
 
     class Reset(Statement):
-        """ Statement for a reset. """
+        """Statement for a reset."""
 
         _qubit: "QASM.QRegTarget"
 
@@ -418,36 +447,41 @@ class QASM(Sequence["QASM.Statement"]):
 
         @property
         def registers(self) -> Sequence["QASM.Reg"]:
-            """ List of registers involved in this statement. """
+            """List of registers involved in this statement."""
             return [self.qubit.register]
 
         @property
         def qubit(self) -> "QASM.QRegTarget":
-            """ Qubit/qreg to be measured. """
+            """Qubit/qreg to be measured."""
             return self._qubit
 
         def __str__(self):
             return f"reset {self.qubit};"
 
     class Gate(Statement):
-        """ Statement for a named gate. """
+        """Statement for a named gate."""
 
         _name: str
         _params: Tuple[Angle, ...]
         _targets: Tuple["QASM.RegTarget", ...]
 
-        def __init__(self, name: str,
-                     targets: Sequence["QASM.RegTarget"],
-                     params: Sequence[Angle] = tuple()):
+        def __init__(
+            self,
+            name: str,
+            targets: Sequence["QASM.RegTarget"],
+            params: Sequence[Angle] = tuple(),
+        ):
             if not isinstance(name, str) or not name:
                 raise TypeError(f"Invalid gate name {name}")
-            if (not isinstance(targets, Sequence)
-                    or not all(isinstance(p, QASM.RegTarget) for p in targets)):
+            if not isinstance(targets, Sequence) or not all(
+                isinstance(p, QASM.RegTarget) for p in targets
+            ):
                 raise TypeError(f"Invalid sequence of register targets: {targets}")
             if not targets:
                 raise TypeError("Empty sequence of register targets.")
-            if (not isinstance(params, Sequence)
-                    or not all(isinstance(p, Angle) for p in params)):
+            if not isinstance(params, Sequence) or not all(
+                isinstance(p, Angle) for p in params
+            ):
                 raise TypeError(f"Invalid sequence of angle parameters: {params}")
             self._name = name
             self._params = tuple(params)
@@ -456,64 +490,67 @@ class QASM(Sequence["QASM.Statement"]):
 
         @property
         def registers(self) -> Sequence["QASM.Reg"]:
-            """ List of registers involved in this statement. """
+            """List of registers involved in this statement."""
             return [t.register for t in self.targets]
 
         @property
         def name(self) -> str:
-            """ Name for this gate. """
+            """Name for this gate."""
             return self._name
 
         @property
         def params(self) -> Tuple[Angle, ...]:
-            """ Tuple of angle parameters for this gate. """
+            """Tuple of angle parameters for this gate."""
             return self._params
 
         @property
         def targets(self) -> Tuple["QASM.RegTarget", ...]:
-            """ Tuple of register targets for this gate. """
+            """Tuple of register targets for this gate."""
             return self._targets
 
         def __str__(self):
             if self.params:
-                return (f"{self.name}({', '.join(QASM._angle_str(p) for p in self.params)}) "
-                        f"{', '.join(str(t) for t in self.targets)};")
-            return (f"{self.name} "
-                    f"{', '.join(str(t) for t in self.targets)};")
+                return (
+                    f"{self.name}({', '.join(QASM._angle_str(p) for p in self.params)}) "
+                    f"{', '.join(str(t) for t in self.targets)};"
+                )
+            return f"{self.name} " f"{', '.join(str(t) for t in self.targets)};"
 
     class Barrier(Statement):
-        """ Statement for a barrier. """
+        """Statement for a barrier."""
 
         _targets: Tuple["QASM.QRegTarget", ...]
 
         def __init__(self, targets: Sequence["QASM.QRegTarget"]):
-            if (not isinstance(targets, Sequence)
-                    or not all(isinstance(p, QASM.QRegTarget) for p in targets)):
+            if not isinstance(targets, Sequence) or not all(
+                isinstance(p, QASM.QRegTarget) for p in targets
+            ):
                 raise TypeError(f"Invalid sequence of register targets: {targets}")
             self._targets = tuple(targets)
 
         @property
         def registers(self) -> Sequence["QASM.Reg"]:
-            """ List of registers involved in this statement. """
+            """List of registers involved in this statement."""
             return [t.register for t in self.targets]
 
         @property
         def targets(self) -> Tuple["QASM.RegTarget", ...]:
-            """ Tuple of register targets for this barrier. """
+            """Tuple of register targets for this barrier."""
             return self._targets
 
         def __str__(self):
             return f"barrier {', '.join(str(t) for t in self.targets)};"
 
     class Conditional(Statement):
-        """ Statement for a conditional statement. """
+        """Statement for a conditional statement."""
 
         _register: "QASM.CReg"
         _value: int
         _statement: "QASM.Statement"
 
-        def __init__(self, register: "QASM.CReg", value: int,
-                     statement: "QASM.Statement"):
+        def __init__(
+            self, register: "QASM.CReg", value: int, statement: "QASM.Statement"
+        ):
             if not isinstance(register, QASM.CReg):
                 raise TypeError(f"Invalid classical register {register}")
             if not isinstance(value, int) or not 0 <= value < 2**register.size:
@@ -526,22 +563,22 @@ class QASM(Sequence["QASM.Statement"]):
 
         @property
         def registers(self) -> Sequence["QASM.Reg"]:
-            """ List of registers involved in this statement. """
-            return list(self.statement.registers)+[self.register]
+            """List of registers involved in this statement."""
+            return list(self.statement.registers) + [self.register]
 
         @property
         def register(self) -> "QASM.CReg":
-            """ The register being tested in this conditional statement. """
+            """The register being tested in this conditional statement."""
             return self._register
 
         @property
         def value(self) -> int:
-            """ The register value being tested in this conditional statement. """
+            """The register value being tested in this conditional statement."""
             return self._value
 
         @property
         def statement(self) -> "QASM.Statement":
-            """ The statement to execute if the given creg has the given value. """
+            """The statement to execute if the given creg has the given value."""
             return self._statement
 
         def __str__(self):
@@ -556,8 +593,8 @@ class QASM(Sequence["QASM.Statement"]):
         if num == 1:
             if den == 1:
                 return "pi"
-            return "pi/%d"%den
-        return "%d*pi/%d"%(num, den)
+            return "pi/%d" % den
+        return "%d*pi/%d" % (num, den)
 
     @staticmethod
     def _parse_angle(angle_str: str) -> Angle:
@@ -586,8 +623,10 @@ class QASM(Sequence["QASM.Statement"]):
         if match:
             return Angle(Fraction(int(match[1]), int(match[2])))
         # TODO: implement angle approximation
-        raise ValueError(f"Only fractional multiples of pi are accepted as angles."
-                         f"Instead, found '{angle_str}'")
+        raise ValueError(
+            f"Only fractional multiples of pi are accepted as angles."
+            f"Instead, found '{angle_str}'"
+        )
 
     @staticmethod
     def _parse_comment(line: str) -> "QASM.Comment":
@@ -600,8 +639,10 @@ class QASM(Sequence["QASM.Statement"]):
     @staticmethod
     def _parse_include(tokens: List[str]) -> "QASM.Include":
         if len(tokens) != 2:
-            raise ValueError(f"Expected exactly 2 statement tokens for include statement. "
-                             f"Instead, found {tokens}")
+            raise ValueError(
+                f"Expected exactly 2 statement tokens for include statement. "
+                f"Instead, found {tokens}"
+            )
         pattern = re.compile(r"\"(.+)\"")
         match = pattern.fullmatch(tokens[1])
         if not match:
@@ -611,8 +652,10 @@ class QASM(Sequence["QASM.Statement"]):
     @staticmethod
     def _parse_qreg(tokens: List[str]) -> "QASM.QReg":
         if len(tokens) != 2:
-            raise ValueError(f"Expected exactly 2 statement tokens for qreg statement. "
-                             f"Instead, found {tokens}")
+            raise ValueError(
+                f"Expected exactly 2 statement tokens for qreg statement. "
+                f"Instead, found {tokens}"
+            )
         pattern = re.compile(r"([a-zA-Z0-9]+)\[(.+)\]")
         match = pattern.fullmatch(tokens[1])
         if not match:
@@ -622,8 +665,10 @@ class QASM(Sequence["QASM.Statement"]):
     @staticmethod
     def _parse_creg(tokens: List[str]) -> "QASM.CReg":
         if len(tokens) != 2:
-            raise ValueError(f"Expected exactly 2 statement tokens for creg statement. "
-                             f"Instead, found {tokens}")
+            raise ValueError(
+                f"Expected exactly 2 statement tokens for creg statement. "
+                f"Instead, found {tokens}"
+            )
         pattern = re.compile(r"([a-zA-Z0-9]+)\[(.+)\]")
         match = pattern.fullmatch(tokens[1])
         if not match:
@@ -631,8 +676,9 @@ class QASM(Sequence["QASM.Statement"]):
         return QASM.CReg(match[1], int(match[2]))
 
     @staticmethod
-    def _parse_qreg_target(token: str,
-                           qregs: Dict[str, "QASM.QReg"]) -> "QASM.QRegTarget":
+    def _parse_qreg_target(
+        token: str, qregs: Dict[str, "QASM.QReg"]
+    ) -> "QASM.QRegTarget":
         if token in qregs:
             return QASM.QRegTarget(qregs[token])
         pattern = re.compile(r"([a-zA-Z0-9]+)\[(.+)\]")
@@ -642,8 +688,9 @@ class QASM(Sequence["QASM.Statement"]):
         return QASM.QRegTarget(qregs[match[1]], int(match[2]))
 
     @staticmethod
-    def _parse_creg_target(token: str,
-                           cregs: Dict[str, "QASM.CReg"]) -> "QASM.CRegTarget":
+    def _parse_creg_target(
+        token: str, cregs: Dict[str, "QASM.CReg"]
+    ) -> "QASM.CRegTarget":
         if token in cregs:
             return QASM.CRegTarget(cregs[token])
         pattern = re.compile(r"([a-zA-Z0-9]+)\[(.+)\]")
@@ -653,9 +700,9 @@ class QASM(Sequence["QASM.Statement"]):
         return QASM.CRegTarget(cregs[match[1]], int(match[2]))
 
     @staticmethod
-    def _parse_reg_target(token: str,
-                          qregs: Dict[str, "QASM.QReg"],
-                          cregs: Dict[str, "QASM.CReg"]) -> "QASM.RegTarget":
+    def _parse_reg_target(
+        token: str, qregs: Dict[str, "QASM.QReg"], cregs: Dict[str, "QASM.CReg"]
+    ) -> "QASM.RegTarget":
         if token in qregs:
             return QASM.QRegTarget(qregs[token])
         if token in cregs:
@@ -671,16 +718,20 @@ class QASM(Sequence["QASM.Statement"]):
     @staticmethod
     def _parse_u(tokens: List[str], qregs: Dict[str, "QASM.QReg"]) -> "QASM.UGate":
         if len(tokens) != 2:
-            raise ValueError(f"Expected exactly 2 statement tokens for U gate statement. "
-                             f"Instead, found {tokens}")
+            raise ValueError(
+                f"Expected exactly 2 statement tokens for U gate statement. "
+                f"Instead, found {tokens}"
+            )
         pattern = re.compile(r"U\((.+)\)")
         match = pattern.fullmatch(tokens[0])
         if not match:
             raise ValueError(f"Invalid first token for U gate statement: '{tokens[0]}'")
         params = match[1].split(",")
         if len(params) != 3:
-            raise ValueError(f"Expected exactly 3 parameter tokens for U gate statement. "
-                             f"Instead, found {params}")
+            raise ValueError(
+                f"Expected exactly 3 parameter tokens for U gate statement. "
+                f"Instead, found {params}"
+            )
         angles = [QASM._parse_angle(p) for p in params]
         qubit = QASM._parse_qreg_target(tokens[1], qregs)
         return QASM.UGate(angles[0], angles[1], angles[2], qubit)
@@ -688,27 +739,35 @@ class QASM(Sequence["QASM.Statement"]):
     @staticmethod
     def _parse_cx(tokens: List[str], qregs: Dict[str, "QASM.QReg"]) -> "QASM.CXGate":
         if len(tokens) != 2:
-            raise ValueError(f"Expected exactly 2 statement tokens for CX gate statement. "
-                             f"Instead, found {tokens}")
+            raise ValueError(
+                f"Expected exactly 2 statement tokens for CX gate statement. "
+                f"Instead, found {tokens}"
+            )
         qreg_targets = tokens[1].split(",")
         if len(qreg_targets) != 2:
-            raise ValueError(f"Expected exactly 2 qreg target tokens for CX gate statement. "
-                             f"Instead, found {qreg_targets}")
+            raise ValueError(
+                f"Expected exactly 2 qreg target tokens for CX gate statement. "
+                f"Instead, found {qreg_targets}"
+            )
         ctrl = QASM._parse_qreg_target(qreg_targets[0], qregs)
         trgt = QASM._parse_qreg_target(qreg_targets[1], qregs)
         return QASM.CXGate(ctrl, trgt)
 
     @staticmethod
-    def _parse_measure(tokens: List[str],
-                       qregs: Dict[str, "QASM.QReg"],
-                       cregs: Dict[str, "QASM.CReg"]) -> "QASM.Measure":
+    def _parse_measure(
+        tokens: List[str], qregs: Dict[str, "QASM.QReg"], cregs: Dict[str, "QASM.CReg"]
+    ) -> "QASM.Measure":
         if len(tokens) != 2:
-            raise ValueError(f"Expected exactly 2 statement tokens for measure statement. "
-                             f"Instead, found {tokens}")
+            raise ValueError(
+                f"Expected exactly 2 statement tokens for measure statement. "
+                f"Instead, found {tokens}"
+            )
         targets = tokens[1].split("->")
         if len(targets) != 2:
-            raise ValueError(f"Expected exactly 2 target tokens for measure statement. "
-                             f"Instead, found {targets}")
+            raise ValueError(
+                f"Expected exactly 2 target tokens for measure statement. "
+                f"Instead, found {targets}"
+            )
         qubit = QASM._parse_qreg_target(targets[0], qregs)
         bit = QASM._parse_creg_target(targets[1], cregs)
         return QASM.Measure(qubit, bit)
@@ -716,45 +775,61 @@ class QASM(Sequence["QASM.Statement"]):
     @staticmethod
     def _parse_reset(tokens: List[str], qregs: Dict[str, "QASM.QReg"]) -> "QASM.Reset":
         if len(tokens) != 2:
-            raise ValueError(f"Expected exactly 2 statement tokens for reset statement. "
-                             f"Instead, found {tokens}")
+            raise ValueError(
+                f"Expected exactly 2 statement tokens for reset statement. "
+                f"Instead, found {tokens}"
+            )
         qubit = QASM._parse_qreg_target(tokens[1], qregs)
         return QASM.Reset(qubit)
 
     @staticmethod
-    def _parse_barrier(tokens: List[str], qregs: Dict[str, "QASM.QReg"]) -> "QASM.Barrier":
+    def _parse_barrier(
+        tokens: List[str], qregs: Dict[str, "QASM.QReg"]
+    ) -> "QASM.Barrier":
         if len(tokens) != 2:
-            raise ValueError(f"Expected exactly 2 statement tokens for barrier statement. "
-                             f"Instead, found {tokens}")
+            raise ValueError(
+                f"Expected exactly 2 statement tokens for barrier statement. "
+                f"Instead, found {tokens}"
+            )
         qreg_targets = tokens[1].split(",")
         if not qreg_targets:
-            raise ValueError(f"Expected at least one qreg target token for barrier statement. "
-                             f"Instead, found {qreg_targets}")
+            raise ValueError(
+                f"Expected at least one qreg target token for barrier statement. "
+                f"Instead, found {qreg_targets}"
+            )
         qubits = [QASM._parse_qreg_target(t, qregs) for t in qreg_targets]
         return QASM.Barrier(qubits)
 
     @staticmethod
-    def _parse_conditional(tokens: List[str],
-                           qregs: Dict[str, "QASM.QReg"],
-                           cregs: Dict[str, "QASM.CReg"]) -> "QASM.Conditional":
+    def _parse_conditional(
+        tokens: List[str], qregs: Dict[str, "QASM.QReg"], cregs: Dict[str, "QASM.CReg"]
+    ) -> "QASM.Conditional":
         if len(tokens) < 2:
-            raise ValueError(f"Expected at least 2 statement tokens for conditional statement. "
-                             f"Instead, found {tokens}")
+            raise ValueError(
+                f"Expected at least 2 statement tokens for conditional statement. "
+                f"Instead, found {tokens}"
+            )
         pattern = re.compile(r"if\((.+)==(.+)\)")
         match = pattern.fullmatch(tokens[0])
         if not match:
-            raise ValueError(f"Invalid first token for conditional statement: '{tokens[0]}'")
+            raise ValueError(
+                f"Invalid first token for conditional statement: '{tokens[0]}'"
+            )
         register = cregs[match[1]]
         value = int(match[2])
-        return QASM.Conditional(register, value, QASM._parse_statement(tokens[1:], qregs, cregs))
+        return QASM.Conditional(
+            register, value, QASM._parse_statement(tokens[1:], qregs, cregs)
+        )
 
     @staticmethod
-    def _parse_gate(tokens: List[str],
-                    qregs: Dict[str, "QASM.QReg"],
-                    cregs: Dict[str, "QASM.CReg"]) -> "QASM.Gate":
+    def _parse_gate(
+        tokens: List[str], qregs: Dict[str, "QASM.QReg"], cregs: Dict[str, "QASM.CReg"]
+    ) -> "QASM.Gate":
         if len(tokens) != 2:
-            raise ValueError(f"Expected exactly 2 statement tokens for named gate statement. "
-                             f"Instead, found {tokens}")
+            raise ValueError(
+                f"Expected exactly 2 statement tokens for named gate statement. "
+                f"Instead, found {tokens}"
+            )
         pattern = re.compile(r"([a-zA-Z0-9]+)\((.+)\)")
         match = pattern.fullmatch(tokens[0])
         if match:
@@ -766,15 +841,17 @@ class QASM(Sequence["QASM.Statement"]):
         angles = [QASM._parse_angle(p) for p in params]
         target_tokens = tokens[1].split(",")
         if len(target_tokens) == 0:
-            raise ValueError(f"Expected at least one target token for named gate statement. "
-                             f"Instead, found {target_tokens}")
+            raise ValueError(
+                f"Expected at least one target token for named gate statement. "
+                f"Instead, found {target_tokens}"
+            )
         targets = [QASM._parse_reg_target(t, qregs, cregs) for t in target_tokens]
         return QASM.Gate(name, targets, angles)
 
     @staticmethod
-    def _parse_statement(tokens: List[str],
-                         qregs: Dict[str, "QASM.QReg"],
-                         cregs: Dict[str, "QASM.CReg"]) -> "QASM.Statement":
+    def _parse_statement(
+        tokens: List[str], qregs: Dict[str, "QASM.QReg"], cregs: Dict[str, "QASM.CReg"]
+    ) -> "QASM.Statement":
         # pylint: disable = too-many-return-statements
         if tokens[0] == "OPENQASM":
             return QASM._parse_version(tokens)
@@ -808,7 +885,7 @@ class QASM(Sequence["QASM.Statement"]):
 
     @staticmethod
     def parse(program: str):
-        """ Parses a QASM program into a `QASM` object. """
+        """Parses a QASM program into a `QASM` object."""
         # pylint: disable = too-many-branches, too-many-statements
         if not isinstance(program, str):
             raise TypeError("Expected a string.")
@@ -838,9 +915,11 @@ class QASM(Sequence["QASM.Statement"]):
                 # TODO: implement opaque gate definition statements
                 continue
             if not line.endswith(";"):
-                raise ValueError(f"Statements should be terminated by semicolon. "
-                                 f"Instead, found: {line}")
-            line = line[:-1] # remove final semicolon
+                raise ValueError(
+                    f"Statements should be terminated by semicolon. "
+                    f"Instead, found: {line}"
+                )
+            line = line[:-1]  # remove final semicolon
             tokens: List[str] = line.split(" ")
             tokens = [t for t in tokens if len(t) != 0]
             try:
@@ -848,6 +927,7 @@ class QASM(Sequence["QASM.Statement"]):
             except ValueError as _:
                 raise ValueError(f"An error arose while parsing line: {line}")
         return QASM(*statements)
+
 
 # # Some testing:
 # code = """
