@@ -17,12 +17,10 @@ setuptools.setup(
         "Natural Language :: English",
         "Typing :: Typed",
     ],
-    package_data={"": [],
-                  "pauliopt": ["pauliopt/py.typed"],
-                  },
+    package_data={
+        "": [],
+        "pauliopt": ["pauliopt/py.typed"],
+    },
     include_package_data=True,
-    install_requires=[
-        "networkx",
-        "numpy"
-    ],
+    install_requires=["networkx", "numpy"],
 )

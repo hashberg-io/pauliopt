@@ -900,9 +900,7 @@ def geometric_temp_schedule(
         raise TypeError(f"Expected int or float, found {type(t_final)}.")
 
     def temp_schedule(it: int, num_iters: int) -> float:
-        return t_init * (
-            (t_final / t_init) ** (it / (num_iters - 1.0))
-        )  # type: ignore[no-any-return]
+        return t_init * ((t_final / t_init) ** (it / (num_iters - 1.0)))  # type: ignore[no-any-return]
 
     return temp_schedule
 
@@ -954,12 +952,14 @@ StandardTempScheduleName = Literal["linear", "geometric", "reciprocal", "log"]
     Names of the standard temperature schedules.
 """
 
+
 StandardTempSchedule = Tuple[
     StandardTempScheduleName, Union[int, float], Union[int, float]
 ]
 """
     Type for standard temperature schedules.
 """
+
 
 StandardTempSchedules: Final[
     Mapping[StandardTempScheduleName, TempScheduleProvider]

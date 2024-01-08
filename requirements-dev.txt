@@ -6,3 +6,4 @@ qiskit==0.39.0
 galois==0.3.7
 parameterized==0.9.0
 notebook==7.0.6
+black==23.12.1

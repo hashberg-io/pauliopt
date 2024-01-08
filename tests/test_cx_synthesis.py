@@ -38,21 +38,32 @@ def unpermute(circuit: QuantumCircuit):
 
 class TestCXSynthesis(unittest.TestCase):
     def setUp(self):
-        self.n_tests = 20
+        self.n_tests = 20  # even
         self.topology = Topology.grid(3, 3)
         edges = [c.as_pair for c in self.topology.couplings]
         edges += [(c, p) for c, p in edges]
-        depth = 20
+        depth1 = 20
+        depth2 = 3
         np.random.seed(SEED)
         self.circuit = [
             CXCircuit(
                 self.topology,
                 [
                     CXCircuitLayer(self.topology, [edges[i]])
-                    for i in np.random.choice(len(edges), depth, replace=True)
+                    for i in np.random.choice(len(edges), depth1, replace=True)
                 ],
             )
-            for _ in range(self.n_tests)
+            for _ in range(int(self.n_tests / 2))
+        ]
+        self.circuit += [
+            CXCircuit(
+                self.topology,
+                [
+                    CXCircuitLayer(self.topology, [edges[i]])
+                    for i in np.random.choice(len(edges), depth2, replace=True)
+                ],
+            )
+            for _ in range(int(self.n_tests / 2))
         ]
         self.col_matrix = [
             c.parity_matrix(parities_as_columns=True) for c in self.circuit
@@ -103,7 +114,6 @@ class TestCXSynthesis(unittest.TestCase):
                     matrix = self.col_matrix[i]
                 else:
                     matrix = self.row_matrix[i]
-
                 for (
                     method
                 ) in (

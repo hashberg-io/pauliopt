@@ -28,6 +28,13 @@ jobs:
           pip install --upgrade pip
           pip install .
           python scripts/check_imports.py
+      - name: Linting
+        working-directory: ./
+        run: |
+          pip install --upgrade pip
+          pip install .
+          pip install -r requirements-dev.txt
+          black --check .
       - name: Unit tests
         working-directory: ./
         run: |

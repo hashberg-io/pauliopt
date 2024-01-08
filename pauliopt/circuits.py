@@ -53,10 +53,7 @@ def _get_qubits_qiskit(qubits, qreg):
 
 
 class Circuit:
-    """
-    Class for representing quantum circuits.
-
-    """
+    """Class for representing quantum circuits."""
 
     def __init__(self, n_qubits, _gates=None):
         self.n_qubits = n_qubits
