@@ -175,7 +175,7 @@ class CliffordTableau:
         """
         return (
             self.tableau[row + self.n_qubits, col]
-            + 2 *self.tableau[row + self.n_qubits, col + self.n_qubits]
+            + 2 * self.tableau[row + self.n_qubits, col + self.n_qubits]
         )
 
     def _xor_row(self, i, j):
