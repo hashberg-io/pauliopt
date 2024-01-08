@@ -1,139 +1,64 @@
 import numpy as np
 from qiskit import QuantumCircuit
-from qiskit.circuit.library import CXGate, HGate, SGate, SXGate, TGate, TdgGate, SdgGate, \
-    SXdgGate, ZGate, YGate, XGate, SwapGate, CYGate, CZGate, CCXGate, CCZGate, RXGate, \
-    RZGate, RYGate, CRXGate, CRYGate, CRZGate
+from qiskit.circuit.library import (
+    CXGate,
+    HGate,
+    SGate,
+    SXGate,
+    TGate,
+    TdgGate,
+    SdgGate,
+    SXdgGate,
+    ZGate,
+    YGate,
+    XGate,
+    SwapGate,
+    CYGate,
+    CZGate,
+    CCXGate,
+    CCZGate,
+    RXGate,
+    RZGate,
+    RYGate,
+    CRXGate,
+    CRYGate,
+    CRZGate,
+)
 from qiskit.quantum_info import Operator
 
 guadalupe_connectivity = [
-    [
-        0,
-        1
-    ],
-    [
-        1,
-        0
-    ],
-    [
-        1,
-        2
-    ],
-    [
-        1,
-        4
-    ],
-    [
-        2,
-        1
-    ],
-    [
-        2,
-        3
-    ],
-    [
-        3,
-        2
-    ],
-    [
-        3,
-        5
-    ],
-    [
-        4,
-        1
-    ],
-    [
-        4,
-        7
-    ],
-    [
-        5,
-        3
-    ],
-    [
-        5,
-        8
-    ],
-    [
-        6,
-        7
-    ],
-    [
-        7,
-        4
-    ],
-    [
-        7,
-        6
-    ],
-    [
-        7,
-        10
-    ],
-    [
-        8,
-        5
-    ],
-    [
-        8,
-        9
-    ],
-    [
-        8,
-        11
-    ],
-    [
-        9,
-        8
-    ],
-    [
-        10,
-        7
-    ],
-    [
-        10,
-        12
-    ],
-    [
-        11,
-        8
-    ],
-    [
-        11,
-        14
-    ],
-    [
-        12,
-        10
-    ],
-    [
-        12,
-        13
-    ],
-    [
-        12,
-        15
-    ],
-    [
-        13,
-        12
-    ],
-    [
-        13,
-        14
-    ],
-    [
-        14,
-        11
-    ],
-    [
-        14,
-        13
-    ],
-    [
-        15,
-        12
-    ]
+    [0, 1],
+    [1, 0],
+    [1, 2],
+    [1, 4],
+    [2, 1],
+    [2, 3],
+    [3, 2],
+    [3, 5],
+    [4, 1],
+    [4, 7],
+    [5, 3],
+    [5, 8],
+    [6, 7],
+    [7, 4],
+    [7, 6],
+    [7, 10],
+    [8, 5],
+    [8, 9],
+    [8, 11],
+    [9, 8],
+    [10, 7],
+    [10, 12],
+    [11, 8],
+    [11, 14],
+    [12, 10],
+    [12, 13],
+    [12, 15],
+    [13, 12],
+    [13, 14],
+    [14, 11],
+    [14, 13],
+    [15, 12],
 ]
 
 NAME_CONVERSION = {
@@ -147,19 +72,15 @@ NAME_CONVERSION = {
     # "Vdg": SXdgGate,
     "T": TGate,
     "Tdg": TdgGate,
-
     "swap": SwapGate,
     "CX": CXGate,
     "CY": CYGate,
     "CZ": CZGate,
-
     "CCX": CCXGate,
     "CCZ": CCZGate,
-
     "rx": RXGate,
     "ry": RYGate,
     "rz": RZGate,
-
     "crx": CRXGate,
     "cry": CRYGate,
     "crz": CRZGate,
@@ -175,10 +96,19 @@ def random_circuit(nr_gates, nr_qubits, gate_choice=None):
     else:
         gate_choice = [NAME_CONVERSION[gate_name] for gate_name in gate_choice]
 
-    single_qubit_gates = [HGate, SGate, SXGate,
-                          XGate, YGate, ZGate,
-                          TGate, TdgGate,
-                          RXGate, RYGate, RZGate, ]
+    single_qubit_gates = [
+        HGate,
+        SGate,
+        SXGate,
+        XGate,
+        YGate,
+        ZGate,
+        TGate,
+        TdgGate,
+        RXGate,
+        RYGate,
+        RZGate,
+    ]
     two_qubit_gates = [CXGate, CYGate, CZGate, CRXGate, CRYGate, CRZGate]
     three_qubit_gates = [CCXGate, CCZGate]
     single_param_gates = [RXGate, RYGate, RZGate, CRXGate, CRYGate, CRZGate]
@@ -202,15 +132,15 @@ def random_circuit(nr_gates, nr_qubits, gate_choice=None):
             control1 = np.random.choice([i for i in range(nr_qubits)])
             control2 = np.random.choice([i for i in range(nr_qubits) if i != control1])
             target = np.random.choice(
-                [i for i in range(nr_qubits) if i not in [control1, control2]])
+                [i for i in range(nr_qubits) if i not in [control1, control2]]
+            )
             qc.append(gate_instance, [control1, control2, target])
 
     return qc
 
 
 def verify_equality(qc_in, qc_out):
-    return Operator.from_circuit(qc_in) \
-        .equiv(Operator.from_circuit(qc_out))
+    return Operator.from_circuit(qc_in).equiv(Operator.from_circuit(qc_out))
 
 
 def random_clifford_circuit(nr_gates=20, nr_qubits=4, gate_choice=None):
@@ -249,9 +179,9 @@ def random_clifford_circuit(nr_gates=20, nr_qubits=4, gate_choice=None):
 
 def random_hscx_circuit(nr_gates=20, nr_qubits=4):
     gate_choice = ["CX", "H", "S"]
-    return random_clifford_circuit(nr_gates=nr_gates,
-                                   nr_qubits=nr_qubits,
-                                   gate_choice=gate_choice)
+    return random_clifford_circuit(
+        nr_gates=nr_gates, nr_qubits=nr_qubits, gate_choice=gate_choice
+    )
 
 
 def apply_permutation(qc: QuantumCircuit, permutation: list):
@@ -260,7 +190,9 @@ def apply_permutation(qc: QuantumCircuit, permutation: list):
     register = qc.qregs[0]
     qc_out = QuantumCircuit(register)
     for instruction in qc:
-        op_qubits = [register[permutation[register.index(q)]] for q in instruction.qubits]
+        op_qubits = [
+            register[permutation[register.index(q)]] for q in instruction.qubits
+        ]
         instruction.qubits = tuple(op_qubits)
         qc_out.append(instruction, instruction.qubits)
     return qc_out

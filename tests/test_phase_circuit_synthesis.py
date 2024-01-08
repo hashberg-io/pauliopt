@@ -14,29 +14,40 @@ from pauliopt.phase.cx_circuits import synthesis_methods as cx_synthesis_methods
 
 SEED = 1337
 
-def unpermute(circuit:QuantumCircuit):
+
+def unpermute(circuit: QuantumCircuit):
     changed_circuit = False
     if circuit.metadata:
         if "initial_layout" in circuit.metadata.keys():
-            circuit.compose(Permutation(circuit.num_qubits, circuit.metadata["initial_layout"]), front=True, inplace=True)
+            circuit.compose(
+                Permutation(circuit.num_qubits, circuit.metadata["initial_layout"]),
+                front=True,
+                inplace=True,
+            )
             changed_circuit = True
         if "final_layout" in circuit.metadata.keys():
             perm = circuit.metadata["final_layout"]
-            circuit.compose(Permutation(circuit.num_qubits, perm), front=False, inplace=True)
+            circuit.compose(
+                Permutation(circuit.num_qubits, perm), front=False, inplace=True
+            )
             changed_circuit = True
         if not changed_circuit:
-            Warning("Attempt to unpermute did not change the circuit, no initial or final layout found.")
+            Warning(
+                "Attempt to unpermute did not change the circuit, no initial or final layout found."
+            )
 
 
 class TestPhaseCircuitSynthesis(unittest.TestCase):
-
     def setUp(self):
         self.n_tests = 5
         n_gadgets = 9
-        self.topology = Topology.grid(3,3)
-        self.circuits = [PhaseCircuit.random(self.topology.num_qubits, n_gadgets, rng_seed=SEED) for _ in range(self.n_tests)]
+        self.topology = Topology.grid(3, 3)
+        self.circuits = [
+            PhaseCircuit.random(self.topology.num_qubits, n_gadgets, rng_seed=SEED)
+            for _ in range(self.n_tests)
+        ]
         self.qiskit_circuits = [self.default_to_qiskit(c) for c in self.circuits]
-    
+
     def default_to_qiskit(self, circuit):
         return circuit.to_qiskit(self.topology, simplified=False, method="naive")
 
@@ -52,8 +63,15 @@ class TestPhaseCircuitSynthesis(unittest.TestCase):
             for simp in [True, False]:
                 for method in synthesis_methods:
                     for cx_synth in ["naive"] + cx_synthesis_methods:
-                        with self.subTest(i=i, simplified=simp, method=method, cx_synth=cx_synth):
-                            synthesized = self.circuits[i].to_qiskit(self.topology, simplified=simp, method=method, cx_synth=cx_synth)
+                        with self.subTest(
+                            i=i, simplified=simp, method=method, cx_synth=cx_synth
+                        ):
+                            synthesized = self.circuits[i].to_qiskit(
+                                self.topology,
+                                simplified=simp,
+                                method=method,
+                                cx_synth=cx_synth,
+                            )
                             self.assertQCEqual(synthesized, self.qiskit_circuits[i])
 
     def test_reallocation(self):
@@ -61,8 +79,16 @@ class TestPhaseCircuitSynthesis(unittest.TestCase):
             for simp in [True, False]:
                 for method in synthesis_methods:
                     for cx_synth in cx_synthesis_methods:
-                        with self.subTest(i=i, simplified=simp, method=method, cx_synth=cx_synth):
-                            synthesized = self.circuits[i].to_qiskit(self.topology, simplified=simp, method=method, cx_synth=cx_synth, reallocate=True)
+                        with self.subTest(
+                            i=i, simplified=simp, method=method, cx_synth=cx_synth
+                        ):
+                            synthesized = self.circuits[i].to_qiskit(
+                                self.topology,
+                                simplified=simp,
+                                method=method,
+                                cx_synth=cx_synth,
+                                reallocate=True,
+                            )
                             unpermute(synthesized)
                             qc1 = Operator(synthesized)
                             qc2 = Operator(self.qiskit_circuits[i])
@@ -70,27 +96,37 @@ class TestPhaseCircuitSynthesis(unittest.TestCase):
                                 print("----")
                                 print(synthesized)
                                 print(synthesized.metadata)
-                                c, cxs = self.circuits[i].to_qiskit(self.topology, simplified=simp, method=method, return_cx=True, reallocate=True)
+                                c, cxs = self.circuits[i].to_qiskit(
+                                    self.topology,
+                                    simplified=simp,
+                                    method=method,
+                                    return_cx=True,
+                                    reallocate=True,
+                                )
                                 print(self.circuits[i].gadgets)
                                 print(c)
                                 cxs1 = cxs.to_qiskit(method="naive")
-                                cxs2 = cxs.to_qiskit(method="permrowcol", reallocate=True) 
+                                cxs2 = cxs.to_qiskit(
+                                    method="permrowcol", reallocate=True
+                                )
                                 print(cxs1)
                                 print(method)
                                 unpermute(cxs2)
                                 print(cxs2)
-                                print("Equal CNOTS", Operator(cxs1).equiv(Operator(cxs2)))
+                                print(
+                                    "Equal CNOTS", Operator(cxs1).equiv(Operator(cxs2))
+                                )
                                 print("----")
                             self.assertQCEqual(synthesized, self.qiskit_circuits[i])
 
     def assertNdArrEqual(self, a1, a2):
         self.assertListEqual(a1.tolist(), a2.tolist())
-    
-    def assertPhaseCircuitEqual(self, circuit1:PhaseCircuit, circuit2:PhaseCircuit):
+
+    def assertPhaseCircuitEqual(self, circuit1: PhaseCircuit, circuit2: PhaseCircuit):
         qc1 = self.default_to_qiskit(circuit1)
         qc2 = self.default_to_qiskit(circuit2)
         self.assertQCEqual(qc1, qc2)
-    
+
     def assertQCEqual(self, circuit1, circuit2):
         qc1 = Operator(circuit1)
         qc2 = Operator(circuit2)

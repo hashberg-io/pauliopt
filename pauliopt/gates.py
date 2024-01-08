@@ -9,7 +9,7 @@ from pauliopt.phase.phase_circuits import PhaseGadget
 
 
 class Gate(ABC):
-    """ Base class for quantum gates. """
+    """Base class for quantum gates."""
 
     def __init__(self, *qubits):
         self.qubits = qubits
@@ -24,8 +24,8 @@ class Gate(ABC):
 
     @property
     def width(self):
-        """ Width of gate used for drawing. """
-        if getattr(self, 'draw_as_zx', False):
+        """Width of gate used for drawing."""
+        if getattr(self, "draw_as_zx", False):
             n_columns = max(self._gen_columns())
             return n_columns * 20 + 40
 
@@ -44,8 +44,8 @@ class Gate(ABC):
         # shift by 3 columns if a multi-legged gadget was drawn
         big_gadget_drawn = False
         for g in self.decomp:
-            if gate_cls != (type(g), getattr(g, 'basis', None)):
-                gate_cls = (type(g), getattr(g, 'basis', None))
+            if gate_cls != (type(g), getattr(g, "basis", None)):
+                gate_cls = (type(g), getattr(g, "basis", None))
                 n_columns += 3 if big_gadget_drawn else 1
                 big_gadget_drawn = False
             if isinstance(g, PhaseGadget) and len(g.qubits) > 1:
@@ -75,8 +75,8 @@ class Gate(ABC):
                 g.draw(builder, base, row_width, params)
 
     def draw_box(self, builder, base, row_width, params):
-        line_height = params['line_height']
-        font_size = params['font_size']
+        line_height = params["line_height"]
+        font_size = params["font_size"]
 
         min_qubit = min(self.qubits)
         max_qubit = max(self.qubits)
@@ -86,26 +86,25 @@ class Gate(ABC):
         box_height = max(30, (max_qubit - min_qubit) * line_height + 10)
         box_width = max(8 * len(text), box_height * 1.5)
 
-        builder.rect((x, y), box_width, box_height, '#FFFFFF')
+        builder.rect((x, y), box_width, box_height, "#FFFFFF")
         builder.text((x, y), text, font_size=font_size, center=True)
 
     def draw(self, builder, base, row_width, params):
         # builder.line((base[0], 0), (base[0], 100))
         # builder.line((base[0] + row_width, 0), (base[0] + row_width, 100))
-        if getattr(self, 'draw_as_zx', False):
+        if getattr(self, "draw_as_zx", False):
             self.draw_zx(builder, base, row_width, params)
         else:
             self.draw_box(builder, base, row_width, params)
 
     @property
     def gadgets(self):
-        """ List of gadgets used to implement this gate. """
-        if not hasattr(self, 'decomp'):
+        """List of gadgets used to implement this gate."""
+        if not hasattr(self, "decomp"):
             raise NotImplementedError
 
         gadgets = [
-            g if isinstance(g, (ZHead, XHead)) else g.gadgets
-            for g in self.decomp
+            g if isinstance(g, (ZHead, XHead)) else g.gadgets for g in self.decomp
         ]
         return gadgets
 
@@ -131,13 +130,13 @@ class H(Gate):
     @property
     def decomp(self):
         p = pi / 2
-        q, = self.qubits
+        (q,) = self.qubits
         return [ZHead(p) @ {q}, XHead(p) @ {q}, ZHead(p) @ {q}]
 
     def draw(self, builder, base, row_width, params):
-        line_height = params['line_height']
-        r = params['r']
-        hcolor = params['hcolor']
+        line_height = params["line_height"]
+        r = params["r"]
+        hcolor = params["hcolor"]
         qubit = self.qubits[0]
         x = base[0] + row_width / 2
         y = base[1] + (qubit + 1) * line_height
@@ -301,10 +300,10 @@ class CX(Gate):
         return [H(q1), CZ(q0, q1), H(q1)]
 
     def draw(self, builder, base, row_width, params):
-        r = params['r']
-        line_height = params['line_height']
-        zcolor = params['zcolor']
-        xcolor = params['xcolor']
+        r = params["r"]
+        line_height = params["line_height"]
+        zcolor = params["zcolor"]
+        xcolor = params["xcolor"]
 
         ctrl, trgt = self.qubits
         x = base[0] + row_width / 2
@@ -351,10 +350,10 @@ class CZ(Gate):
         return [ZHead(pi / 2) @ {q0, q1}]
 
     def draw(self, builder, base, row_width, params):
-        r = params['r']
-        line_height = params['line_height']
-        zcolor = params['zcolor']
-        hcolor = params['hcolor']
+        r = params["r"]
+        line_height = params["line_height"]
+        zcolor = params["zcolor"]
+        hcolor = params["hcolor"]
 
         ctrl, trgt = self.qubits
         x = base[0] + row_width / 2
@@ -403,7 +402,7 @@ class CCZ(Gate):
 
         for i in range(1, self.n_qubits + 1):
             for qs in combinations(self.qubits, i):
-                gs.append(ZHead(-1 ** len(qs) * pi / 2) @ set(qs))
+                gs.append(ZHead(-(1 ** len(qs)) * pi / 2) @ set(qs))
         return gs
 
     def to_qiskit(self):
@@ -421,7 +420,7 @@ class Rx(PhaseGate):
 
     @property
     def decomp(self):
-        q, = self.qubits
+        (q,) = self.qubits
         return [XHead(self.phase) @ {q}]
 
     def to_qiskit(self):
@@ -439,7 +438,7 @@ class Ry(PhaseGate):
 
     @property
     def decomp(self):
-        q, = self.qubits
+        (q,) = self.qubits
         return [XHead(pi / 2) @ {q}, ZHead(self.phase) @ {q}, XHead(-pi / 2) @ {q}]
 
     def to_qiskit(self):
@@ -457,7 +456,7 @@ class Rz(PhaseGate):
 
     @property
     def decomp(self):
-        q, = self.qubits
+        (q,) = self.qubits
         return [ZHead(self.phase) @ {q}]
 
     def to_qiskit(self):
@@ -530,15 +529,15 @@ CNOT = CX
 
 
 def draw_gadget(builder, base, row_width, params, gadget, text_above=True):
-    line_height = params['line_height']
-    text_off_x, text_off_y = params['text_off']
-    font_size = params['font_size']
-    r = params['r']
+    line_height = params["line_height"]
+    text_off_x, text_off_y = params["text_off"]
+    font_size = params["font_size"]
+    r = params["r"]
 
-    if gadget.basis == 'Z':
-        color1, color2 = params['zcolor'], params['xcolor']
-    elif gadget.basis == 'X':
-        color1, color2 = params['xcolor'], params['zcolor']
+    if gadget.basis == "Z":
+        color1, color2 = params["zcolor"], params["xcolor"]
+    elif gadget.basis == "X":
+        color1, color2 = params["xcolor"], params["zcolor"]
     else:
         raise ValueError
 

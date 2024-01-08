@@ -14,7 +14,9 @@ class PauliPolynomial:
 
     def __irshift__(self, gadget: PauliGadget):
         if not len(gadget) == self.num_qubits:
-            raise Exception(f"Pauli Polynomial has {self.num_qubits}, but Pauli gadget has: {len(gadget)}")
+            raise Exception(
+                f"Pauli Polynomial has {self.num_qubits}, but Pauli gadget has: {len(gadget)}"
+            )
         self.pauli_gadgets.append(gadget)
         return self
 
@@ -24,7 +26,7 @@ class PauliPolynomial:
         return self
 
     def __repr__(self):
-        return '\n'.join(map(repr, self.pauli_gadgets))
+        return "\n".join(map(repr, self.pauli_gadgets))
 
     def __len__(self):
         return len(self.pauli_gadgets)
@@ -68,8 +70,13 @@ class PauliPolynomial:
             count += gadget.two_qubit_count(topology, leg_cache=leg_cache)
         return count
 
-    def to_svg(self, hscale: float = 1.0, vscale: float = 1.0, scale: float = 1.0,
-               svg_code_only=False):
+    def to_svg(
+        self,
+        hscale: float = 1.0,
+        vscale: float = 1.0,
+        scale: float = 1.0,
+        svg_code_only=False,
+    ):
         vscale *= scale
         hscale *= scale
 
@@ -97,10 +104,15 @@ class PauliPolynomial:
         margin_x = int(math.ceil(10 * hscale))
         margin_y = int(math.ceil(10 * hscale))
 
-        width = num_gadgets * (
-                square_width + margin_x + margin_angle_x + text_width) + margin_x
-        height = (num_qubits) * (square_height + margin_y) + (
-                square_height + margin_y + margin_angle_y) + margin_y
+        width = (
+            num_gadgets * (square_width + margin_x + margin_angle_x + text_width)
+            + margin_x
+        )
+        height = (
+            (num_qubits) * (square_height + margin_y)
+            + (square_height + margin_y + margin_angle_y)
+            + margin_y
+        )
 
         builder = SVGBuilder(width, height)
         builder = builder.add_diagonal_fill(x_color, z_color, y_color)
@@ -113,8 +125,10 @@ class PauliPolynomial:
             paulis = gadget.paulis
             y = margin_y
             text_coords = (square_width + margin_x + margin_angle_x + x, y)
-            text_lower_mid = (text_coords[0] + square_width,
-                              text_coords[1] + square_height)
+            text_lower_mid = (
+                text_coords[0] + square_width,
+                text_coords[1] + square_height,
+            )
             for qubit in range(num_qubits):
                 if qubit == 0:
                     y += square_height + margin_y + margin_angle_y
@@ -124,11 +138,13 @@ class PauliPolynomial:
                 if paulis[qubit] == I:
                     continue
 
-                builder.line((prev_x[qubit], y + square_height // 2),
-                             (x, y + square_height // 2))
+                builder.line(
+                    (prev_x[qubit], y + square_height // 2), (x, y + square_height // 2)
+                )
                 prev_x[qubit] = x + square_width
-                builder.line_bend(text_lower_mid, center_coords,
-                                  degree=qubit * bend_degree)
+                builder.line_bend(
+                    text_lower_mid, center_coords, degree=qubit * bend_degree
+                )
                 if paulis[qubit] == X:
                     builder.square((x, y), square_width, square_height, x_color)
                 elif paulis[qubit] == Y:
@@ -136,8 +152,9 @@ class PauliPolynomial:
                 elif paulis[qubit] == Z:
                     builder.square((x, y), square_width, square_height, z_color)
 
-            builder = builder.text_with_square(text_coords, text_width, square_height,
-                                               str(gadget.angle))
+            builder = builder.text_with_square(
+                text_coords, text_width, square_height, str(gadget.angle)
+            )
             x += square_width + margin_x + text_width + margin_angle_x
 
         y = margin_y
@@ -146,8 +163,9 @@ class PauliPolynomial:
                 y += square_height + margin_y + margin_angle_y
             else:
                 y += square_height + margin_y
-            builder.line((prev_x[qubit], y + square_height // 2),
-                         (width, y + square_height // 2))
+            builder.line(
+                (prev_x[qubit], y + square_height // 2), (width, y + square_height // 2)
+            )
         svg_code = repr(builder)
 
         if svg_code_only:
@@ -162,7 +180,7 @@ class PauliPolynomial:
 
     def _repr_svg_(self):
         """
-            Magic method for IPython/Jupyter pretty-printing.
-            See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
+        Magic method for IPython/Jupyter pretty-printing.
+        See https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html
         """
         return self.to_svg(svg_code_only=True)

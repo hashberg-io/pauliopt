@@ -13,7 +13,8 @@ def tableau_from_circuit(tableau, circ: QuantumCircuit):
             tableau.append_cnot(qreg.index(op.qubits[0]), qreg.index(op.qubits[1]))
         else:
             raise TypeError(
-                f"Unrecongnized Gate type: {op.operation.name} for Clifford Tableaus")
+                f"Unrecongnized Gate type: {op.operation.name} for Clifford Tableaus"
+            )
     return tableau
 
 
@@ -29,5 +30,6 @@ def tableau_from_circuit_prepend(tableau, circ: QuantumCircuit):
             tableau.prepend_cnot(qreg.index(op.qubits[0]), qreg.index(op.qubits[1]))
         else:
             raise TypeError(
-                f"Unrecongnized Gate type: {op.operation.name} for Clifford Tableaus")
+                f"Unrecongnized Gate type: {op.operation.name} for Clifford Tableaus"
+            )
     return tableau

@@ -19,23 +19,18 @@ QISKIT_CONVERSION = {
     "sdg": lambda qubits, _: Sdg(*qubits),
     "t": lambda qubits, _: T(*qubits),
     "tdg": lambda qubits, _: Tdg(*qubits),
-
     "swap": lambda qubits, _: SWAP(*qubits),
     "cx": lambda qubits, _: CX(*qubits),
     "cy": lambda qubits, _: CY(*qubits),
     "cz": lambda qubits, _: CZ(*qubits),
-
     "ccx": lambda qubits, _: CCX(*qubits),
     "ccz": lambda qubits, _: CCZ(*qubits),
-
     "rx": lambda qubits, params: Rx(params[0], *qubits),
     "ry": lambda qubits, params: Ry(params[0], *qubits),
     "rz": lambda qubits, params: Rz(params[0], *qubits),
-
     "crx": lambda qubits, params: CRx(params[0], *qubits),
     "cry": lambda qubits, params: CRy(params[0], *qubits),
     "crz": lambda qubits, params: CRz(params[0], *qubits),
-
 }
 
 
@@ -81,6 +76,7 @@ class Circuit:
 
     def to_phase_circuit(self):
         from pauliopt.phase import Circuit as PhaseCircuit
+
         gadgets = [g for gate in self._gates for g in gate.gadgets]
         return PhaseCircuit(self.n_qubits, gadgets)
 
@@ -99,14 +95,17 @@ class Circuit:
     def __repr__(self) -> str:
         return f"Circuit({self.n_qubits}, {self._gates})"
 
-    def _to_svg(self, *,
-                zcolor: str = "#CCFFCC",
-                xcolor: str = "#FF8888",
-                hcolor: str = "#FFFF00",
-                hscale: float = 1.0, vscale: float = 1.0,
-                scale: float = 1.0,
-                svg_code_only: bool = False
-                ):
+    def _to_svg(
+        self,
+        *,
+        zcolor: str = "#CCFFCC",
+        xcolor: str = "#FF8888",
+        hcolor: str = "#FFFF00",
+        hscale: float = 1.0,
+        vscale: float = 1.0,
+        scale: float = 1.0,
+        svg_code_only: bool = False,
+    ):
         # pylint: disable = too-many-locals, too-many-statements, too-many-branches
         num_qubits = self.n_qubits
         vscale *= scale
@@ -126,7 +125,7 @@ class Circuit:
             for q in range(m, M + 1):
                 _layers[q] = d + 1
 
-            gate_width = getattr(gate, 'width', int(ceil(40 * hscale)))
+            gate_width = getattr(gate, "width", int(ceil(40 * hscale)))
             row_widths[d] = max(row_widths[d], gate_width)
         num_digits = int(ceil(log10(num_qubits)))
         line_height = int(ceil(30 * vscale))
@@ -142,13 +141,13 @@ class Circuit:
         row_pos = np.cumsum([pad_x] + row_widths).tolist()
 
         params = {
-            'text_off': (10 * hscale, -10 * vscale),
-            'zcolor': zcolor,
-            'xcolor': xcolor,
-            'hcolor': hcolor,
-            'line_height': line_height,
-            'font_size': font_size,
-            'r': r,
+            "text_off": (10 * hscale, -10 * vscale),
+            "zcolor": zcolor,
+            "xcolor": xcolor,
+            "hcolor": hcolor,
+            "line_height": line_height,
+            "font_size": font_size,
+            "r": r,
         }
 
         # draw gate

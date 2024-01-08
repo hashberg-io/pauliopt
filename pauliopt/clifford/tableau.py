@@ -107,10 +107,14 @@ class CliffordTableau:
             CliffordTableau: CliffordTableau object.
         """
         n_qubits = tableau.shape[0] // 2
-        if not (tableau.shape == (2 * n_qubits, 2 * n_qubits) and signs.shape == (
-                2 * n_qubits,)):
-            raise ValueError("Tableau and signs must have shape "
-                             "(2 * n_qubits, 2 * n_qubits) and (2 * n_qubits,)")
+        if not (
+            tableau.shape == (2 * n_qubits, 2 * n_qubits)
+            and signs.shape == (2 * n_qubits,)
+        ):
+            raise ValueError(
+                "Tableau and signs must have shape "
+                "(2 * n_qubits, 2 * n_qubits) and (2 * n_qubits,)"
+            )
         ct = CliffordTableau(n_qubits)
         ct.tableau = tableau
         ct.signs = signs
@@ -159,8 +163,7 @@ class CliffordTableau:
             row (int): Row index.
             col (int): Column index.
         """
-        return self.tableau[row, col] + \
-               2 * self.tableau[row, col + self.n_qubits]
+        return self.tableau[row, col] + 2 * self.tableau[row, col + self.n_qubits]
 
     def z_out(self, row, col):
         """
@@ -170,8 +173,10 @@ class CliffordTableau:
             row (int): Row index.
             col (int): Column index.
         """
-        return self.tableau[row + self.n_qubits, col] + \
-               2 * self.tableau[row + self.n_qubits, col + self.n_qubits]
+        return (
+            self.tableau[row + self.n_qubits, col]
+            + 2 * self.tableau[row + self.n_qubits, col + self.n_qubits]
+        )
 
     def _xor_row(self, i, j):
         """
@@ -333,8 +338,8 @@ class CliffordTableau:
 
         for k in range(2 * self.n_qubits):
             row2 = other.tableau[k]
-            x2 = other.tableau[k, :self.n_qubits]
-            z2 = other.tableau[k, self.n_qubits:]
+            x2 = other.tableau[k, : self.n_qubits]
+            z2 = other.tableau[k, self.n_qubits :]
 
             # Adding a factor of i for each Y in the image of an operator under the
             # first operation, since Y=iXZ
