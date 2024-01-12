@@ -8,16 +8,26 @@
 
 PauliOpt is a Python library to simplify quantum circuits composed of phase and Pauli
 gadgets. We currently collect architecture-aware synthesis algorithms for circuits of
-phase gadgets, and we plan to add more algorithms in the future.
+phase gadgets and Pauli gadgets, and we plan to add more algorithms in the future.
 
-## Currently, supported/implemented algorithms:
+PauliOpt comes with `PhaseCircuit` and `PauliPolynomial` classes for representing phase and Pauli polynomials,
+
+<img width="553" alt="image" src="https://github.com/hashberg-io/pauliopt/assets/13847804/0f8b1480-43fa-47b5-bc84-47d3e8496c68">
+
+<img width="497" alt="image" src="https://github.com/hashberg-io/pauliopt/assets/13847804/96dbbc2d-f02a-4575-827b-ae85ce45f3bb">
+
+and a `Circuit` class that can convert to and from `qiskit` and `pytket`:
+```python
+Circuit(3, [H(0), H(1), H(2), CRz(π/2, 0, 1), CRz(π/2, 1, 2), CX(0, 1), CX(1, 2)])
+```
+<img width="541" alt="image" src="https://github.com/hashberg-io/pauliopt/assets/13847804/21e69336-a4f3-46b8-9e98-6d0cd611fbf1">
 
 We view this library as a collection of algorithms for the simplification of quantum
 circuits. We currently support the following algorithms:
 
-- "Annealing Optimisation of Mixed ZX Phase Circuits" (arXiv:2206.11839)
-- "Architecture-Aware Synthesis of Stabilizer Circuits from Clifford Tableaus" (arXiv:
-  2309.08972)
+- "Annealing Optimisation of Mixed ZX Phase Circuits" ([arXiv:2206.11839](https://arxiv.org/abs/2206.11839))
+- "Architecture-Aware Synthesis of Stabilizer Circuits from Clifford Tableaus" ([arXiv:
+  2309.08972](https://arxiv.org/abs/2309.08972))
 
 **Please Note:** This software library is in a pre-alpha development stage. It is not
 currently suitable for use by the public.
@@ -39,7 +49,7 @@ pip install --upgrade pauliopt
 
 ## Documentation
 
-The [documentation](https://sg495.github.io/pauliopt/pauliopt/index.html) for this library
+The [documentation](https://hashberg-io.github.io/pauliopt) for this library
 was generated with [pdoc](https://pdoc3.github.io/pdoc/). Jupyter notebooks exemplifying
 various aspects of the library are available in the [notebooks](./notebooks) folder.
 
@@ -64,7 +74,7 @@ circ >>= Z(pi / 4) @ {0, 3}
 circ >>= X(pi / 2) @ {0, 1, 3}
 ```
 
-We can then define the tolopogy of the device we want to map the circuit to. For example,
+We can then define the topology of the device we want to map the circuit to. For example,
 we can define a circle topology with 4 qubits:
 
 ```python
@@ -84,7 +94,7 @@ opt_circ = OptimizedPhaseCircuit(circ, topology, num_cx_layers, rng_seed=0)
 
 ### Example 2: Synthesis of Clifford tableau's
 
-You can create a clifford tableau and append/prepend operations (H, S, CX), with the
+You can create a Clifford tableau and append/prepend operations (H, S, CX), with the
 following code fragment:
 
 ```python
@@ -109,7 +119,7 @@ topology from above):
 ```python
 from pauliopt.clifford.tableau_synthesis import synthesize_tableau
 
-qc, perm = synthesize_tableau(ct, topo, include_swaps=False)
+qc, perm = synthesize_tableau(ct, topology, include_swaps=False)
 qc = qc.to_qiskit()
 print(qc)
 ```
