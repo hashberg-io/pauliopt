@@ -2,13 +2,54 @@
 A general class for quantum circuits, with a ZX / Gadget representation.
 """
 
-from math import ceil, log10
+from math import log10
 from typing import List
 
 import numpy as np
 
+from pauliopt.gates import *
 from pauliopt.utils import SVGBuilder
-from pauliopt.gates import Gate
+
+QISKIT_CONVERSION = {
+    "h": lambda qubits, _: H(*qubits),
+    "x": lambda qubits, _: X(*qubits),
+    "y": lambda qubits, _: Y(*qubits),
+    "z": lambda qubits, _: Z(*qubits),
+    "s": lambda qubits, _: S(*qubits),
+    "sdg": lambda qubits, _: Sdg(*qubits),
+    "t": lambda qubits, _: T(*qubits),
+    "tdg": lambda qubits, _: Tdg(*qubits),
+    "swap": lambda qubits, _: SWAP(*qubits),
+    "cx": lambda qubits, _: CX(*qubits),
+    "cy": lambda qubits, _: CY(*qubits),
+    "cz": lambda qubits, _: CZ(*qubits),
+    "ccx": lambda qubits, _: CCX(*qubits),
+    "ccz": lambda qubits, _: CCZ(*qubits),
+    "rx": lambda qubits, params: Rx(params[0], *qubits),
+    "ry": lambda qubits, params: Ry(params[0], *qubits),
+    "rz": lambda qubits, params: Rz(params[0], *qubits),
+    "crx": lambda qubits, params: CRx(params[0], *qubits),
+    "cry": lambda qubits, params: CRy(params[0], *qubits),
+    "crz": lambda qubits, params: CRz(params[0], *qubits),
+}
+
+
+def _get_phase_qiskit(params):
+    if len(params) == 0:
+        return None
+    else:
+        return params
+
+
+def _get_qubits_qiskit(qubits, qreg):
+    """
+    Helper method to read the qubit indices from the qiskit quantum register.
+    """
+    qubits_ = []
+    for qubit in qubits:
+        qubits_.append(qreg.index(qubit))
+
+    return tuple(qubits_)
 
 
 class Circuit:
@@ -38,14 +79,15 @@ class Circuit:
 
     def _check_gate(self, gate):
         n_qubits = self.n_qubits
-        for gate in self._gates:
-            if not isinstance(gate, Gate):
-                raise TypeError(f"{gate} is not a valid gate.")
-            if len(set(gate.qubits)) != len(gate.qubits):
-                raise ValueError(f"{gate.qubits} are not unique.")
-            if any(not (0 <= qubit < n_qubits) for qubit in gate.qubits):
-                msg = f"{gate} acts out of range for {n_qubits} qubit circuit."
-                raise ValueError(msg)
+        if not isinstance(gate, Gate):
+            raise TypeError(f"{gate} is not a valid gate.")
+
+        if len(set(gate.qubits)) != len(gate.qubits):
+            raise ValueError(f"{gate.qubits} are not unique.")
+
+        if any(not (0 <= qubit < n_qubits) for qubit in gate.qubits):
+            msg = f"{gate} acts out of range for {n_qubits} qubit circuit."
+            raise ValueError(msg)
 
     def __repr__(self) -> str:
         return f"Circuit({self.n_qubits}, {self._gates})"
@@ -129,3 +171,27 @@ class Circuit:
         except ModuleNotFoundError:
             raise ModuleNotFoundError("You must install the 'IPython' library.")
         return SVG(svg_code)
+
+    @staticmethod
+    def from_qiskit(qc: "qiskit.QuantumCircuit"):
+        circ = Circuit(qc.num_qubits)
+
+        for inst in qc:
+            qubits = _get_qubits_qiskit(inst.qubits, qc.qregs[0])
+            phase = _get_phase_qiskit(inst.operation.params)
+            circ.add_gate(QISKIT_CONVERSION[inst.operation.name](qubits, phase))
+
+        return circ
+
+    def to_qiskit(self):
+        try:
+            from qiskit import QuantumCircuit
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError("You must install the 'qiskit' library.")
+
+        qc = QuantumCircuit(self.n_qubits)
+
+        for gate in self._gates:
+            op, qubits = gate.to_qiskit()
+            qc.append(op, qubits)
+        return qc

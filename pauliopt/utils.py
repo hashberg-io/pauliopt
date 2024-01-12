@@ -26,6 +26,24 @@ from typing import (
 )
 import numpy as np
 
+
+def calculate_orthogonal_point(a, b, d, left):
+    direction_vector = b - a
+    magnitude = np.linalg.norm(direction_vector)
+    normalized_direction_vector = direction_vector / magnitude
+    if left:
+        orthogonal_vector = np.array(
+            [-normalized_direction_vector[1], normalized_direction_vector[0]]
+        )
+    else:
+        orthogonal_vector = np.array(
+            [normalized_direction_vector[1], -normalized_direction_vector[0]]
+        )
+    midpoint = (a + b) / 2
+    orthogonal_point = midpoint + d * orthogonal_vector
+    return int(orthogonal_point[0]), int(orthogonal_point[1])
+
+
 AngleInitT = Union[int, Fraction, str, Decimal]
 
 
@@ -361,7 +379,9 @@ class Angle(AngleExpr):
             raise TypeError("RNG seed must be integer or 'None'.")
         rng = np.random.default_rng(seed=rng_seed)
         if nonzero:
-            rs = 1 + rng.integers(2 * subdivision - 1, size=size)  # type: ignore[attr-defined]
+            rs = 1 + rng.integers(
+                2 * subdivision - 1, size=size
+            )  # type: ignore[attr-defined]
         else:
             rs = rng.integers(2 * subdivision, size=size)  # type: ignore[attr-defined]
         if size == 1:
@@ -378,7 +398,6 @@ class Angle(AngleExpr):
 # Set static constants for Angle:
 Angle.zero = Angle(0)  # type: ignore
 Angle.pi = Angle(1)  # type: ignore
-
 
 pi: Final[Angle] = Angle.pi
 """ Constant for `Angle.pi`. """
@@ -634,6 +653,7 @@ class SVGBuilder:
             raise TypeError("Height should be positive integer.")
         self._width = width
         self._height = height
+        self._def_object_ids = []
         self._tags = []
 
     @property
@@ -684,6 +704,75 @@ class SVGBuilder:
         fx, fy = fro
         tx, ty = to
         tag = f'<path fill="none" stroke="black"' f' d="M {fx}, {fy} L {tx}, {ty}"/>'
+        self._tags.append(tag)
+        return self
+
+    def line_bend(
+        self, fro: Tuple[int, int], to: Tuple[int, int], left=False, degree=5
+    ):
+        _validate_vec2(fro)
+        _validate_vec2(to)
+
+        fx, fy = fro
+        tx, ty = to
+        bx, by = calculate_orthogonal_point(
+            np.asarray(fro), np.asarray(to), d=degree, left=left
+        )
+
+        tag = (
+            f'<path d="M {fx} {fy} Q {bx} {by} {tx} {ty}" fill="none" stroke="black"/>'
+        )
+        self._tags.append(tag)
+        return self
+
+    def add_diagonal_fill(self, color_1: str, color_2: str, id: str) -> "SVGBuilder":
+        tag = (
+            f'<linearGradient id="{id}" x1="0%" x2="100%" y1="100%" y2="0%">'
+            f'<stop offset="0%"  stop-color="{color_1}"/>'
+            f'<stop offset="50%"  stop-color="{color_1}"/>'
+            f'<stop offset="50%"  stop-color="{color_2}"/>'
+            f'<stop offset="100%"  stop-color="{color_2}"/>'
+            f"</linearGradient>"
+        )
+
+        self._def_object_ids.append(id)
+        self._tags.append(tag)
+        return self
+
+    def square(
+        self, centre: Tuple[int, int], width: int, height: int, fill
+    ) -> "SVGBuilder":
+        _validate_vec2(centre)
+        x, y = centre
+        if fill in self._def_object_ids:
+            tag = (
+                f'<rect fill="url(#{fill})" stroke="black" x="{x}" y="{y}" '
+                f'width="{width}" height="{height}"/>'
+            )
+            self._tags.append(tag)
+        elif isinstance(fill, str):
+            tag = (
+                f'<rect fill="{fill}" stroke="black" x="{x}" y="{y}" '
+                f'width="{width}" height="{height}"/>'
+            )
+            self._tags.append(tag)
+        else:
+            raise TypeError(f"Fill must be string or a defined Tag. Got: {fill} ")
+        return self
+
+    def text_with_square(
+        self, centre: Tuple[int, int], width: int, height: int, text: str
+    ) -> "SVGBuilder":
+        _validate_vec2(centre)
+        x, y = centre
+        tag = (
+            f'<svg x="{x}" y="{y}" height="{height}" width="{width}">'
+            f'<rect x="0" y="0" width="100%" height="100%" '
+            f'stroke="black" fill="white" stroke-width="5 %"/>'
+            f'<text x="50%" y="50%" width="100%" height="100%" font-size="100%" '
+            f'dominant-baseline="middle" text-anchor="middle" >{text}</text>'
+            f"</svg>"
+        )
         self._tags.append(tag)
         return self
 

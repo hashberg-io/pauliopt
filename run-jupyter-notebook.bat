@@ -1,2 +1,0 @@
-cd notebooks
-jupyter notebook

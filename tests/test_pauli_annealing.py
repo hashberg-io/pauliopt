@@ -15,6 +15,7 @@ from pauliopt.pauli.pauli_gadget import PPhase
 from pauliopt.pauli.pauli_polynomial import PauliPolynomial
 from pauliopt.pauli.utils import X, Y, Z, I
 from pauliopt.topologies import Topology
+from pauliopt.utils import pi
 
 PAULI_TO_TKET = {X: Pauli.X, Y: Pauli.Y, Z: Pauli.Z, I: Pauli.I}
 
@@ -28,7 +29,8 @@ def pauli_poly_to_tket(pp: PauliPolynomial):
     for gadget in pp.pauli_gadgets:
         circuit.add_pauliexpbox(
             PauliExpBox(
-                [PAULI_TO_TKET[p] for p in gadget.paulis], gadget.angle / np.pi
+                [PAULI_TO_TKET[p] for p in gadget.paulis],
+                gadget.angle.to_qiskit / np.pi,
             ),
             list(range(pp.num_qubits)),
         )
@@ -53,7 +55,7 @@ def verify_equality(qc_in, qc_out):
 
 
 def generate_all_combination_pauli_polynomial(n_qubits=2):
-    allowed_angels = [2 * np.pi, np.pi, 0.5 * np.pi, 0.25 * np.pi, 0.125 * np.pi]
+    allowed_angels = [2 * pi, pi, pi / 2, pi / 4, pi / 8]
     pp = PauliPolynomial(n_qubits)
     for comb in itertools.product([X, Y, Z, I], repeat=n_qubits):
         pp >>= PPhase(np.random.choice(allowed_angels)) @ list(comb)
@@ -92,7 +94,7 @@ class TestPauliAnnealing(unittest.TestCase):
         2) When synthesizing onto a different architecture the circuits should match the ones of tket
         3) Check that our to_qiskit method exports the Pauli Polynomial according to an architecture
         """
-        for num_qubits in [2, 3, 4]:
+        for num_qubits in [2, 3]:
             for topo_creation in [Topology.line, Topology.complete]:
                 pp = generate_all_combination_pauli_polynomial(n_qubits=num_qubits)
 

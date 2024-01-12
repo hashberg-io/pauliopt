@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="148" height="140"><path fill="none" stroke="black" d="M 34, 50 L 114, 50"/>
+<text x="0" y="53" font-size="12">0</text>
+<text x="120" y="53" font-size="12">0</text>
+<path fill="none" stroke="black" d="M 34, 80 L 114, 80"/>
+<text x="0" y="83" font-size="12">1</text>
+<text x="120" y="83" font-size="12">1</text>
+<path fill="none" stroke="black" d="M 34, 110 L 114, 110"/>
+<text x="0" y="113" font-size="12">2</text>
+<text x="120" y="113" font-size="12">2</text>
+<circle fill="#CCFFCC" stroke="black" cx="74.0" cy="50" r="6"/>
+<text x="84.0" y="43.0" font-size="12">3π/2</text>
+</svg>

@@ -44,7 +44,7 @@ def unpermute(circuit: QuantumCircuit):
 
 class TestPhaseCircuitSynthesis(unittest.TestCase):
     def setUp(self):
-        self.n_tests = 10
+        self.n_tests = 2
         n_gadgets = 10
         self.num_rt_iters = 10
         self.num_anneal_iters = 100

@@ -1,0 +1,5 @@
+Z/X I/I I/I I/I I/I | + 
+I/I Y/Z I/I I/I I/I | + 
+I/I I/I X/Z X/I I/I | + 
+I/I I/I I/Z X/Z X/I | + 
+I/I I/I I/Z I/Z X/Z | + 

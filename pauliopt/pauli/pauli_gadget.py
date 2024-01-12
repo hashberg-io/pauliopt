@@ -94,6 +94,14 @@ class PauliGadget:
         return cnot_amount
 
     def to_qiskit(self, topology=None):
+        if isinstance(self.angle, float):
+            angle = self.angle
+        elif isinstance(self.angle, AngleExpr):
+            angle = self.angle.to_qiskit
+        else:
+            raise TypeError(
+                f"Angle must either be float or AngleExpr, but got {type(self.angle)}"
+            )
         num_qubits = len(self.paulis)
         if topology is None:
             topology = Topology.complete(num_qubits)
@@ -106,7 +114,7 @@ class PauliGadget:
         column = np.asarray(self.paulis)
         column_binary = np.where(column == I, 0, 1)
         if np.all(column_binary == 0):
-            circ.global_phase += self.angle
+            circ.global_phase += angle
             return circ
 
         cnot_ladder, q0 = find_minimal_cx_assignment(column_binary, topology)
@@ -126,13 +134,13 @@ class PauliGadget:
             for pauli_idx, target in reversed(cnot_ladder):
                 circ.cx(pauli_idx, target)
 
-            circ.rz(self.angle, q0)
+            circ.rz(angle, q0)
 
             for pauli_idx, target in cnot_ladder:
                 circ.cx(pauli_idx, target)
         else:
             target = np.argmax(column_binary)
-            circ.rz(self.angle, target)
+            circ.rz(angle, target)
 
         for pauli_idx in range(len(column)):
             if column[pauli_idx] == Pauli.I:
