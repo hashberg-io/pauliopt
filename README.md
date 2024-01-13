@@ -26,8 +26,8 @@ We view this library as a collection of algorithms for the simplification of qua
 circuits. We currently support the following algorithms:
 
 - "Annealing Optimisation of Mixed ZX Phase Circuits" ([arXiv:2206.11839](https://arxiv.org/abs/2206.11839))
-- "Architecture-Aware Synthesis of Stabilizer Circuits from Clifford Tableaus" ([arXiv:
-  2309.08972](https://arxiv.org/abs/2309.08972))
+- "Towards a generic compilation approach for quantum circuits through resynthesis" ([arXiv:2304.08814](https://arxiv.org/abs/2304.08814))
+- "Architecture-Aware Synthesis of Stabilizer Circuits from Clifford Tableaus" ([arXiv:2309.08972](https://arxiv.org/abs/2309.08972))
 
 **Please Note:** This software library is in a pre-alpha development stage. It is not
 currently suitable for use by the public.
