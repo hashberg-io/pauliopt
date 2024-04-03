@@ -89,16 +89,13 @@ class AngleExpr(ABC):
         return NotImplemented
 
     @abstractmethod
-    def __hash__(self) -> int:
-        ...
+    def __hash__(self) -> int: ...
 
     @abstractmethod
-    def __str__(self) -> str:
-        ...
+    def __str__(self) -> str: ...
 
     @abstractmethod
-    def __repr__(self) -> str:
-        ...
+    def __repr__(self) -> str: ...
 
     @property
     @abstractmethod
@@ -110,8 +107,7 @@ class AngleExpr(ABC):
 
     @property
     @abstractmethod
-    def to_qiskit(self) -> Any:
-        ...
+    def to_qiskit(self) -> Any: ...
 
     @property
     def is_zero(self) -> bool:
@@ -133,8 +129,7 @@ class AngleExpr(ABC):
         return "$%s$" % self.repr_latex
 
     @abstractmethod
-    def __eq__(self, other: Any) -> bool:
-        ...
+    def __eq__(self, other: Any) -> bool: ...
 
 
 class Angle(AngleExpr):
@@ -218,12 +213,10 @@ class Angle(AngleExpr):
         return Angle(-self._value)
 
     @overload
-    def __add__(self, other: "Angle") -> "Angle":
-        ...
+    def __add__(self, other: "Angle") -> "Angle": ...
 
     @overload
-    def __add__(self, other: "AngleExpr") -> "AngleExpr":
-        ...
+    def __add__(self, other: "AngleExpr") -> "AngleExpr": ...
 
     def __add__(self, other: "AngleExpr") -> "AngleExpr":
         if isinstance(other, Angle):
@@ -231,12 +224,10 @@ class Angle(AngleExpr):
         return super().__add__(other)
 
     @overload
-    def __sub__(self, other: "Angle") -> "Angle":
-        ...
+    def __sub__(self, other: "Angle") -> "Angle": ...
 
     @overload
-    def __sub__(self, other: "AngleExpr") -> "AngleExpr":
-        ...
+    def __sub__(self, other: "AngleExpr") -> "AngleExpr": ...
 
     def __sub__(self, other: "AngleExpr") -> "AngleExpr":
         if isinstance(other, Angle):
@@ -244,12 +235,10 @@ class Angle(AngleExpr):
         return super().__sub__(other)
 
     @overload
-    def __mod__(self, other: "Angle") -> "Angle":
-        ...
+    def __mod__(self, other: "Angle") -> "Angle": ...
 
     @overload
-    def __mod__(self, other: "AngleExpr") -> "AngleExpr":
-        ...
+    def __mod__(self, other: "AngleExpr") -> "AngleExpr": ...
 
     def __mod__(self, other: "AngleExpr") -> "AngleExpr":
         if isinstance(other, Angle):
@@ -339,8 +328,7 @@ class Angle(AngleExpr):
         size: Literal[1] = 1,
         rng_seed: Optional[int] = None,
         nonzero: bool = False,
-    ) -> "Angle":
-        ...
+    ) -> "Angle": ...
 
     @overload
     @staticmethod
@@ -350,8 +338,7 @@ class Angle(AngleExpr):
         size: int = 1,
         rng_seed: Optional[int] = None,
         nonzero: bool = False,
-    ) -> Union["Angle", Tuple["Angle", ...]]:
-        ...
+    ) -> Union["Angle", Tuple["Angle", ...]]: ...
 
     @staticmethod
     def random(
@@ -852,8 +839,7 @@ class TempSchedule(Protocol):
     (passed as a keyword argument).
     """
 
-    def __call__(self, it: int, num_iters: int) -> float:
-        ...
+    def __call__(self, it: int, num_iters: int) -> float: ...
 
 
 @runtime_checkable
@@ -865,8 +851,7 @@ class TempScheduleProvider(Protocol):
 
     def __call__(
         self, t_init: Union[int, float], t_final: Union[int, float]
-    ) -> TempSchedule:
-        ...
+    ) -> TempSchedule: ...
 
 
 def linear_temp_schedule(

@@ -39,8 +39,7 @@ class AnnealingCostLogger(Protocol):
     Protocol for logger of initial/final cost in annealing.
     """
 
-    def __call__(self, cx_count: int, num_iters: int):
-        ...
+    def __call__(self, cx_count: int, num_iters: int): ...
 
 
 @runtime_checkable

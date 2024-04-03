@@ -99,12 +99,10 @@ class QASM(Sequence["QASM.Statement"]):
         return len(self._statements)
 
     @overload
-    def __getitem__(self, idx: int) -> "QASM.Statement":
-        ...
+    def __getitem__(self, idx: int) -> "QASM.Statement": ...
 
     @overload
-    def __getitem__(self, idx: slice) -> Sequence["QASM.Statement"]:
-        ...
+    def __getitem__(self, idx: slice) -> Sequence["QASM.Statement"]: ...
 
     def __getitem__(self, idx: Union[int, slice]):
         return self._statements[idx]

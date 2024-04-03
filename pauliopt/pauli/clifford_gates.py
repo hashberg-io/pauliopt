@@ -20,8 +20,7 @@ class CliffordGate(ABC):
         self.c_type = c_type
 
     @abstractmethod
-    def propagate_pauli(self, gadget: PauliGadget):
-        ...
+    def propagate_pauli(self, gadget: PauliGadget): ...
 
 
 class SingleQubitGate(CliffordGate, ABC):

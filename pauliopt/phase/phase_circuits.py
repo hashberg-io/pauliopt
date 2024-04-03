@@ -1224,8 +1224,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         vscale: float = 1.0,
         scale: float = 1.0,
         svg_code_only: Literal[True],
-    ) -> str:
-        ...
+    ) -> str: ...
 
     @overload
     def to_svg(
@@ -1237,8 +1236,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         vscale: float = 1.0,
         scale: float = 1.0,
         svg_code_only: Literal[False] = False,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     def to_svg(
         self,
@@ -1293,8 +1291,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         vscale: float = 1.0,
         scale: float = 1.0,
         svg_code_only: Literal[True],
-    ) -> str:
-        ...
+    ) -> str: ...
 
     @overload
     def _to_svg(
@@ -1306,8 +1303,7 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         vscale: float = 1.0,
         scale: float = 1.0,
         svg_code_only: Literal[False] = False,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     def _to_svg(
         self,
@@ -1619,9 +1615,9 @@ class PhaseCircuit(Sequence[PhaseGadget]):
                         angles_fuse[qubits] = angle
                     if angles_fuse[qubits].is_pi:
                         # This is a pi gadget, further simplification to be performed
-                        angles_fuse[
-                            qubits
-                        ] = Angle.zero  # Remove gadget from this group
+                        angles_fuse[qubits] = (
+                            Angle.zero
+                        )  # Remove gadget from this group
                         pi_gadget = True
                 elif angle.is_pi:
                     # We didn't manage to commute the gadget, but it is a pi gadget
@@ -1704,12 +1700,10 @@ class PhaseCircuit(Sequence[PhaseGadget]):
         raise IndexError(f"Invalid gadget index {idx}")
 
     @overload
-    def __getitem__(self, idx: int) -> PhaseGadget:
-        ...
+    def __getitem__(self, idx: int) -> PhaseGadget: ...
 
     @overload
-    def __getitem__(self, idx: slice) -> "PhaseCircuit":
-        ...
+    def __getitem__(self, idx: slice) -> "PhaseCircuit": ...
 
     def __getitem__(self, idx: Union[int, slice]) -> Union[PhaseGadget, "PhaseCircuit"]:
         if isinstance(idx, int):
@@ -2102,8 +2096,7 @@ class PhaseCircuitView:
         vscale: float = 1.0,
         scale: float = 1.0,
         svg_code_only: Literal[True],
-    ) -> str:
-        ...
+    ) -> str: ...
 
     @overload
     def to_svg(
@@ -2115,8 +2108,7 @@ class PhaseCircuitView:
         vscale: float = 1.0,
         scale: float = 1.0,
         svg_code_only: Literal[False] = False,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     def to_svg(
         self,
