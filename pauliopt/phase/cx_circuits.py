@@ -661,12 +661,10 @@ class CXCircuit(Sequence[CXCircuitLayer]):
         return CXCircuit(topology, layers, output_mapping=permutation)
 
     @overload
-    def __getitem__(self, layer_idx: int) -> CXCircuitLayer:
-        ...
+    def __getitem__(self, layer_idx: int) -> CXCircuitLayer: ...
 
     @overload
-    def __getitem__(self, layer_idx: slice) -> Sequence[CXCircuitLayer]:
-        ...
+    def __getitem__(self, layer_idx: slice) -> Sequence[CXCircuitLayer]: ...
 
     def __getitem__(self, layer_idx):
         return self._layers[layer_idx]
@@ -892,12 +890,10 @@ class CXCircuitView(Sequence[CXCircuitLayerView]):
         )
 
     @overload
-    def __getitem__(self, layer_idx: int) -> CXCircuitLayerView:
-        ...
+    def __getitem__(self, layer_idx: int) -> CXCircuitLayerView: ...
 
     @overload
-    def __getitem__(self, layer_idx: slice) -> Sequence[CXCircuitLayerView]:
-        ...
+    def __getitem__(self, layer_idx: slice) -> Sequence[CXCircuitLayerView]: ...
 
     def __getitem__(self, layer_idx):
         return CXCircuitLayerView(self._circuit[layer_idx])
