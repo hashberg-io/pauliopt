@@ -8,28 +8,50 @@ from pauliopt.utils import SVGBuilder
 
 
 class PauliPolynomial:
-    def __init__(self, num_qubits):
+    def __init__(self, num_qubits, pauli_gadgets=None):
         self.num_qubits = num_qubits
-        self.pauli_gadgets = []
+        self.pauli_gadgets = pauli_gadgets or []
 
-    def __irshift__(self, gadget: PauliGadget):
-        if not len(gadget) == self.num_qubits:
-            raise Exception(
-                f"Pauli Polynomial has {self.num_qubits}, but Pauli gadget has: {len(gadget)}"
+    def __rshift__(self, pauli):
+        if isinstance(pauli, PauliPolynomial):
+            if self.num_qubits != pauli.num_qubits:
+                raise ValueError(
+                    f'Expected PauliPolynomial to have {self.num_qubits} '
+                    f'qubits, got {pauli.num_qubits} qubits instead.'
+                )
+            for gadget in pauli.pauli_gadgets:
+                self.pauli_gadgets.append(gadget)
+        elif isinstance(pauli, PauliGadget):
+            if self.num_qubits != len(pauli):
+                raise ValueError(
+                    f'Expected PauliGadget to have {self.num_qubits} '
+                    f'qubits, got {pauli.num_qubits} qubits instead.'
+                )
+            self.pauli_gadgets.append(pauli)
+        else:
+            return TypeError(
+                'Expected PauliGadget or PauliPolynomial, '
+                f'got {pauli} of type {type(pauli)} instead.'
             )
-        self.pauli_gadgets.append(gadget)
         return self
 
-    def __rshift__(self, pauli_polynomial):
-        for gadget in pauli_polynomial.pauli_gadgets:
-            self.pauli_gadgets.append(gadget)
-        return self
+    __irshift__ = __rshift__
 
     def __repr__(self):
         return "\n".join(map(repr, self.pauli_gadgets))
 
     def __len__(self):
         return len(self.pauli_gadgets)
+
+    def __getitem__(self, idx):
+        if isinstance(idx, int):
+            return self.pauli_gadgets[idx]
+        print(idx)
+        return PauliPolynomial(
+            self.num_qubits, [
+                g if idx.step is None or idx.step > 0 else g.inverse()
+                for g in self.pauli_gadgets[idx]
+            ])
 
     @property
     def num_gadgets(self):
@@ -69,6 +91,11 @@ class PauliPolynomial:
         for gadget in self.pauli_gadgets:
             count += gadget.two_qubit_count(topology, leg_cache=leg_cache)
         return count
+
+    def inverse(self):
+        return PauliPolynomial(self.num_qubits, [
+            g.inverse() for g in self.pauli_gadgets[::-1]
+        ])
 
     def to_svg(
         self,

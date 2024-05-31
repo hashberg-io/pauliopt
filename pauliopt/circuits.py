@@ -72,8 +72,7 @@ class Circuit:
         return self
 
     def to_phase_circuit(self):
-        from pauliopt.phase import Circuit as PhaseCircuit
-
+        from pauliopt.phase import PhaseCircuit
         gadgets = [g for gate in self._gates for g in gate.gadgets]
         return PhaseCircuit(self.n_qubits, gadgets)
 

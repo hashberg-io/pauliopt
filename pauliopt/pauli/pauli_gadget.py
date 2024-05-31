@@ -79,6 +79,9 @@ class PauliGadget:
     def copy(self):
         return PauliGadget(self.angle, self.paulis.copy())
 
+    def inverse(self):
+        return PauliGadget(-self.angle, self.paulis)
+
     def two_qubit_count(self, topology, leg_cache=None):
         if leg_cache is None:
             leg_cache = {}

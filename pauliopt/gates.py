@@ -103,9 +103,12 @@ class Gate(ABC):
         if not hasattr(self, "decomp"):
             raise NotImplementedError
 
-        gadgets = [
-            g if isinstance(g, (ZHead, XHead)) else g.gadgets for g in self.decomp
-        ]
+        gadgets = []
+        for g in self.decomp:
+            if isinstance(g, PhaseGadget):
+                gadgets.append(g)
+            else:
+                gadgets.extend(g.gadgets)
         return gadgets
 
     @abstractmethod
