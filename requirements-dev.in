@@ -1,0 +1,8 @@
+-r requirements.in
+pytket==1.11.0
+pytket-qiskit==0.34.0
+qiskit==0.39.0
+galois==0.3.7
+parameterized==0.9.0
+notebook==7.0.7
+black==24.3.0
