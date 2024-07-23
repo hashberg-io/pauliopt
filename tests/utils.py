@@ -8,7 +8,6 @@ from qiskit.circuit.library import (
     TGate,
     TdgGate,
     SdgGate,
-    SXdgGate,
     ZGate,
     YGate,
     XGate,
