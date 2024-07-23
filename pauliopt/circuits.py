@@ -58,6 +58,7 @@ class Circuit:
     def __init__(self, n_qubits, _gates=None):
         self.n_qubits = n_qubits
         self._gates = [] if _gates is None else _gates
+        self.global_phase = 0.0
 
         for gate in self._gates:
             self._check_gate(gate)

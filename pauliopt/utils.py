@@ -44,7 +44,7 @@ def calculate_orthogonal_point(a, b, d, left):
     return int(orthogonal_point[0]), int(orthogonal_point[1])
 
 
-AngleInitT = Union[int, Fraction, str, Decimal]
+AngleInitT = Union[int, Fraction, str, Decimal, float]
 
 
 class AngleExpr(ABC):
