@@ -4,10 +4,10 @@ import networkx as nx
 import numpy as np
 import pytket
 from pytket._tket.circuit import PauliExpBox
+from pytket._tket.pauli import I as TketI
 from pytket._tket.pauli import X as TketX
 from pytket._tket.pauli import Y as TketY
 from pytket._tket.pauli import Z as TketZ
-from pytket._tket.pauli import I as TketI
 from pytket._tket.transform import Transform
 from pytket.extensions.qiskit.qiskit_convert import tk_to_qiskit
 from qiskit import QuantumCircuit
@@ -17,6 +17,23 @@ from pauliopt.pauli.pauli_polynomial import PauliPolynomial
 from pauliopt.pauli_strings import X, Y, Z, I
 
 PAULI_TO_TKET = {X: TketX, Y: TketY, Z: TketZ, I: TketI}
+
+
+def apply_permutation(qc: QuantumCircuit, permutation: list) -> QuantumCircuit:
+    """
+    Apply a permutation to a qiskit quantum circuit.
+    :param qc:
+    :param permutation:
+    :return:
+    """
+    register = qc.qregs[0]
+    qc_out = QuantumCircuit(register)
+    for instruction in qc:
+        op_qubits = [
+            register[permutation[register.index(q)]] for q in instruction.qubits
+        ]
+        qc_out.append(instruction.operation, op_qubits)
+    return qc_out
 
 
 def tket_to_qiskit(circuit: pytket.Circuit) -> QuantumCircuit:

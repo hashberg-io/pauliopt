@@ -16,7 +16,7 @@ from pauliopt.topologies import Topology
 
 class TestPauliPropagation(unittest.TestCase):
     def test_circuit_construction(self):
-        for num_qubits in [2, 3, 4]:
+        for num_qubits in [2, 3, 4, 5, 6]:
             for topo_creation in [Topology.line, Topology.complete]:
                 pp = generate_all_combination_pauli_polynomial(n_qubits=num_qubits)
 
