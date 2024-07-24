@@ -1,4 +1,28 @@
+from typing import List
+
 import numpy as np
+
+from pauliopt.circuits import (
+    _get_qubits_qiskit,
+    _get_phase_qiskit,
+    QISKIT_CONVERSION,
+    Circuit,
+    AbstractCircuit,
+)
+from pauliopt.gates import (
+    CliffordGate,
+    SingleQubitClifford,
+    TwoQubitClifford,
+    Gate,
+    H,
+    V,
+    Vdg,
+    S,
+    Sdg,
+    CX,
+    CY,
+    CZ,
+)
 
 
 def mult_paulis(p1, p2, sign1, sign2, n_qubits):
@@ -370,3 +394,185 @@ class CliffordTableau:
         phase = np.mod(phase + p, 2)
 
         return CliffordTableau.from_tableau(new_tableau, phase)
+
+    def prepend_gate(self, gate: CliffordGate):
+        if gate.name == "H":
+            assert isinstance(gate, SingleQubitClifford)
+            self.prepend_h(gate.qubit)
+        elif gate.name == "S":
+            assert isinstance(gate, SingleQubitClifford)
+            self.prepend_s(gate.qubit)
+        elif gate.name == "Sdg":
+            assert isinstance(gate, SingleQubitClifford)
+            self.prepend_s(gate.qubit)
+            self.prepend_s(gate.qubit)
+            self.prepend_s(gate.qubit)
+        elif gate.name == "V":
+            assert isinstance(gate, SingleQubitClifford)
+            self.prepend_h(gate.qubit)
+            self.prepend_s(gate.qubit)
+            self.prepend_h(gate.qubit)
+        elif gate.name == "Vdg":
+            assert isinstance(gate, SingleQubitClifford)
+            self.prepend_h(gate.qubit)
+            self.prepend_s(gate.qubit)
+            self.prepend_s(gate.qubit)
+            self.prepend_s(gate.qubit)
+            self.prepend_h(gate.qubit)
+        elif gate.name == "CX":
+            assert isinstance(gate, TwoQubitClifford)
+            self.prepend_cnot(gate.control, gate.target)
+        elif gate.name == "CY":
+            assert isinstance(gate, TwoQubitClifford)
+            self.prepend_s(gate.target)
+            self.prepend_cnot(gate.control, gate.target)
+            self.prepend_s(gate.target)
+            self.prepend_s(gate.target)
+            self.prepend_s(gate.target)
+        elif gate.name == "CZ":
+            assert isinstance(gate, TwoQubitClifford)
+            self.prepend_h(gate.target)
+            self.prepend_cnot(gate.control, gate.target)
+            self.prepend_h(gate.target)
+
+        else:
+            raise TypeError(
+                f"Unrecognized Gate type: {type(gate)} for Clifford Tableaus"
+            )
+
+    # TODO move decomposition into clifford gates
+    def append_gate(self, gate: CliffordGate):
+        if gate.name == "H":
+            assert isinstance(gate, SingleQubitClifford)
+            self.append_h(gate.qubit)
+        elif gate.name == "S":
+            assert isinstance(gate, SingleQubitClifford)
+            self.append_s(gate.qubit)
+        elif gate.name == "Sdg":
+            assert isinstance(gate, SingleQubitClifford)
+            self.append_s(gate.qubit)
+            self.append_s(gate.qubit)
+            self.append_s(gate.qubit)
+        elif gate.name == "V":
+            assert isinstance(gate, SingleQubitClifford)
+            self.append_h(gate.qubit)
+            self.append_s(gate.qubit)
+            self.append_h(gate.qubit)
+        elif gate.name == "Vdg":
+            assert isinstance(gate, SingleQubitClifford)
+            self.append_h(gate.qubit)
+            self.append_s(gate.qubit)
+            self.append_s(gate.qubit)
+            self.append_s(gate.qubit)
+            self.append_h(gate.qubit)
+        elif gate.name == "CX":
+            assert isinstance(gate, TwoQubitClifford)
+            self.append_cnot(gate.control, gate.target)
+        elif gate.name == "CY":
+            assert isinstance(gate, TwoQubitClifford)
+            self.append_s(gate.target)
+            self.append_s(gate.target)
+            self.append_s(gate.target)
+            self.append_cnot(gate.control, gate.target)
+            self.append_s(gate.target)
+        elif gate.name == "CZ":
+            assert isinstance(gate, TwoQubitClifford)
+            self.append_h(gate.target)
+            self.append_cnot(gate.control, gate.target)
+            self.append_h(gate.target)
+
+        else:
+            raise TypeError(
+                f"Unrecognized Gate type: {type(gate)} for Clifford Tableaus"
+            )
+
+
+class CliffordRegion(AbstractCircuit):
+    """Circuit, that specifically consists only out of clifford gates."""
+
+    def __init__(self, n_qubits, _gates: List[Gate] = None) -> None:
+        super().__init__(n_qubits, _gates=_gates)
+
+    @property
+    def gates(self):
+        return self._gates
+
+    def _check_gate(self, gate):
+        n_qubits = self.n_qubits
+        if not isinstance(gate, CliffordGate):
+            raise TypeError(
+                f"{gate} is not a valid gate. All gates must be clifford gates."
+            )
+
+        if len(set(gate.qubits)) != len(gate.qubits):
+            raise ValueError(f"{gate.qubits} are not unique.")
+
+        if any(not (0 <= qubit < n_qubits) for qubit in gate.qubits):
+            msg = f"{gate} acts out of range for {n_qubits} qubit circuit."
+            raise ValueError(msg)
+
+    @staticmethod
+    def from_qiskit(qc: "qiskit.QuantumCircuit"):
+        circ = CliffordRegion(qc.num_qubits)
+
+        for inst in qc:
+            qubits = _get_qubits_qiskit(inst.qubits, qc.qregs[0])
+            phase = _get_phase_qiskit(inst.operation.params)
+            circ.add_gate(QISKIT_CONVERSION[inst.operation.name](qubits, phase))
+
+        return circ
+
+    def to_tableau(self, append: bool = True) -> CliffordTableau:
+
+        ct = CliffordTableau(self.n_qubits)
+
+        for gate in self._gates:
+            assert isinstance(gate, CliffordGate)
+            if append:
+                ct.append_gate(gate)
+            else:
+                ct.prepend_gate(gate)
+        return ct
+
+    def __iadd__(self, other: "Circuit"):
+        for gate in other._gates:
+            self.add_gate(gate)
+        return self
+
+    def __add__(self, other: "Circuit"):
+        if self.n_qubits != other.n_qubits:
+            print(self.n_qubits, other.n_qubits)
+            raise Exception("Can only concatenate circuits with same number of qubits.")
+        return CliffordRegion(self.n_qubits, self._gates + other._gates)
+
+    def h(self, qubit):
+        qubits = (qubit,)
+        self.add_gate(H(*qubits))
+
+    def v(self, qubit):
+        qubits = (qubit,)
+        self.add_gate(V(*qubits))
+
+    def vdg(self, qubit):
+        qubits = (qubit,)
+        self.add_gate(Vdg(*qubits))
+
+    def s(self, qubit):
+        qubits = (qubit,)
+        self.add_gate(S(*qubits))
+
+    def sdg(self, qubit):
+        qubits = (qubit,)
+        self.add_gate(Sdg(*qubits))
+
+    def cx(self, control, target):
+        qubits = (control, target)
+        self.add_gate(CX(*qubits))
+
+    def cy(self, control, target):
+        qubits = (control, target)
+        self.add_gate(CY(*qubits))
+
+    def cz(self, control, target):
+        qubits = (control, target)
+        self.add_gate(CZ(*qubits))

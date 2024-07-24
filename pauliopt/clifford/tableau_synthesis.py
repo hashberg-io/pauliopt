@@ -4,6 +4,7 @@ from networkx.algorithms.approximation import steiner_tree
 from pauliopt.circuits import Circuit
 from pauliopt.clifford.tableau import CliffordTableau
 from pauliopt.gates import CX, H, S
+from pauliopt.utils import is_cutting
 from pauliopt.topologies import Topology
 
 
@@ -162,16 +163,6 @@ def compute_steiner_tree(
         steiner_stree = steiner_tree(sub_graph, nodes)
     traversal = nx.bfs_edges(steiner_stree, source=root)
     return list(reversed(list(traversal)))
-
-
-def is_cutting(vertex, g):
-    """
-    Check if the given vertex is a cutting vertex in the given graph.
-
-    :param vertex: The vertex to check
-    :param g: The graph to check
-    """
-    return vertex in nx.articulation_points(g)
 
 
 def sanitize_z(row, row_z, remaining, apply):

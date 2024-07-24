@@ -115,9 +115,22 @@ class Gate(ABC):
     def to_qiskit(self):
         pass
 
+    @abstractmethod
+    def inverse(self):
+        pass
+
+    def apply_permutation(self, permutation: list) -> None:
+        register = list(range(len(permutation)))
+        self.qubits = tuple(
+            [permutation[register.index(qubit)] for qubit in self.qubits]
+        )
+
+    def copy(self):
+        return self.__class__(*self.qubits)
+
 
 class PhaseGate(Gate, ABC):
-    def __init__(self, phase: float, *qubits):
+    def __init__(self, phase: Angle, *qubits):
         super().__init__(*qubits)
         self.phase = phase
 
@@ -126,10 +139,16 @@ class PhaseGate(Gate, ABC):
         return f"{self.name}({self.phase}, {', '.join(args)})"
 
     def get_phase_as_float(self):
-        return self.phase if not isinstance(self.phase, Angle) else float(self.phase)
+        return self.phase if not isinstance(self.phase, Angle) else self.phase.to_qiskit
 
     def get_phase_as_angle(self):
         return self.phase if isinstance(self.phase, Angle) else Angle(self.phase)
+
+    def inverse(self):
+        return self.__class__(-self.phase, *self.qubits)
+
+    def copy(self):
+        return self.__class__(self.phase, self.qubits)
 
 
 class CliffordGate(Gate, ABC):
@@ -189,6 +208,9 @@ class TwoQubitClifford(CliffordGate, ABC):
             gadget.angle *= phase_change
         return gadget
 
+    def copy(self):
+        return self.__class__(self.control, self.target)
+
 
 class H(SingleQubitClifford):
     rules = {
@@ -223,8 +245,11 @@ class H(SingleQubitClifford):
 
         return HGate(), self.qubits
 
+    def inverse(self):
+        return H(*self.qubits)
 
-# TODO rules!
+
+# TODO rules!, inverse
 class X(SingleQubitClifford):
     n_qubits = 1
     draw_as_zx = True
@@ -241,7 +266,11 @@ class X(SingleQubitClifford):
 
         return XGate(), self.qubits
 
+    def inverse(self):
+        return X(*self.qubits)
 
+
+# TODO rules!, inverse
 class Z(SingleQubitClifford):
     n_qubits = 1
     draw_as_zx = True
@@ -258,7 +287,11 @@ class Z(SingleQubitClifford):
 
         return ZGate(), self.qubits
 
+    def inverse(self):
+        return Z(*self.qubits)
 
+
+# TODO rules!, inverse
 class Y(SingleQubitClifford):
     n_qubits = 1
     draw_as_zx = True
@@ -275,6 +308,9 @@ class Y(SingleQubitClifford):
             raise ImportError("Please install qiskit to use this feature.")
 
         return YGate(), self.qubits
+
+    def inverse(self):
+        return Y(*self.qubits)
 
 
 class S(SingleQubitClifford):
@@ -299,6 +335,9 @@ class S(SingleQubitClifford):
 
         return SGate(), self.qubits
 
+    def inverse(self):
+        return Sdg(*self.qubits)
+
 
 class Sdg(SingleQubitClifford):
     rules = {
@@ -321,6 +360,9 @@ class Sdg(SingleQubitClifford):
             raise ImportError("Please install qiskit to use this feature.")
 
         return SdgGate(), self.qubits
+
+    def inverse(self):
+        return S(*self.qubits)
 
 
 class V(SingleQubitClifford):
@@ -345,6 +387,9 @@ class V(SingleQubitClifford):
 
         return SXGate(), self.qubits
 
+    def inverse(self):
+        return Vdg(*self.qubits)
+
 
 class Vdg(SingleQubitClifford):
     rules = {
@@ -368,6 +413,9 @@ class Vdg(SingleQubitClifford):
 
         return SXdgGate(), self.qubits
 
+    def inverse(self):
+        return V(*self.qubits)
+
 
 class T(Gate):
     n_qubits = 1
@@ -384,6 +432,9 @@ class T(Gate):
             raise ImportError("Please install qiskit to use this feature.")
 
         return TGate(), self.qubits
+
+    def inverse(self):
+        return Tdg(*self.qubits)
 
 
 class Tdg(Gate):
@@ -402,6 +453,9 @@ class Tdg(Gate):
 
         return TdgGate(), self.qubits
 
+    def inverse(self):
+        return T(*self.qubits)
+
 
 class SWAP(Gate):
     n_qubits = 2
@@ -419,6 +473,9 @@ class SWAP(Gate):
             raise ImportError("Please install qiskit to use this feature.")
 
         return SwapGate(), self.qubits
+
+    def inverse(self):
+        return SWAP(*self.qubits)
 
 
 class CX(TwoQubitClifford):
@@ -471,6 +528,9 @@ class CX(TwoQubitClifford):
 
         return CXGate(), self.qubits
 
+    def inverse(self):
+        return CX(*self.qubits)
+
 
 class CY(TwoQubitClifford):
     rules = {
@@ -506,6 +566,9 @@ class CY(TwoQubitClifford):
             raise ImportError("Please install qiskit to use this feature.")
 
         return CYGate(), self.qubits
+
+    def inverse(self):
+        return CY(*self.qubits)
 
 
 class CZ(TwoQubitClifford):
@@ -559,6 +622,9 @@ class CZ(TwoQubitClifford):
 
         return CZGate(), self.qubits
 
+    def inverse(self):
+        return CZ(*self.qubits)
+
 
 class CCX(Gate):
     n_qubits = 3
@@ -576,6 +642,9 @@ class CCX(Gate):
             raise ImportError("Please install qiskit to use this feature.")
 
         return CCXGate(), self.qubits
+
+    def inverse(self):
+        return CCX(*self.qubits)
 
 
 class CCZ(Gate):
@@ -598,6 +667,9 @@ class CCZ(Gate):
             raise ImportError("Please install qiskit to use this feature.")
 
         return CCZGate(), self.qubits
+
+    def inverse(self):
+        return CCZ(*self.qubits)
 
 
 class Rx(PhaseGate):

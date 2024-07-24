@@ -25,6 +25,17 @@ from typing import (
     Union,
 )
 import numpy as np
+import networkx as nx
+
+
+def is_cutting(vertex, g):
+    """
+    Check if the given vertex is a cutting vertex in the given graph.
+
+    :param vertex: The vertex to check
+    :param g: The graph to check
+    """
+    return vertex in nx.articulation_points(g)
 
 
 def calculate_orthogonal_point(a, b, d, left):
@@ -787,7 +798,7 @@ class SVGBuilder:
         x, y = centre
         tag = (
             f'<rect fill="{fill}" stroke="black"'
-            f' x="{x-width//2}" y="{y-height//2}"'
+            f' x="{x - width // 2}" y="{y - height // 2}"'
             f' width="{width}" height="{height}"/>'
         )
         self._tags.append(tag)
@@ -805,7 +816,7 @@ class SVGBuilder:
         if not isinstance(font_size, int) or font_size <= 0:
             raise TypeError("Font size must be positive integer.")
         x, y = pos
-        attrs = f'x="{x}" y="{y+font_size//4}" font-size="{font_size}"'
+        attrs = f'x="{x}" y="{y + font_size // 4}" font-size="{font_size}"'
         attrs += f' text-anchor="middle"' if center else ""
         tag = f"<text {attrs}>{text}</text>"
         self._tags.append(tag)
@@ -937,14 +948,12 @@ StandardTempScheduleName = Literal["linear", "geometric", "reciprocal", "log"]
     Names of the standard temperature schedules.
 """
 
-
 StandardTempSchedule = Tuple[
     StandardTempScheduleName, Union[int, float], Union[int, float]
 ]
 """
     Type for standard temperature schedules.
 """
-
 
 StandardTempSchedules: Final[
     Mapping[StandardTempScheduleName, TempScheduleProvider]

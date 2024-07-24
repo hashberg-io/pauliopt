@@ -210,7 +210,7 @@ class PauliPolynomial:
         gadget2 = self.pauli_gadgets[col2]
         return gadget1.commutes(gadget2)
 
-    def mutual_legs(self, col1, col2):
+    def mutual_legs(self, col1: int, col2: int):
         gadget1 = self.pauli_gadgets[col1]
         gadget2 = self.pauli_gadgets[col2]
         return gadget1.mutual_legs(gadget2)
