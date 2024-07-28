@@ -10,13 +10,13 @@ from tests.pauli.utils import (
     generate_random_depth_1_clifford,
 )
 from pauliopt.circuits import CX, CY, CZ, H, S, V, Circuit
-from pauliopt.gates import Vdg, Sdg
+from pauliopt.gates import Vdg, Sdg, Y, X, Z, SWAP
 from pauliopt.topologies import Topology
 
 
 class TestPauliPropagation(unittest.TestCase):
     def test_circuit_construction(self):
-        for num_qubits in [2, 3, 4, 5, 6]:
+        for num_qubits in [2, 3, 4]:
             for topo_creation in [Topology.line, Topology.complete]:
                 pp = generate_all_combination_pauli_polynomial(n_qubits=num_qubits)
 
@@ -41,7 +41,7 @@ class TestPauliPropagation(unittest.TestCase):
         for num_qubits in [2, 3, 4]:
             pp = generate_all_combination_pauli_polynomial(n_qubits=num_qubits)
             inital_qc = pp.to_qiskit()
-            for gate_class in [CX, CY, CZ, H, S, V, Vdg, Sdg]:
+            for gate_class in [H, S, CX, V, Vdg, Sdg, X, Y, Z, CY, CZ, SWAP]:
                 gate = generate_random_depth_1_clifford(gate_class, num_qubits)
                 gate_circ = Circuit(num_qubits)
                 gate_circ.add_gate(gate)

@@ -152,36 +152,100 @@ class PhaseGate(Gate, ABC):
         return self.__class__(self.phase, self.qubits)
 
 
+PROPAGATION_H = {
+    "X": (Pauli.Z, 1),
+    "Y": (Pauli.Y, -1),
+    "Z": (Pauli.X, 1),
+    "I": (Pauli.I, 1),
+}
+
+PROPAGATION_S = {
+    "X": (Pauli.Y, -1),
+    "Y": (Pauli.X, 1),
+    "Z": (Pauli.Z, 1),
+    "I": (Pauli.I, 1),
+}
+
+PROPAGATION_CX = {
+    "XX": (Pauli.X, Pauli.I, 1),
+    "XY": (Pauli.Y, Pauli.Z, 1),
+    "XZ": (Pauli.Y, Pauli.Y, -1),
+    "XI": (Pauli.X, Pauli.X, 1),
+    "YX": (Pauli.Y, Pauli.I, 1),
+    "YY": (Pauli.X, Pauli.Z, -1),
+    "YZ": (Pauli.X, Pauli.Y, 1),
+    "YI": (Pauli.Y, Pauli.X, 1),
+    "ZX": (Pauli.Z, Pauli.X, 1),
+    "ZY": (Pauli.I, Pauli.Y, 1),
+    "ZZ": (Pauli.I, Pauli.Z, 1),
+    "ZI": (Pauli.Z, Pauli.I, 1),
+    "IX": (Pauli.I, Pauli.X, 1),
+    "IY": (Pauli.Z, Pauli.Y, 1),
+    "IZ": (Pauli.Z, Pauli.Z, 1),
+    "II": (Pauli.I, Pauli.I, 1),
+}
+
+
 class CliffordGate(Gate, ABC):
     def __init__(self, *qubits):
         super().__init__(*qubits)
 
     @abstractmethod
-    def propagate_pauli(self, gadget: "pauliopt.pauli.pauli_gadget.PauliGadget"):
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        """
+        Every clifford must me decomposable into a list of H, S and CX gates.
+        Returns:
+
+        """
         pass
 
-    @abstractmethod
-    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
-        pass
+    def propagate_pauli(self, gadget: "pauliopt.pauli.pauli_gadget.PauliGadget"):
+        """
+        Propagate a pauli gate through a gadget using the H, S, CX decomposition rules.
+
+        One can define for H, S and CX propagation rules, which are defined in the dictionaries above.
+        Args:
+            gadget:
+
+        Returns:
+
+        """
+        h_s_cx_decomposition = self.get_h_s_cx_decomposition()
+        for gate in reversed(h_s_cx_decomposition):
+            if gate.name == "H":
+                assert isinstance(gate, SingleQubitClifford)
+                p_string = gadget.paulis[gate.qubit].value
+                new_p, phase_change = PROPAGATION_H[p_string]
+                gadget.paulis[gate.qubit] = new_p
+                if phase_change == -1:
+                    gadget.angle *= phase_change
+            elif gate.name == "S":
+                assert isinstance(gate, SingleQubitClifford)
+                p_string = gadget.paulis[gate.qubit].value
+                new_p, phase_change = PROPAGATION_S[p_string]
+                gadget.paulis[gate.qubit] = new_p
+                if phase_change == -1:
+                    gadget.angle *= phase_change
+            elif gate.name == "CX":
+                assert isinstance(gate, TwoQubitClifford)
+                p_string = gadget.paulis[gate.control].value + gadget.paulis[gate.target].value
+                p_c, p_t, phase_change = PROPAGATION_CX[p_string]
+                gadget.paulis[gate.control] = p_c
+                gadget.paulis[gate.target] = p_t
+                if phase_change == -1:
+                    gadget.angle *= phase_change
+
+        return gadget
 
 
 class SingleQubitClifford(CliffordGate, ABC):
+
     def __init__(self, qubit: int):
         super().__init__((qubit))
 
     @property
     def qubit(self):
         return self.qubits[0]
-
-    def propagate_pauli(self, gadget: "pauliopt.pauli.pauli_gadget.PauliGadget"):
-        if self.rules is None:
-            raise Exception(f"{self} has no rules defined for propagation!")
-        p_string = gadget.paulis[self.qubits[0]].value
-        new_p, phase_change = self.rules[p_string]
-        gadget.paulis[self.qubits[0]] = new_p
-        if phase_change == -1:
-            gadget.angle *= phase_change
-        return gadget
 
 
 class TwoQubitClifford(CliffordGate, ABC):
@@ -197,33 +261,11 @@ class TwoQubitClifford(CliffordGate, ABC):
     def target(self):
         return self.qubits[1]
 
-    def propagate_pauli(self, gadget: "pauliopt.pauli.pauli_gadget.PauliGadget"):
-        if self.rules is None:
-            raise Exception(f"{self} has no rules defined for propagation!")
-        pauli_size = len(gadget)
-        if self.control >= pauli_size or self.target >= pauli_size:
-            raise Exception(
-                f"Control: {self.control} or Target {self.target} out of bounds: {pauli_size}"
-            )
-        p_string = gadget.paulis[self.control].value + gadget.paulis[self.target].value
-        p_c, p_t, phase_change = self.rules[p_string]
-        gadget.paulis[self.control] = p_c
-        gadget.paulis[self.target] = p_t
-        if phase_change == -1:
-            gadget.angle *= phase_change
-        return gadget
-
     def copy(self):
         return self.__class__(self.control, self.target)
 
 
 class H(SingleQubitClifford):
-    rules = {
-        "X": (Pauli.Z, 1),
-        "Y": (Pauli.Y, -1),
-        "Z": (Pauli.X, 1),
-        "I": (Pauli.I, 1),
-    }
     n_qubits = 1
     width = 40
 
@@ -257,7 +299,6 @@ class H(SingleQubitClifford):
         return [H(*self.qubits)]
 
 
-# TODO rules!, inverse
 class X(SingleQubitClifford):
     n_qubits = 1
     draw_as_zx = True
@@ -281,7 +322,6 @@ class X(SingleQubitClifford):
         return [H(*self.qubits), S(*self.qubits), S(*self.qubits), H(*self.qubits)]
 
 
-# TODO rules!, inverse
 class Z(SingleQubitClifford):
     n_qubits = 1
     draw_as_zx = True
@@ -305,7 +345,6 @@ class Z(SingleQubitClifford):
         return [S(*self.qubits), S(*self.qubits)]
 
 
-# TODO rules!, inverse
 class Y(SingleQubitClifford):
     n_qubits = 1
     draw_as_zx = True
@@ -333,12 +372,6 @@ class Y(SingleQubitClifford):
 
 
 class S(SingleQubitClifford):
-    rules = {
-        "X": (Pauli.Y, -1),
-        "Y": (Pauli.X, 1),
-        "Z": (Pauli.Z, 1),
-        "I": (Pauli.I, 1),
-    }
     n_qubits = 1
     draw_as_zx = True
 
@@ -362,12 +395,6 @@ class S(SingleQubitClifford):
 
 
 class Sdg(SingleQubitClifford):
-    rules = {
-        "X": (Pauli.Y, 1),
-        "Y": (Pauli.X, -1),
-        "Z": (Pauli.Z, 1),
-        "I": (Pauli.I, 1),
-    }
     n_qubits = 1
     draw_as_zx = True
 
@@ -391,12 +418,6 @@ class Sdg(SingleQubitClifford):
 
 
 class V(SingleQubitClifford):
-    rules = {
-        "X": (Pauli.X, 1),
-        "Y": (Pauli.Z, -1),
-        "Z": (Pauli.Y, 1),
-        "I": (Pauli.I, 1),
-    }
     n_qubits = 1
     draw_as_zx = True
 
@@ -420,12 +441,6 @@ class V(SingleQubitClifford):
 
 
 class Vdg(SingleQubitClifford):
-    rules = {
-        "X": (Pauli.X, 1),
-        "Y": (Pauli.Z, 1),
-        "Z": (Pauli.Y, -1),
-        "I": (Pauli.I, 1),
-    }
     n_qubits = 1
     draw_as_zx = True
 
@@ -488,7 +503,7 @@ class Tdg(Gate):
         return T(*self.qubits)
 
 
-class SWAP(Gate):
+class SWAP(CliffordGate):
     n_qubits = 2
     draw_as_zx = True
 
@@ -514,24 +529,6 @@ class SWAP(Gate):
 
 
 class CX(TwoQubitClifford):
-    rules = {
-        "XX": (Pauli.X, Pauli.I, 1),
-        "XY": (Pauli.Y, Pauli.Z, 1),
-        "XZ": (Pauli.Y, Pauli.Y, -1),
-        "XI": (Pauli.X, Pauli.X, 1),
-        "YX": (Pauli.Y, Pauli.I, 1),
-        "YY": (Pauli.X, Pauli.Z, -1),
-        "YZ": (Pauli.X, Pauli.Y, 1),
-        "YI": (Pauli.Y, Pauli.X, 1),
-        "ZX": (Pauli.Z, Pauli.X, 1),
-        "ZY": (Pauli.I, Pauli.Y, 1),
-        "ZZ": (Pauli.I, Pauli.Z, 1),
-        "ZI": (Pauli.Z, Pauli.I, 1),
-        "IX": (Pauli.I, Pauli.X, 1),
-        "IY": (Pauli.Z, Pauli.Y, 1),
-        "IZ": (Pauli.Z, Pauli.Z, 1),
-        "II": (Pauli.I, Pauli.I, 1),
-    }
     n_qubits = 2
     draw_as_zx = True
     width = 40
@@ -572,24 +569,6 @@ class CX(TwoQubitClifford):
 
 
 class CY(TwoQubitClifford):
-    rules = {
-        "XX": (Pauli.Y, Pauli.Z, -1),
-        "XY": (Pauli.X, Pauli.I, 1),
-        "XZ": (Pauli.Y, Pauli.X, 1),
-        "XI": (Pauli.X, Pauli.Y, 1),
-        "YX": (Pauli.X, Pauli.Z, 1),
-        "YY": (Pauli.Y, Pauli.I, 1),
-        "YZ": (Pauli.X, Pauli.X, -1),
-        "YI": (Pauli.Y, Pauli.Y, 1),
-        "ZX": (Pauli.I, Pauli.X, 1),
-        "ZY": (Pauli.Z, Pauli.Y, 1),
-        "ZZ": (Pauli.I, Pauli.Z, 1),
-        "ZI": (Pauli.Z, Pauli.I, 1),
-        "IX": (Pauli.Z, Pauli.X, 1),
-        "IY": (Pauli.I, Pauli.Y, 1),
-        "IZ": (Pauli.Z, Pauli.Z, 1),
-        "II": (Pauli.I, Pauli.I, 1),
-    }
     n_qubits = 2
     draw_as_zx = True
 
@@ -615,24 +594,6 @@ class CY(TwoQubitClifford):
 
 
 class CZ(TwoQubitClifford):
-    rules = {
-        "XX": (Pauli.Y, Pauli.Y, 1),
-        "XY": (Pauli.Y, Pauli.X, -1),
-        "XZ": (Pauli.X, Pauli.I, 1),
-        "XI": (Pauli.X, Pauli.Z, 1),
-        "YX": (Pauli.X, Pauli.Y, -1),
-        "YY": (Pauli.X, Pauli.X, 1),
-        "YZ": (Pauli.Y, Pauli.I, 1),
-        "YI": (Pauli.Y, Pauli.Z, 1),
-        "ZX": (Pauli.I, Pauli.X, 1),
-        "ZY": (Pauli.I, Pauli.Y, 1),
-        "ZZ": (Pauli.Z, Pauli.Z, 1),
-        "ZI": (Pauli.Z, Pauli.I, 1),
-        "IX": (Pauli.Z, Pauli.X, 1),
-        "IY": (Pauli.Z, Pauli.Y, 1),
-        "IZ": (Pauli.I, Pauli.Z, 1),
-        "II": (Pauli.I, Pauli.I, 1),
-    }
     n_qubits = 2
     draw_as_zx = True
 
