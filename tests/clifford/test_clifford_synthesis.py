@@ -5,7 +5,7 @@ from qiskit import QuantumCircuit
 
 from pauliopt.clifford.tableau import CliffordTableau
 from pauliopt.clifford.tableau_synthesis import synthesize_tableau
-from tests.tableau.utils import tableau_from_circuit
+from tests.clifford.utils import tableau_from_circuit
 from tests.utils import verify_equality, random_hscx_circuit
 from pauliopt.topologies import Topology
 

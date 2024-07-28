@@ -16,6 +16,7 @@ QISKIT_CONVERSION = {
     "y": lambda qubits, _: Y(*qubits),
     "z": lambda qubits, _: Z(*qubits),
     "s": lambda qubits, _: S(*qubits),
+    "sx": lambda qubits, _: V(*qubits),
     "sdg": lambda qubits, _: Sdg(*qubits),
     "t": lambda qubits, _: T(*qubits),
     "tdg": lambda qubits, _: Tdg(*qubits),

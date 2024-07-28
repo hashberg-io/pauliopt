@@ -61,8 +61,8 @@ def mult_paulis(p1, p2, sign1, sign2, n_qubits):
 
 class CliffordTableau:
     """
-    Class for storing and manipulating Clifford tableau.
-    A Clifford tableau is a representation of a Clifford circuit as a
+    Class for storing and manipulating Clifford clifford.
+    A Clifford clifford is a representation of a Clifford circuit as a
     2n x 2n binary matrix, where n is the number of qubits. The first n rows
     represent the stabilizers, and the last n rows represent the destabilizers.
     The first n columns represent the X operators, and the last n columns
@@ -70,15 +70,15 @@ class CliffordTableau:
     The sign of the operator in row i is given by the i-th entry of
     the sign vector.
 
-    The tableau is initialized as the identity matrix with a zero sign vector.
+    The clifford is initialized as the identity matrix with a zero sign vector.
 
     Args:
-        n_qubits (int): Number of qubits in the tableau.
+        n_qubits (int): Number of qubits in the clifford.
 
 
-    A more readable representation of the tableau is given by the string:
+    A more readable representation of the clifford is given by the string:
     ```python
-    >>> from pauliopt.clifford.tableau import CliffordTableau
+    >>> from pauliopt.clifford.clifford import CliffordTableau
     >>> ct = CliffordTableau(2)
     >>> print(ct)
     # Expected Output:
@@ -91,9 +91,9 @@ class CliffordTableau:
     # I/I X/Z | +
     ```
 
-    To get the raw $2n \times 2n$ matrix representation of the tableau, use:
+    To get the raw $2n \times 2n$ matrix representation of the clifford, use:
     ```python
-    >>> ct.tableau
+    >>> ct.clifford
     # Expected Output:
     # array([[0, 0, 1, 0],
     #        [0, 1, 0, 0],
@@ -121,10 +121,10 @@ class CliffordTableau:
     @staticmethod
     def from_tableau(tableau, signs):
         """
-        Create a CliffordTableau from a tableau and sign vector.
+        Create a CliffordTableau from a clifford and sign vector.
 
         Args:
-            tableau (np.ndarray): $2n \times 2n$ binary matrix representing the tableau.
+            tableau (np.ndarray): $2n \times 2n$ binary matrix representing the clifford.
             signs (np.ndarray): $2n$-dimensional binary vector representing the sign vector.
 
         Returns:
@@ -132,8 +132,8 @@ class CliffordTableau:
         """
         n_qubits = tableau.shape[0] // 2
         if not (
-            tableau.shape == (2 * n_qubits, 2 * n_qubits)
-            and signs.shape == (2 * n_qubits,)
+                tableau.shape == (2 * n_qubits, 2 * n_qubits)
+                and signs.shape == (2 * n_qubits,)
         ):
             raise ValueError(
                 "Tableau and signs must have shape "
@@ -163,7 +163,7 @@ class CliffordTableau:
 
     def string_repr(self, sep=" ", sign_sep="| "):
         """
-        Get a string representation of the tableau.
+        Get a string representation of the clifford.
 
         Args:
             sep (str): Separator between the pauli operators
@@ -198,8 +198,8 @@ class CliffordTableau:
             col (int): Column index.
         """
         return (
-            self.tableau[row + self.n_qubits, col]
-            + 2 * self.tableau[row + self.n_qubits, col + self.n_qubits]
+                self.tableau[row + self.n_qubits, col]
+                + 2 * self.tableau[row + self.n_qubits, col + self.n_qubits]
         )
 
     def _xor_row(self, i, j):
@@ -221,7 +221,7 @@ class CliffordTableau:
 
     def prepend_h(self, qubit):
         """
-        Prepend a Hadamard gate to the tableau.
+        Prepend a Hadamard gate to the clifford.
 
         Args:
             qubit (int): Qubit the hadamard gate is applied to.
@@ -232,7 +232,7 @@ class CliffordTableau:
 
     def append_h(self, qubit):
         """
-        Append a Hadamard gate to the tableau.
+        Append a Hadamard gate to the clifford.
 
         Args:
             qubit (int): Qubit the hadamard gate is applied to.
@@ -244,7 +244,7 @@ class CliffordTableau:
 
     def prepend_s(self, qubit):
         """
-        Prepend a S gate to the tableau.
+        Prepend a S gate to the clifford.
 
         Args:
             qubit (int): Qubit the S gate is applied to.
@@ -253,7 +253,7 @@ class CliffordTableau:
 
     def append_s(self, qubit):
         """
-        Append a S gate to the tableau.
+        Append a S gate to the clifford.
 
         Args:
             qubit (int): Qubit the S gate is applied to.
@@ -265,7 +265,7 @@ class CliffordTableau:
 
     def prepend_cnot(self, control, target):
         """
-        Prepend a CNOT gate to the tableau.
+        Prepend a CNOT gate to the clifford.
 
         Args:
             control (int): Control qubit.
@@ -277,7 +277,7 @@ class CliffordTableau:
 
     def append_cnot(self, control, target):
         """
-        Append a CNOT gate to the tableau.
+        Append a CNOT gate to the clifford.
 
         Args:
             control (int): Control qubit.
@@ -300,7 +300,7 @@ class CliffordTableau:
 
     def insert_pauli_row(self, pauli, p_sign, row):
         """
-        Insert a Pauli row into the tableau.
+        Insert a Pauli row into the clifford.
 
         Args:
             pauli (np.array): Pauli to be inserted.
@@ -313,13 +313,13 @@ class CliffordTableau:
 
     def inverse(self):
         """
-        Invert the tableau.
+        Invert the clifford.
 
 
-        Note: this is will create a deep copy of the tableau.
+        Note: this is will create a deep copy of the clifford.
 
         Returns:
-            CliffordTableau: Inverted tableau.
+            CliffordTableau: Inverted clifford.
 
         """
         n_qubits = self.n_qubits
@@ -343,9 +343,9 @@ class CliffordTableau:
 
     def apply(self, other: "CliffordTableau"):
         """
-        Apply a CliffordTableau to the current tableau.
+        Apply a CliffordTableau to the current clifford.
 
-        Note: this is will create a deep copy of the tableau.
+        Note: this is will create a deep copy of the clifford.
 
         Args:
             other (CliffordTableau): CliffordTableau to apply.
@@ -363,7 +363,7 @@ class CliffordTableau:
         for k in range(2 * self.n_qubits):
             row2 = other.tableau[k]
             x2 = other.tableau[k, : self.n_qubits]
-            z2 = other.tableau[k, self.n_qubits :]
+            z2 = other.tableau[k, self.n_qubits:]
 
             # Adding a factor of i for each Y in the image of an operator under the
             # first operation, since Y=iXZ
@@ -434,7 +434,26 @@ class CliffordTableau:
             self.prepend_h(gate.target)
             self.prepend_cnot(gate.control, gate.target)
             self.prepend_h(gate.target)
-
+        elif gate.name == "X":
+            assert isinstance(gate, SingleQubitClifford)
+            self.prepend_h(gate.qubit)
+            self.prepend_s(gate.qubit)
+            self.prepend_s(gate.qubit)
+            self.prepend_h(gate.qubit)
+        elif gate.name == "Y":
+            assert isinstance(gate, SingleQubitClifford)
+            self.prepend_s(gate.qubit)
+            self.prepend_s(gate.qubit)
+            self.prepend_s(gate.qubit)
+            self.prepend_h(gate.qubit)
+            self.prepend_s(gate.qubit)
+            self.prepend_s(gate.qubit)
+            self.prepend_h(gate.qubit)
+            self.prepend_s(gate.qubit)
+        elif gate.name == "Z":
+            assert isinstance(gate, SingleQubitClifford)
+            self.prepend_s(gate.qubit)
+            self.prepend_s(gate.qubit)
         else:
             raise TypeError(
                 f"Unrecognized Gate type: {type(gate)} for Clifford Tableaus"

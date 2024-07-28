@@ -25,6 +25,8 @@ from qiskit.circuit.library import (
 )
 from qiskit.quantum_info import Operator
 
+from pauliopt.circuits import Circuit
+
 guadalupe_connectivity = [
     [0, 1],
     [1, 0],
@@ -142,37 +144,41 @@ def verify_equality(qc_in, qc_out):
     return Operator.from_circuit(qc_in).equiv(Operator.from_circuit(qc_out))
 
 
-def random_clifford_circuit(nr_gates=20, nr_qubits=4, gate_choice=None):
-    qc = QuantumCircuit(nr_qubits)
+def random_clifford_circuit(nr_gates=20, nr_qubits=4, gate_choice=None) -> Circuit:
+    qc = Circuit(nr_qubits)
     if gate_choice is None:
-        gate_choice = ["CY", "CZ", "CX", "H", "S", "V"]
+        gate_choice = ["CY", "CZ", "CX", "H", "S", "V", "Sdg", "Vdg", "X", "Y", "Z"]
     for _ in range(nr_gates):
         gate_t = np.random.choice(gate_choice)
+        qubit = np.random.choice([i for i in range(nr_qubits)])
         if gate_t == "CX":
-            control = np.random.choice([i for i in range(nr_qubits)])
-            target = np.random.choice([i for i in range(nr_qubits) if i != control])
-            qc.cx(control, target)
+            target = np.random.choice([i for i in range(nr_qubits) if i != qubit])
+            qc.cx(qubit, target)
         elif gate_t == "CY":
-            control = np.random.choice([i for i in range(nr_qubits)])
-            target = np.random.choice([i for i in range(nr_qubits) if i != control])
-            qc.cy(control, target)
+            target = np.random.choice([i for i in range(nr_qubits) if i != qubit])
+            qc.cy(qubit, target)
         elif gate_t == "CZ":
-            control = np.random.choice([i for i in range(nr_qubits)])
-            target = np.random.choice([i for i in range(nr_qubits) if i != control])
-            qc.cz(control, target)
+            target = np.random.choice([i for i in range(nr_qubits) if i != qubit])
+            qc.cz(qubit, target)
         elif gate_t == "H":
-            qubit = np.random.choice([i for i in range(nr_qubits)])
             qc.h(qubit)
         elif gate_t == "S":
-            qubit = np.random.choice([i for i in range(nr_qubits)])
             qc.s(qubit)
         elif gate_t == "V":
-            qubit = np.random.choice([i for i in range(nr_qubits)])
-            qc.sx(qubit)
-        elif gate_t == "CX":
-            control = np.random.choice([i for i in range(nr_qubits)])
-            target = np.random.choice([i for i in range(nr_qubits) if i != control])
-            qc.cx(control, target)
+            qc.v(qubit)
+        elif gate_t == "Vdg":
+            qc.vdg(qubit)
+        elif gate_t == "Sdg":
+            qc.sdg(qubit)
+        elif gate_t == "X":
+            qc.x(qubit)
+        elif gate_t == "Y":
+            qc.y(qubit)
+        elif gate_t == "Z":
+            qc.z(qubit)
+        else:
+            raise Exception(f"Unknown Gate: {gate_t}")
+
     return qc
 
 
