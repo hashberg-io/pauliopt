@@ -228,7 +228,9 @@ class CliffordGate(Gate, ABC):
                     gadget.angle *= phase_change
             elif gate.name == "CX":
                 assert isinstance(gate, TwoQubitClifford)
-                p_string = gadget.paulis[gate.control].value + gadget.paulis[gate.target].value
+                p_string = (
+                    gadget.paulis[gate.control].value + gadget.paulis[gate.target].value
+                )
                 p_c, p_t, phase_change = PROPAGATION_CX[p_string]
                 gadget.paulis[gate.control] = p_c
                 gadget.paulis[gate.target] = p_t
@@ -366,9 +368,11 @@ class Y(SingleQubitClifford):
         return Y(*self.qubits)
 
     def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
-        return (Sdg(*self.qubits).get_h_s_cx_decomposition()
-                + X(*self.qubits).get_h_s_cx_decomposition()
-                + S(*self.qubits).get_h_s_cx_decomposition())
+        return (
+            Sdg(*self.qubits).get_h_s_cx_decomposition()
+            + X(*self.qubits).get_h_s_cx_decomposition()
+            + S(*self.qubits).get_h_s_cx_decomposition()
+        )
 
 
 class S(SingleQubitClifford):
@@ -460,7 +464,11 @@ class Vdg(SingleQubitClifford):
         return V(*self.qubits)
 
     def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
-        return [H(*self.qubits)] + Sdg(*self.qubits).get_h_s_cx_decomposition() + [H(*self.qubits)]
+        return (
+            [H(*self.qubits)]
+            + Sdg(*self.qubits).get_h_s_cx_decomposition()
+            + [H(*self.qubits)]
+        )
 
 
 class T(Gate):
