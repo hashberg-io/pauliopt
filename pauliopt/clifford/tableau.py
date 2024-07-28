@@ -395,115 +395,33 @@ class CliffordTableau:
 
         return CliffordTableau.from_tableau(new_tableau, phase)
 
-    def prepend_gate(self, gate: CliffordGate):
-        if gate.name == "H":
-            assert isinstance(gate, SingleQubitClifford)
-            self.prepend_h(gate.qubit)
-        elif gate.name == "S":
-            assert isinstance(gate, SingleQubitClifford)
-            self.prepend_s(gate.qubit)
-        elif gate.name == "Sdg":
-            assert isinstance(gate, SingleQubitClifford)
-            self.prepend_s(gate.qubit)
-            self.prepend_s(gate.qubit)
-            self.prepend_s(gate.qubit)
-        elif gate.name == "V":
-            assert isinstance(gate, SingleQubitClifford)
-            self.prepend_h(gate.qubit)
-            self.prepend_s(gate.qubit)
-            self.prepend_h(gate.qubit)
-        elif gate.name == "Vdg":
-            assert isinstance(gate, SingleQubitClifford)
-            self.prepend_h(gate.qubit)
-            self.prepend_s(gate.qubit)
-            self.prepend_s(gate.qubit)
-            self.prepend_s(gate.qubit)
-            self.prepend_h(gate.qubit)
-        elif gate.name == "CX":
-            assert isinstance(gate, TwoQubitClifford)
-            self.prepend_cnot(gate.control, gate.target)
-        elif gate.name == "CY":
-            assert isinstance(gate, TwoQubitClifford)
-            self.prepend_s(gate.target)
-            self.prepend_cnot(gate.control, gate.target)
-            self.prepend_s(gate.target)
-            self.prepend_s(gate.target)
-            self.prepend_s(gate.target)
-        elif gate.name == "CZ":
-            assert isinstance(gate, TwoQubitClifford)
-            self.prepend_h(gate.target)
-            self.prepend_cnot(gate.control, gate.target)
-            self.prepend_h(gate.target)
-        elif gate.name == "X":
-            assert isinstance(gate, SingleQubitClifford)
-            self.prepend_h(gate.qubit)
-            self.prepend_s(gate.qubit)
-            self.prepend_s(gate.qubit)
-            self.prepend_h(gate.qubit)
-        elif gate.name == "Y":
-            assert isinstance(gate, SingleQubitClifford)
-            self.prepend_s(gate.qubit)
-            self.prepend_s(gate.qubit)
-            self.prepend_s(gate.qubit)
-            self.prepend_h(gate.qubit)
-            self.prepend_s(gate.qubit)
-            self.prepend_s(gate.qubit)
-            self.prepend_h(gate.qubit)
-            self.prepend_s(gate.qubit)
-        elif gate.name == "Z":
-            assert isinstance(gate, SingleQubitClifford)
-            self.prepend_s(gate.qubit)
-            self.prepend_s(gate.qubit)
-        else:
-            raise TypeError(
-                f"Unrecognized Gate type: {type(gate)} for Clifford Tableaus"
-            )
+    def prepend_gate(self, gate: CliffordGate) -> None:
+        for h_s_cx_gate in reversed(gate.get_h_s_cx_decomposition()):
+            if h_s_cx_gate.name == "H":
+                assert isinstance(h_s_cx_gate, SingleQubitClifford)
+                self.prepend_h(h_s_cx_gate.qubit)
+            elif h_s_cx_gate.name == "S":
+                assert isinstance(h_s_cx_gate, SingleQubitClifford)
+                self.prepend_s(h_s_cx_gate.qubit)
+            elif h_s_cx_gate.name == "CX":
+                assert isinstance(h_s_cx_gate, TwoQubitClifford)
+                self.prepend_cnot(h_s_cx_gate.control, h_s_cx_gate.target)
+            else:
+                raise TypeError(f"Invalid H, S, CX decomposition of {gate.name}")
 
-    # TODO move decomposition into clifford gates
-    def append_gate(self, gate: CliffordGate):
-        if gate.name == "H":
-            assert isinstance(gate, SingleQubitClifford)
-            self.append_h(gate.qubit)
-        elif gate.name == "S":
-            assert isinstance(gate, SingleQubitClifford)
-            self.append_s(gate.qubit)
-        elif gate.name == "Sdg":
-            assert isinstance(gate, SingleQubitClifford)
-            self.append_s(gate.qubit)
-            self.append_s(gate.qubit)
-            self.append_s(gate.qubit)
-        elif gate.name == "V":
-            assert isinstance(gate, SingleQubitClifford)
-            self.append_h(gate.qubit)
-            self.append_s(gate.qubit)
-            self.append_h(gate.qubit)
-        elif gate.name == "Vdg":
-            assert isinstance(gate, SingleQubitClifford)
-            self.append_h(gate.qubit)
-            self.append_s(gate.qubit)
-            self.append_s(gate.qubit)
-            self.append_s(gate.qubit)
-            self.append_h(gate.qubit)
-        elif gate.name == "CX":
-            assert isinstance(gate, TwoQubitClifford)
-            self.append_cnot(gate.control, gate.target)
-        elif gate.name == "CY":
-            assert isinstance(gate, TwoQubitClifford)
-            self.append_s(gate.target)
-            self.append_s(gate.target)
-            self.append_s(gate.target)
-            self.append_cnot(gate.control, gate.target)
-            self.append_s(gate.target)
-        elif gate.name == "CZ":
-            assert isinstance(gate, TwoQubitClifford)
-            self.append_h(gate.target)
-            self.append_cnot(gate.control, gate.target)
-            self.append_h(gate.target)
-
-        else:
-            raise TypeError(
-                f"Unrecognized Gate type: {type(gate)} for Clifford Tableaus"
-            )
+    def append_gate(self, gate: CliffordGate) -> None:
+        for h_s_cx_gate in gate.get_h_s_cx_decomposition():
+            if h_s_cx_gate.name == "H":
+                assert isinstance(h_s_cx_gate, SingleQubitClifford)
+                self.append_h(h_s_cx_gate.qubit)
+            elif h_s_cx_gate.name == "S":
+                assert isinstance(h_s_cx_gate, SingleQubitClifford)
+                self.append_s(h_s_cx_gate.qubit)
+            elif h_s_cx_gate.name == "CX":
+                assert isinstance(h_s_cx_gate, TwoQubitClifford)
+                self.append_cnot(h_s_cx_gate.control, h_s_cx_gate.target)
+            else:
+                raise TypeError(f"Invalid H, S, CX decomposition of {gate.name}")
 
 
 class CliffordRegion(AbstractCircuit):

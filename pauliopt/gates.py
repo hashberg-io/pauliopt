@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
 from itertools import combinations
 from math import ceil
+from typing import List, Union
 
 from pauliopt.pauli_strings import Pauli
 from pauliopt.phase import X as XHead
 from pauliopt.phase import Z as ZHead
 from pauliopt.phase import pi
-from pauliopt.phase.phase_circuits import PhaseGadget, Z
+from pauliopt.phase.phase_circuits import PhaseGadget
 from pauliopt.utils import Angle
 
 
@@ -159,6 +160,10 @@ class CliffordGate(Gate, ABC):
     def propagate_pauli(self, gadget: "pauliopt.pauli.pauli_gadget.PauliGadget"):
         pass
 
+    @abstractmethod
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        pass
+
 
 class SingleQubitClifford(CliffordGate, ABC):
     def __init__(self, qubit: int):
@@ -248,6 +253,9 @@ class H(SingleQubitClifford):
     def inverse(self):
         return H(*self.qubits)
 
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        return [H(*self.qubits)]
+
 
 # TODO rules!, inverse
 class X(SingleQubitClifford):
@@ -268,6 +276,9 @@ class X(SingleQubitClifford):
 
     def inverse(self):
         return X(*self.qubits)
+
+    def get_h_s_cx_decomposition(self):
+        return [H(*self.qubits), S(*self.qubits), S(*self.qubits), H(*self.qubits)]
 
 
 # TODO rules!, inverse
@@ -290,6 +301,9 @@ class Z(SingleQubitClifford):
     def inverse(self):
         return Z(*self.qubits)
 
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        return [S(*self.qubits), S(*self.qubits)]
+
 
 # TODO rules!, inverse
 class Y(SingleQubitClifford):
@@ -311,6 +325,11 @@ class Y(SingleQubitClifford):
 
     def inverse(self):
         return Y(*self.qubits)
+
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        return (Sdg(*self.qubits).get_h_s_cx_decomposition()
+                + X(*self.qubits).get_h_s_cx_decomposition()
+                + S(*self.qubits).get_h_s_cx_decomposition())
 
 
 class S(SingleQubitClifford):
@@ -338,6 +357,9 @@ class S(SingleQubitClifford):
     def inverse(self):
         return Sdg(*self.qubits)
 
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        return [S(*self.qubits)]
+
 
 class Sdg(SingleQubitClifford):
     rules = {
@@ -363,6 +385,9 @@ class Sdg(SingleQubitClifford):
 
     def inverse(self):
         return S(*self.qubits)
+
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        return [S(*self.qubits), S(*self.qubits), S(*self.qubits)]
 
 
 class V(SingleQubitClifford):
@@ -390,6 +415,9 @@ class V(SingleQubitClifford):
     def inverse(self):
         return Vdg(*self.qubits)
 
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        return [H(*self.qubits), S(*self.qubits), H(*self.qubits)]
+
 
 class Vdg(SingleQubitClifford):
     rules = {
@@ -415,6 +443,9 @@ class Vdg(SingleQubitClifford):
 
     def inverse(self):
         return V(*self.qubits)
+
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        return [H(*self.qubits)] + Sdg(*self.qubits).get_h_s_cx_decomposition() + [H(*self.qubits)]
 
 
 class T(Gate):
@@ -477,6 +508,10 @@ class SWAP(Gate):
     def inverse(self):
         return SWAP(*self.qubits)
 
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        q0, q1 = self.qubits
+        return [CX(q0, q1), CX(q1, q0), CX(q0, q1)]
+
 
 class CX(TwoQubitClifford):
     rules = {
@@ -519,6 +554,10 @@ class CX(TwoQubitClifford):
         builder.line((x, y_ctrl), (x, y_trgt))
         builder.circle((x, y_ctrl), r, zcolor)
         builder.circle((x, y_trgt), r, xcolor)
+
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        q0, q1 = self.qubits
+        return [CX(q0, q1)]
 
     def to_qiskit(self):
         try:
@@ -569,6 +608,10 @@ class CY(TwoQubitClifford):
 
     def inverse(self):
         return CY(*self.qubits)
+
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        q0, q1 = self.qubits
+        return Sdg(q1).get_h_s_cx_decomposition() + [CX(q0, q1)] + [S(q1)]
 
 
 class CZ(TwoQubitClifford):
@@ -624,6 +667,10 @@ class CZ(TwoQubitClifford):
 
     def inverse(self):
         return CZ(*self.qubits)
+
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        q0, q1 = self.qubits
+        return [H(q1), CX(q0, q1), H(q1)]
 
 
 class CCX(Gate):

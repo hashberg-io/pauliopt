@@ -147,7 +147,7 @@ def verify_equality(qc_in, qc_out):
 def random_clifford_circuit(nr_gates=20, nr_qubits=4, gate_choice=None) -> Circuit:
     qc = Circuit(nr_qubits)
     if gate_choice is None:
-        gate_choice = ["CY", "CZ", "CX", "H", "S", "V", "Sdg", "Vdg", "X", "Y", "Z"]
+        gate_choice = ["CX", "H", "S", "V", "CY", "CZ", "Sdg", "Vdg", "X", "Y", "Z"]
     for _ in range(nr_gates):
         gate_t = np.random.choice(gate_choice)
         qubit = np.random.choice([i for i in range(nr_qubits)])
