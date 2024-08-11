@@ -61,8 +61,8 @@ def mult_paulis(p1, p2, sign1, sign2, n_qubits):
 
 class CliffordTableau:
     """
-    Class for storing and manipulating Clifford clifford.
-    A Clifford clifford is a representation of a Clifford circuit as a
+    Class for storing and manipulating Clifford tableau.
+    A Clifford tableau is a representation of a Clifford circuit as a
     2n x 2n binary matrix, where n is the number of qubits. The first n rows
     represent the stabilizers, and the last n rows represent the destabilizers.
     The first n columns represent the X operators, and the last n columns

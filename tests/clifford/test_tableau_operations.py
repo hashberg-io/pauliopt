@@ -31,7 +31,8 @@ class TestTableauOperations(unittest.TestCase):
         )
 
         self.assertTrue(
-            np.allclose(ct.signs, ct_.signs), "The twice inverted clifford did not match"
+            np.allclose(ct.signs, ct_.signs),
+            "The twice inverted clifford did not match",
         )
 
     @parameterized.expand([(5,), (10,), (15,)])
@@ -49,7 +50,8 @@ class TestTableauOperations(unittest.TestCase):
         )
 
         self.assertTrue(
-            np.allclose(ct.signs, ct_.signs), "The twice inverted clifford did not match"
+            np.allclose(ct.signs, ct_.signs),
+            "The twice inverted clifford did not match",
         )
 
     @parameterized.expand([(5,), (10,), (15,)])
@@ -59,7 +61,9 @@ class TestTableauOperations(unittest.TestCase):
         ct = CliffordTableau(n_qubits)
         ct = tableau_from_circuit(ct, circuit)
 
-        circuit_ = transpile(circuit.to_qiskit().inverse(), basis_gates=["h", "s", "cx"])
+        circuit_ = transpile(
+            circuit.to_qiskit().inverse(), basis_gates=["h", "s", "cx"]
+        )
         circuit_ = Circuit.from_qiskit(circuit_)
         ct_ = CliffordTableau(n_qubits)
         ct_ = tableau_from_circuit(ct_, circuit_)

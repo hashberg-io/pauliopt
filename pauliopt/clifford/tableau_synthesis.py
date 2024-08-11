@@ -342,10 +342,10 @@ def get_non_cutting_vertex(G, pivot_col, swappable_nodes):
 
 def synthesize_tableau(tableau: CliffordTableau, topo: Topology, include_swaps=True):
     """
-    Architecture aware synthesis of a Clifford clifford.
+    Architecture aware synthesis of a Clifford tableau.
     This is the implementation of the algorithm described in Winderl et. al. [1]
 
-    :param tableau: The Clifford clifford
+    :param tableau: The Clifford tableau
     :param topo: The topology
     :param include_swaps: Whether to allow initial and final measurement permutations
 

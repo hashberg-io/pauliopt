@@ -34,6 +34,6 @@ class TestTableauSynthesis(unittest.TestCase):
         qc = qc.to_qiskit()
 
         self.assertTrue(
-            verify_equality(circuit, qc),
+            verify_equality(circuit.to_qiskit(), qc),
             "The Synthesized circuit does not equal to original",
         )

@@ -8,6 +8,7 @@ from pauliopt.circuits import Circuit
 from pauliopt.gates import H, V, Rz, CX, Vdg
 from pauliopt.pauli_strings import Pauli, X, Y, Z, I
 from pauliopt.topologies import Topology
+from pauliopt.utils import AngleExpr
 
 
 def decompose_cnot_ladder_z(ctrl: int, trg: int, arch: Topology):
@@ -59,9 +60,9 @@ def find_minimal_cx_assignment(column: np.array, arch: Topology, q0=None):
 
 
 class PPhase:
-    _angle: float
+    _angle: AngleExpr
 
-    def __init__(self, angle: float):
+    def __init__(self, angle: AngleExpr):
         self._angle = angle
 
     def __matmul__(self, paulis: List[Pauli]):
@@ -72,7 +73,7 @@ class PPhase:
 
 
 class PauliGadget:
-    def __init__(self, angle: float, paulis: List[Pauli]):
+    def __init__(self, angle: AngleExpr, paulis: List[Pauli]):
         self.angle = angle
         self.paulis = paulis
 

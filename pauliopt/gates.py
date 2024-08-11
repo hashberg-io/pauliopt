@@ -140,7 +140,7 @@ class PhaseGate(Gate, ABC):
         return f"{self.name}({self.phase}, {', '.join(args)})"
 
     def get_phase_as_float(self):
-        return self.phase if not isinstance(self.phase, Angle) else self.phase.to_qiskit
+        return self.phase if not isinstance(self.phase, Angle) else float(self.phase)
 
     def get_phase_as_angle(self):
         return self.phase if isinstance(self.phase, Angle) else Angle(self.phase)
@@ -193,7 +193,7 @@ class CliffordGate(Gate, ABC):
     @abstractmethod
     def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
         """
-        Every clifford must me decomposable into a list of H, S and CX gates.
+        Every clifford must be decomposable into a list of H, S and CX gates.
         Returns:
 
         """
@@ -695,10 +695,7 @@ class Rx(PhaseGate):
     @property
     def decomp(self):
         (q,) = self.qubits
-        if isinstance(self.phase, Angle):
-            return [XHead(self.get_phase_as_angle()) @ {q}]
-        else:
-            return [XHead(Angle(self.get_phase_as_angle())) @ {q}]
+        return [XHead(self.get_phase_as_angle()) @ {q}]
 
     def to_qiskit(self):
         try:

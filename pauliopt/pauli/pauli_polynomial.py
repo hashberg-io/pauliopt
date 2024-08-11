@@ -91,12 +91,12 @@ class PauliPolynomial:
                 f"Pauli Polynomial has {self.num_qubits} qubits, but Pauli gadget has: "
                 f"{len(gadget)} qubits"
             )
-        self.append_pauli_gadget(gadget)
+        self.pauli_gadgets.append(gadget)
         return self
 
     def __rshift__(self, pauli_polynomial: "PauliPolynomial"):
         for gadget in pauli_polynomial.pauli_gadgets:
-            self.append_pauli_gadget(gadget)
+            self.pauli_gadgets.append(gadget)
         return self
 
     def __repr__(self):
@@ -133,9 +133,6 @@ class PauliPolynomial:
         for gadget in self.pauli_gadgets:
             legs += gadget.num_legs()
         return legs
-
-    def append_pauli_gadget(self, pauli_gadget: PauliGadget):
-        self.pauli_gadgets.append(pauli_gadget)
 
     def assign_time(self, time: float):
         for gadet in self.pauli_gadgets:
@@ -239,7 +236,7 @@ class PauliPolynomial:
         # width of the text of the phases # TODO round floats (!!)
         text_width = int(math.ceil(50 * vscale))
 
-        bend_degree = int(math.ceil(10))
+        bend_degree = 10
 
         # margins between the angle and the legs
         margin_angle_x = int(math.ceil(20 * hscale))
@@ -248,8 +245,6 @@ class PauliPolynomial:
         # margins between each element
         margin_x = int(math.ceil(10 * hscale))
         margin_y = int(math.ceil(10 * hscale))
-
-        font_size = int(10)
 
         width = (
             num_gadgets * (square_width + margin_x + margin_angle_x + text_width)
