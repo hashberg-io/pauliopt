@@ -119,7 +119,7 @@ class AbstractCircuit:
         inverted.add_gates(inv_gates)
         return inverted
 
-    def apply_permutation(self, permutation: list):
+    def apply_permutation(self, permutation: list[int]):
         for gate in self._gates:
             gate.apply_permutation(permutation)
 
