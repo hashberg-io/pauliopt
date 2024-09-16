@@ -90,8 +90,8 @@ class PauliGadget:
     def num_qubits(self):
         return len(self.paulis)
 
-    def to_string(self, pad_lenght=0):
-        pad = " " * (pad_lenght - len(str(self.angle)))
+    def to_string(self, pad_length=0):
+        pad = " " * (pad_length - len(str(self.angle)))
         return f"PPhase({self.angle}) @ {pad} [ {', '.join([pauli.value for pauli in self.paulis])} ]"
 
     def num_legs(self):

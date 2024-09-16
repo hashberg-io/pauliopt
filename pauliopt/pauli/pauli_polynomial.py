@@ -101,11 +101,11 @@ class PauliPolynomial:
 
     def __repr__(self):
         if len(self.pauli_gadgets) > 0:
-            pad_len = max([len(str(gadget.angle)) for gadget in self.pauli_gadgets])
+            pad_length = max([len(str(gadget.angle)) for gadget in self.pauli_gadgets])
         else:
-            pad_len = 0
+            pad_length = 0
         return "\n".join(
-            [self[i].to_string(pad_lenght=pad_len) for i in range(self.num_gadgets)]
+            [self[i].to_string(pad_length=pad_length) for i in range(self.num_gadgets)]
         )
 
     def __len__(self):
@@ -135,9 +135,9 @@ class PauliPolynomial:
         return legs
 
     def assign_time(self, time: float):
-        for gadet in self.pauli_gadgets:
-            assert isinstance(gadet, PauliGadget)
-            gadet.assign_time(time)
+        for gadget in self.pauli_gadgets:
+            assert isinstance(gadget, PauliGadget)
+            gadget.assign_time(time)
 
     def set_random_angles(self, allowed_angles: list):
         for gadget in self.pauli_gadgets:
