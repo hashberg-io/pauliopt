@@ -1,6 +1,6 @@
 import os
 import unittest
-
+import random
 from parameterized import parameterized
 
 from pauliopt.circuits import Circuit
@@ -27,7 +27,7 @@ from pauliopt.gates import (
     CRz,
 )
 from pauliopt.utils import pi
-from tests.utils import verify_equality, random_circuit
+from tests.utils import verify_equality, random_circuit, apply_permutation
 
 GATES_TO_TEST = [
     H(0),
@@ -73,16 +73,8 @@ class TestCircuitConstruction(unittest.TestCase):
             verify_equality(qc, qc_), "The converted circuit does not equal to original"
         )
 
-    @parameterized.expand(
-        [
-            (
-                gate.name,
-                gate,
-            )
-            for gate in GATES_TO_TEST
-        ]
-    )
-    def test_circuit_representation_cli(self, name, gate):
+    @parameterized.expand(GATES_TO_TEST)
+    def test_circuit_representation_cli(self, gate):
         circ = Circuit(3).add_gate(gate)
 
         with open(f"{os.getcwd()}/tests/data/circ_reps/{gate.name}_cli.txt", "r") as f:
@@ -98,3 +90,21 @@ class TestCircuitConstruction(unittest.TestCase):
                 circ._to_svg(svg_code_only=True),
                 f"The SVG representation of {gate.name} " f"is incorrect or changed!",
             )
+
+    @parameterized.expand([(3,), (4,), (5,)])
+    def test_circuit_inversion(self, nr_qubits):
+        qc = random_circuit(nr_qubits=nr_qubits, nr_gates=1000)
+
+        circ = Circuit.from_qiskit(qc)
+
+        self.assertTrue(verify_equality(qc.inverse(), circ.inverse().to_qiskit()))
+
+    @parameterized.expand([(3,), (4,), (5,)])
+    def test_apply_permutation(self, nr_qubits):
+        permutation = random.sample(list(range(nr_qubits)), nr_qubits)
+        qc = random_circuit(nr_qubits=nr_qubits, nr_gates=10)
+
+        circ = Circuit.from_qiskit(qc)
+        circ.apply_permutation(permutation)
+        qc = apply_permutation(qc, permutation)
+        self.assertTrue(verify_equality(qc, circ.to_qiskit()))

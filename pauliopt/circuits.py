@@ -16,6 +16,7 @@ QISKIT_CONVERSION = {
     "y": lambda qubits, _: Y(*qubits),
     "z": lambda qubits, _: Z(*qubits),
     "s": lambda qubits, _: S(*qubits),
+    "sx": lambda qubits, _: V(*qubits),
     "sdg": lambda qubits, _: Sdg(*qubits),
     "t": lambda qubits, _: T(*qubits),
     "tdg": lambda qubits, _: Tdg(*qubits),
@@ -52,15 +53,22 @@ def _get_qubits_qiskit(qubits, qreg):
     return tuple(qubits_)
 
 
-class Circuit:
+class AbstractCircuit:
     """Class for representing quantum circuits."""
 
     def __init__(self, n_qubits, _gates=None):
         self.n_qubits = n_qubits
-        self._gates = [] if _gates is None else _gates
+        self._gates: List[Gate] = [] if _gates is None else _gates
+        self.global_phase = 0.0
 
         for gate in self._gates:
             self._check_gate(gate)
+
+        self.final_permutation = None
+
+    @property
+    def gates(self):
+        return self._gates
 
     def add_gate(self, gate):
         return self.add_gates([gate])
@@ -91,6 +99,36 @@ class Circuit:
 
     def __repr__(self) -> str:
         return f"Circuit({self.n_qubits}, {self._gates})"
+
+    def __iadd__(self, other: "Circuit"):
+        for gate in other._gates:
+            self.add_gate(gate)
+        return self
+
+    def __add__(self, other: "Circuit"):
+        if self.n_qubits != other.n_qubits:
+            print(self.n_qubits, other.n_qubits)
+            raise Exception("Can only concatenate circuits with same number of qubits.")
+        return Circuit(self.n_qubits, self._gates + other._gates)
+
+    def inverse(self):
+        inverted = Circuit(self.n_qubits)
+        inv_gates = list(reversed([gate.inverse() for gate in self._gates]))
+        if any([inv_gate is None for inv_gate in inv_gates]):
+            print(inv_gates)
+        inverted.add_gates(inv_gates)
+        return inverted
+
+    def apply_permutation(self, permutation: list[int]):
+        for gate in self._gates:
+            gate.apply_permutation(permutation)
+
+    def copy(self) -> "Circuit":
+        new_gates = []
+        for gate in self._gates:
+            new_gates.append(gate.copy())
+
+        return Circuit(self.n_qubits, _gates=new_gates)
 
     def _to_svg(
         self,
@@ -186,6 +224,7 @@ class Circuit:
     def to_qiskit(self):
         try:
             from qiskit import QuantumCircuit
+            from qiskit.circuit.library import Permutation
         except ModuleNotFoundError:
             raise ModuleNotFoundError("You must install the 'qiskit' library.")
 
@@ -194,4 +233,99 @@ class Circuit:
         for gate in self._gates:
             op, qubits = gate.to_qiskit()
             qc.append(op, qubits)
+
+        if self.final_permutation is not None:
+            qc.compose(Permutation(self.n_qubits, self.final_permutation), inplace=True)
         return qc
+
+
+class Circuit(AbstractCircuit):
+    """General Circuit class."""
+
+    def h(self, qubit):
+        qubits = (qubit,)
+        self.add_gate(H(*qubits))
+
+    def v(self, qubit):
+        qubits = (qubit,)
+        self.add_gate(V(*qubits))
+
+    def vdg(self, qubit):
+        qubits = (qubit,)
+        self.add_gate(Vdg(*qubits))
+
+    def s(self, qubit):
+        qubits = (qubit,)
+        self.add_gate(S(*qubits))
+
+    def sdg(self, qubit):
+        qubits = (qubit,)
+        self.add_gate(Sdg(*qubits))
+
+    def t(self, qubit):
+        qubits = (qubit,)
+        self.add_gate(T(*qubits))
+
+    def tdg(self, qubit):
+        qubits = (qubit,)
+        self.add_gate(Tdg(*qubits))
+
+    def cx(self, control, target):
+        qubits = (control, target)
+        self.add_gate(CX(*qubits))
+
+    def cy(self, control, target):
+        qubits = (control, target)
+        self.add_gate(CY(*qubits))
+
+    def cz(self, control, target):
+        qubits = (control, target)
+        self.add_gate(CZ(*qubits))
+
+    def x(self, qubit):
+        qubits = (qubit,)
+        self.add_gate(X(*qubits))
+
+    def y(self, qubit):
+        qubits = (qubit,)
+        self.add_gate(Y(*qubits))
+
+    def z(self, qubit):
+        qubits = (qubit,)
+        self.add_gate(Z(*qubits))
+
+    def swap(self, control, target):
+        qubits = (control, target)
+        self.add_gate(SWAP(*qubits))
+
+    def ccx(self, control1, control2, target):
+        qubits = (control1, control2, target)
+        self.add_gate(CCX(*qubits))
+
+    def ccz(self, control1, control2, target):
+        qubits = (control1, control2, target)
+        self.add_gate(CCZ(*qubits))
+
+    def rx(self, param: Angle, qubit):
+        qubits = (qubit,)
+        self.add_gate(Rx(param, *qubits))
+
+    def ry(self, param: Angle, qubit):
+        qubits = (qubit,)
+        self.add_gate(Ry(param, *qubits))
+
+    def rz(self, param: Angle, qubit):
+        qubits = (qubit,)
+        self.add_gate(Rz(param, *qubits))
+
+    def crx(self, param: Angle, control, target):
+        qubits = (control, target)
+        self.add_gate(CRx(param, *qubits))
+
+    def cry(self, param: Angle, control, target):
+        qubits = (control, target)
+        self.add_gate(CRy(param, *qubits))
+
+    def crz(self, param: Angle, control, target):
+        qubits = (control, target)
+        self.add_gate(CRz(param, *qubits))

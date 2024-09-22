@@ -4,16 +4,17 @@ from networkx.algorithms.approximation import steiner_tree
 from pauliopt.circuits import Circuit
 from pauliopt.clifford.tableau import CliffordTableau
 from pauliopt.gates import CX, H, S
+from pauliopt.utils import is_cutting
 from pauliopt.topologies import Topology
 
 
 def heurisitc_fkt(row, G, remaining: CliffordTableau):
     """
-    The heuristic function for picking the pivot in the tableau synthesis algorithm.
+    The heuristic function for picking the pivot in the clifford synthesis algorithm.
 
     :param row: The row to consider
     :param G: The graph of the topology
-    :param remaining: The remaining tableau
+    :param remaining: The remaining clifford
     """
     row_x = [
         nx.shortest_path_length(G, source=row, target=col)
@@ -32,13 +33,13 @@ def heurisitc_fkt(row, G, remaining: CliffordTableau):
 
 def pick_pivot(G, remaining: "CliffordTableau", possible_swaps, include_swaps):
     """
-    Pick the pivot to eliminate the next column in the tableau synthesis algorithm.
+    Pick the pivot to eliminate the next column in the clifford synthesis algorithm.
 
     We currently use the heuristic function h to pick the pivot,
     i.e choose the row with the smallest `heurisitc_fkt` value.
 
     :param G: The graph of the topology
-    :param remaining: The remaining tableau
+    :param remaining: The remaining clifford
     :param possible_swaps: The columns that can be swapped
     :param include_swaps: Whether to include the columns that can be swapped
     """
@@ -103,7 +104,7 @@ def compute_steiner_tree(
     Compute the steiner tree of the sub_graph with the given nodes.
     This function is a wrapper around the networkx steiner tree function.
 
-    It will additionally swap the columns of the remaining tableau to further reduce
+    It will additionally swap the columns of the remaining clifford to further reduce
     the amount of CNOTs if include_swaps is True.
     Include_swaps requires lookup, swappable_nodes, permutation and n_qubits to be set.
 
@@ -164,16 +165,6 @@ def compute_steiner_tree(
     return list(reversed(list(traversal)))
 
 
-def is_cutting(vertex, g):
-    """
-    Check if the given vertex is a cutting vertex in the given graph.
-
-    :param vertex: The vertex to check
-    :param g: The graph to check
-    """
-    return vertex in nx.articulation_points(g)
-
-
 def sanitize_z(row, row_z, remaining, apply):
     """
     Sanitization process for the stabilizer part.
@@ -183,9 +174,9 @@ def sanitize_z(row, row_z, remaining, apply):
     - If the z_out is X (=1), then apply H
 
 
-    :param row: The row of the tableau
-    :param row_z: The row of the tableau for the stabilizer part
-    :param remaining: The remaining tableau
+    :param row: The row of the clifford
+    :param row_z: The row of the clifford for the stabilizer part
+    :param remaining: The remaining clifford
     :param apply: The function to apply a gate
     """
     for column in row_z:
@@ -208,9 +199,9 @@ def sanitize_field_x(row, row_x, remaining, apply):
     - If the x_out is Y (=3), then apply S
     - If the x_out is X (=2), then apply H
 
-    :param row: The row of the tableau
-    :param row_x: The row of the tableau for the destabilizer part
-    :param remaining: The remaining tableau
+    :param row: The row of the clifford
+    :param row_x: The row of the clifford for the destabilizer part
+    :param remaining: The remaining clifford
     :param apply: The function to apply a gate
     """
     for column in row_x:
@@ -238,12 +229,12 @@ def remove_interactions(
 
     Include swaps requires swappable_nodes, permutation and include_swaps to be set.
 
-    :param pivot: The pivot of the tableau
-    :param row: The specific row of the tableau
+    :param pivot: The pivot of the clifford
+    :param row: The specific row of the clifford
     :param sub_graph: The graph of the topology
-    :param remaining: The remaining tableau
+    :param remaining: The remaining clifford
     :param apply: The function to apply a gate
-    :param basis: The basis of the tableau (x for destabilizer or z for stabilizer)
+    :param basis: The basis of the clifford (x for destabilizer or z for stabilizer)
     :param swappable_nodes: The nodes that can be swapped
     :param permutation: The permutation of the topology
     :param include_swaps: Whether to include swaps in the steiner tree
@@ -287,11 +278,11 @@ def steiner_reduce_column(
     include_swaps=False,
 ):
     """
-    Steiner reduce a column of the tableau.
+    Steiner reduce a column of the clifford.
 
-    :param pivot: The pivot of the tableau
+    :param pivot: The pivot of the clifford
     :param sub_graph: The graph of the topology
-    :param remaining: The remaining tableau
+    :param remaining: The remaining clifford
     :param apply: The function to apply a gate
     :param swappable_nodes: The nodes that can be swapped
     :param permutation: The permutation of the topology
@@ -332,7 +323,7 @@ def steiner_reduce_column(
     )
 
     # ensure that the pivots are in ZX basis
-    # (this is provided by the construction of a tableau)
+    # (this is provided by the construction of a clifford)
     assert remaining.x_out(pivot, pivot) == 1
     assert remaining.z_out(pivot, pivot) == 2
 

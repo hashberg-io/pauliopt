@@ -1,11 +1,14 @@
 from abc import ABC, abstractmethod
 from itertools import combinations
 from math import ceil
+from typing import List, Union
 
+from pauliopt.pauli_strings import Pauli
 from pauliopt.phase import X as XHead
 from pauliopt.phase import Z as ZHead
 from pauliopt.phase import pi
 from pauliopt.phase.phase_circuits import PhaseGadget
+from pauliopt.utils import Angle
 
 
 class Gate(ABC):
@@ -13,6 +16,7 @@ class Gate(ABC):
 
     def __init__(self, *qubits):
         self.qubits = qubits
+        self.n_qubits = len(qubits)
         self.name = self.__class__.__name__
         if len(qubits) != self.n_qubits:
             name, n_qubits = self.name, self.n_qubits
@@ -112,9 +116,22 @@ class Gate(ABC):
     def to_qiskit(self):
         pass
 
+    @abstractmethod
+    def inverse(self):
+        pass
 
-class PhaseGate(Gate):
-    def __init__(self, phase, *qubits):
+    def apply_permutation(self, permutation: list) -> None:
+        register = list(range(len(permutation)))
+        self.qubits = tuple(
+            [permutation[register.index(qubit)] for qubit in self.qubits]
+        )
+
+    def copy(self):
+        return self.__class__(*self.qubits)
+
+
+class PhaseGate(Gate, ABC):
+    def __init__(self, phase: Angle, *qubits):
         super().__init__(*qubits)
         self.phase = phase
 
@@ -122,8 +139,135 @@ class PhaseGate(Gate):
         args = map(repr, self.qubits)
         return f"{self.name}({self.phase}, {', '.join(args)})"
 
+    def get_phase_as_float(self):
+        return self.phase if not isinstance(self.phase, Angle) else float(self.phase)
 
-class H(Gate):
+    def get_phase_as_angle(self):
+        return self.phase if isinstance(self.phase, Angle) else Angle(self.phase)
+
+    def inverse(self):
+        return self.__class__(-self.phase, *self.qubits)
+
+    def copy(self):
+        return self.__class__(self.phase, self.qubits)
+
+
+PROPAGATION_H = {
+    "X": (Pauli.Z, 1),
+    "Y": (Pauli.Y, -1),
+    "Z": (Pauli.X, 1),
+    "I": (Pauli.I, 1),
+}
+
+PROPAGATION_S = {
+    "X": (Pauli.Y, -1),
+    "Y": (Pauli.X, 1),
+    "Z": (Pauli.Z, 1),
+    "I": (Pauli.I, 1),
+}
+
+PROPAGATION_CX = {
+    "XX": (Pauli.X, Pauli.I, 1),
+    "XY": (Pauli.Y, Pauli.Z, 1),
+    "XZ": (Pauli.Y, Pauli.Y, -1),
+    "XI": (Pauli.X, Pauli.X, 1),
+    "YX": (Pauli.Y, Pauli.I, 1),
+    "YY": (Pauli.X, Pauli.Z, -1),
+    "YZ": (Pauli.X, Pauli.Y, 1),
+    "YI": (Pauli.Y, Pauli.X, 1),
+    "ZX": (Pauli.Z, Pauli.X, 1),
+    "ZY": (Pauli.I, Pauli.Y, 1),
+    "ZZ": (Pauli.I, Pauli.Z, 1),
+    "ZI": (Pauli.Z, Pauli.I, 1),
+    "IX": (Pauli.I, Pauli.X, 1),
+    "IY": (Pauli.Z, Pauli.Y, 1),
+    "IZ": (Pauli.Z, Pauli.Z, 1),
+    "II": (Pauli.I, Pauli.I, 1),
+}
+
+
+class CliffordGate(Gate, ABC):
+    def __init__(self, *qubits):
+        super().__init__(*qubits)
+
+    @abstractmethod
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        """
+        Every clifford must be decomposable into a list of H, S and CX gates.
+        Returns:
+
+        """
+        pass
+
+    def propagate_pauli(self, gadget: "pauliopt.pauli.pauli_gadget.PauliGadget"):
+        """
+        Propagate a pauli gate through a gadget using the H, S, CX decomposition rules.
+
+        One can define for H, S and CX propagation rules, which are defined in the dictionaries above.
+        Args:
+            gadget:
+
+        Returns:
+
+        """
+        h_s_cx_decomposition = self.get_h_s_cx_decomposition()
+        for gate in reversed(h_s_cx_decomposition):
+            if gate.name == "H":
+                assert isinstance(gate, SingleQubitClifford)
+                p_string = gadget.paulis[gate.qubit].value
+                new_p, phase_change = PROPAGATION_H[p_string]
+                gadget.paulis[gate.qubit] = new_p
+                if phase_change == -1:
+                    gadget.angle *= phase_change
+            elif gate.name == "S":
+                assert isinstance(gate, SingleQubitClifford)
+                p_string = gadget.paulis[gate.qubit].value
+                new_p, phase_change = PROPAGATION_S[p_string]
+                gadget.paulis[gate.qubit] = new_p
+                if phase_change == -1:
+                    gadget.angle *= phase_change
+            elif gate.name == "CX":
+                assert isinstance(gate, TwoQubitClifford)
+                p_string = (
+                    gadget.paulis[gate.control].value + gadget.paulis[gate.target].value
+                )
+                p_c, p_t, phase_change = PROPAGATION_CX[p_string]
+                gadget.paulis[gate.control] = p_c
+                gadget.paulis[gate.target] = p_t
+                if phase_change == -1:
+                    gadget.angle *= phase_change
+
+        return gadget
+
+
+class SingleQubitClifford(CliffordGate, ABC):
+
+    def __init__(self, qubit: int):
+        super().__init__((qubit))
+
+    @property
+    def qubit(self):
+        return self.qubits[0]
+
+
+class TwoQubitClifford(CliffordGate, ABC):
+    def __init__(self, control, target):
+        qubits = (control, target)
+        super().__init__(*qubits)
+
+    @property
+    def control(self):
+        return self.qubits[0]
+
+    @property
+    def target(self):
+        return self.qubits[1]
+
+    def copy(self):
+        return self.__class__(self.control, self.target)
+
+
+class H(SingleQubitClifford):
     n_qubits = 1
     width = 40
 
@@ -150,8 +294,14 @@ class H(Gate):
 
         return HGate(), self.qubits
 
+    def inverse(self):
+        return H(*self.qubits)
 
-class X(Gate):
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        return [H(*self.qubits)]
+
+
+class X(SingleQubitClifford):
     n_qubits = 1
     draw_as_zx = True
 
@@ -167,8 +317,14 @@ class X(Gate):
 
         return XGate(), self.qubits
 
+    def inverse(self):
+        return X(*self.qubits)
 
-class Z(Gate):
+    def get_h_s_cx_decomposition(self):
+        return [H(*self.qubits), S(*self.qubits), S(*self.qubits), H(*self.qubits)]
+
+
+class Z(SingleQubitClifford):
     n_qubits = 1
     draw_as_zx = True
 
@@ -184,8 +340,14 @@ class Z(Gate):
 
         return ZGate(), self.qubits
 
+    def inverse(self):
+        return Z(*self.qubits)
 
-class Y(Gate):
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        return [S(*self.qubits), S(*self.qubits)]
+
+
+class Y(SingleQubitClifford):
     n_qubits = 1
     draw_as_zx = True
 
@@ -202,8 +364,18 @@ class Y(Gate):
 
         return YGate(), self.qubits
 
+    def inverse(self):
+        return Y(*self.qubits)
 
-class S(Gate):
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        return (
+            Sdg(*self.qubits).get_h_s_cx_decomposition()
+            + X(*self.qubits).get_h_s_cx_decomposition()
+            + S(*self.qubits).get_h_s_cx_decomposition()
+        )
+
+
+class S(SingleQubitClifford):
     n_qubits = 1
     draw_as_zx = True
 
@@ -219,8 +391,14 @@ class S(Gate):
 
         return SGate(), self.qubits
 
+    def inverse(self):
+        return Sdg(*self.qubits)
 
-class Sdg(Gate):
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        return [S(*self.qubits)]
+
+
+class Sdg(SingleQubitClifford):
     n_qubits = 1
     draw_as_zx = True
 
@@ -235,6 +413,62 @@ class Sdg(Gate):
             raise ImportError("Please install qiskit to use this feature.")
 
         return SdgGate(), self.qubits
+
+    def inverse(self):
+        return S(*self.qubits)
+
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        return [S(*self.qubits), S(*self.qubits), S(*self.qubits)]
+
+
+class V(SingleQubitClifford):
+    n_qubits = 1
+    draw_as_zx = True
+
+    @property
+    def decomp(self):
+        return [XHead(pi / 2) @ {self.qubits[0]}]
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import SXGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return SXGate(), self.qubits
+
+    def inverse(self):
+        return Vdg(*self.qubits)
+
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        return [H(*self.qubits), S(*self.qubits), H(*self.qubits)]
+
+
+class Vdg(SingleQubitClifford):
+    n_qubits = 1
+    draw_as_zx = True
+
+    @property
+    def decomp(self):
+        return [XHead(-pi / 2) @ {self.qubits[0]}]
+
+    def to_qiskit(self):
+        try:
+            from qiskit.circuit.library import SXdgGate
+        except ImportError:
+            raise ImportError("Please install qiskit to use this feature.")
+
+        return SXdgGate(), self.qubits
+
+    def inverse(self):
+        return V(*self.qubits)
+
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        return (
+            [H(*self.qubits)]
+            + Sdg(*self.qubits).get_h_s_cx_decomposition()
+            + [H(*self.qubits)]
+        )
 
 
 class T(Gate):
@@ -253,6 +487,9 @@ class T(Gate):
 
         return TGate(), self.qubits
 
+    def inverse(self):
+        return Tdg(*self.qubits)
+
 
 class Tdg(Gate):
     n_qubits = 1
@@ -270,8 +507,11 @@ class Tdg(Gate):
 
         return TdgGate(), self.qubits
 
+    def inverse(self):
+        return T(*self.qubits)
 
-class SWAP(Gate):
+
+class SWAP(CliffordGate):
     n_qubits = 2
     draw_as_zx = True
 
@@ -288,8 +528,15 @@ class SWAP(Gate):
 
         return SwapGate(), self.qubits
 
+    def inverse(self):
+        return SWAP(*self.qubits)
 
-class CX(Gate):
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        q0, q1 = self.qubits
+        return [CX(q0, q1), CX(q1, q0), CX(q0, q1)]
+
+
+class CX(TwoQubitClifford):
     n_qubits = 2
     draw_as_zx = True
     width = 40
@@ -313,6 +560,10 @@ class CX(Gate):
         builder.circle((x, y_ctrl), r, zcolor)
         builder.circle((x, y_trgt), r, xcolor)
 
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        q0, q1 = self.qubits
+        return [CX(q0, q1)]
+
     def to_qiskit(self):
         try:
             from qiskit.circuit.library import CXGate
@@ -321,8 +572,11 @@ class CX(Gate):
 
         return CXGate(), self.qubits
 
+    def inverse(self):
+        return CX(*self.qubits)
 
-class CY(Gate):
+
+class CY(TwoQubitClifford):
     n_qubits = 2
     draw_as_zx = True
 
@@ -339,8 +593,15 @@ class CY(Gate):
 
         return CYGate(), self.qubits
 
+    def inverse(self):
+        return CY(*self.qubits)
 
-class CZ(Gate):
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        q0, q1 = self.qubits
+        return Sdg(q1).get_h_s_cx_decomposition() + [CX(q0, q1)] + [S(q1)]
+
+
+class CZ(TwoQubitClifford):
     n_qubits = 2
     draw_as_zx = True
 
@@ -373,6 +634,13 @@ class CZ(Gate):
 
         return CZGate(), self.qubits
 
+    def inverse(self):
+        return CZ(*self.qubits)
+
+    def get_h_s_cx_decomposition(self) -> List[Union["H", "S", "CX"]]:
+        q0, q1 = self.qubits
+        return [H(q1), CX(q0, q1), H(q1)]
+
 
 class CCX(Gate):
     n_qubits = 3
@@ -390,6 +658,9 @@ class CCX(Gate):
             raise ImportError("Please install qiskit to use this feature.")
 
         return CCXGate(), self.qubits
+
+    def inverse(self):
+        return CCX(*self.qubits)
 
 
 class CCZ(Gate):
@@ -413,6 +684,9 @@ class CCZ(Gate):
 
         return CCZGate(), self.qubits
 
+    def inverse(self):
+        return CCZ(*self.qubits)
+
 
 class Rx(PhaseGate):
     n_qubits = 1
@@ -421,15 +695,14 @@ class Rx(PhaseGate):
     @property
     def decomp(self):
         (q,) = self.qubits
-        return [XHead(self.phase) @ {q}]
+        return [XHead(self.get_phase_as_angle()) @ {q}]
 
     def to_qiskit(self):
         try:
             from qiskit.circuit.library import RXGate
         except ImportError:
             raise ImportError("Please install qiskit to use this feature.")
-
-        return RXGate(self.phase), self.qubits
+        return RXGate(self.get_phase_as_float()), self.qubits
 
 
 class Ry(PhaseGate):
@@ -439,7 +712,11 @@ class Ry(PhaseGate):
     @property
     def decomp(self):
         (q,) = self.qubits
-        return [XHead(pi / 2) @ {q}, ZHead(self.phase) @ {q}, XHead(-pi / 2) @ {q}]
+        return [
+            XHead(pi / 2) @ {q},
+            ZHead(self.get_phase_as_angle()) @ {q},
+            XHead(-pi / 2) @ {q},
+        ]
 
     def to_qiskit(self):
         try:
@@ -447,7 +724,7 @@ class Ry(PhaseGate):
         except ImportError:
             raise ImportError("Please install qiskit to use this feature.")
 
-        return RYGate(self.phase), self.qubits
+        return RYGate(self.get_phase_as_float()), self.qubits
 
 
 class Rz(PhaseGate):
@@ -457,15 +734,14 @@ class Rz(PhaseGate):
     @property
     def decomp(self):
         (q,) = self.qubits
-        return [ZHead(self.phase) @ {q}]
+        return [ZHead(self.get_phase_as_angle()) @ {q}]
 
     def to_qiskit(self):
         try:
             from qiskit.circuit.library import RZGate
         except ImportError:
             raise ImportError("Please install qiskit to use this feature.")
-
-        return RZGate(self.phase), self.qubits
+        return RZGate(self.get_phase_as_float()), self.qubits
 
 
 class CRx(PhaseGate):
@@ -483,8 +759,7 @@ class CRx(PhaseGate):
             from qiskit.circuit.library import CRXGate
         except ImportError:
             raise ImportError("Please install qiskit to use this feature.")
-
-        return CRXGate(self.phase), self.qubits
+        return CRXGate(self.get_phase_as_float()), self.qubits
 
 
 class CRy(PhaseGate):
@@ -503,7 +778,7 @@ class CRy(PhaseGate):
         except ImportError:
             raise ImportError("Please install qiskit to use this feature.")
 
-        return CRYGate(self.phase), self.qubits
+        return CRYGate(self.get_phase_as_float()), self.qubits
 
 
 class CRz(PhaseGate):
@@ -522,7 +797,7 @@ class CRz(PhaseGate):
         except ImportError:
             raise ImportError("Please install qiskit to use this feature.")
 
-        return CRZGate(self.phase), self.qubits
+        return CRZGate(self.get_phase_as_float()), self.qubits
 
 
 CNOT = CX

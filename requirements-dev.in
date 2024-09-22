@@ -1,0 +1,9 @@
+-r requirements.in
+pytket~=1.11
+pytket-qiskit~=0.34
+qiskit~=0.39
+galois~=0.3
+parameterized
+notebook
+black
+pip-tools

@@ -5,7 +5,7 @@ from qiskit import QuantumCircuit
 
 from pauliopt.clifford.tableau import CliffordTableau
 from pauliopt.clifford.tableau_synthesis import synthesize_tableau
-from tests.tableau.utils import tableau_from_circuit
+from tests.clifford.utils import tableau_from_circuit
 from tests.utils import verify_equality, random_hscx_circuit
 from pauliopt.topologies import Topology
 
@@ -34,6 +34,6 @@ class TestTableauSynthesis(unittest.TestCase):
         qc = qc.to_qiskit()
 
         self.assertTrue(
-            verify_equality(circuit, qc),
+            verify_equality(circuit.to_qiskit(), qc),
             "The Synthesized circuit does not equal to original",
         )
