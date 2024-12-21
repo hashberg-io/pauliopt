@@ -1,13 +1,19 @@
+import itertools
 import unittest
 
 from parameterized import parameterized
-from qiskit import QuantumCircuit
+from qiskit.circuit.library import Permutation
 
 from pauliopt.clifford.tableau import CliffordTableau
-from pauliopt.clifford.tableau_synthesis import synthesize_tableau
+from pauliopt.clifford.tableau_synthesis import synthesize_tableau, synthesize_tableau_permutation
+from pauliopt.topologies import Topology
 from tests.clifford.utils import tableau_from_circuit
 from tests.utils import verify_equality, random_hscx_circuit
-from pauliopt.topologies import Topology
+
+
+def enumerate_row_col_permutations(n):
+    for perm in itertools.permutations(range(n)):
+        yield list(zip(range(n), perm))
 
 
 class TestTableauSynthesis(unittest.TestCase):
@@ -37,3 +43,22 @@ class TestTableauSynthesis(unittest.TestCase):
             verify_equality(circuit.to_qiskit(), qc),
             "The Synthesized circuit does not equal to original",
         )
+
+    @parameterized.expand(
+        [
+            ("line_3", 3, 1000, Topology.line(3)),
+        ]
+    )
+    def test_clifford_permutation_synthesis(self, _, n_qubits, n_gates, topo):
+        circuit = random_hscx_circuit(nr_qubits=n_qubits, nr_gates=n_gates)
+        for permutation in enumerate_row_col_permutations(n_qubits):
+            ct = CliffordTableau(n_qubits)
+            ct = tableau_from_circuit(ct, circuit.copy())
+            qc = synthesize_tableau_permutation(ct, topo, permutation)
+            qc.final_permutation = [source for source, target in sorted(permutation, key=lambda x: x[1])]
+            qc = qc.to_qiskit()
+
+            self.assertTrue(
+                verify_equality(circuit.to_qiskit(), qc),
+                "The Synthesized circuit does not equal to original",
+            )

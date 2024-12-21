@@ -1,4 +1,7 @@
+from typing import List, Tuple, Optional
+
 import networkx as nx
+import numpy as np
 from networkx.algorithms.approximation import steiner_tree
 
 from pauliopt.circuits import Circuit
@@ -47,7 +50,7 @@ def pick_pivot(G, remaining: "CliffordTableau", possible_swaps, include_swaps):
     has_cutting_swappable = any([not is_cutting(i, G) for i in possible_swaps])
     for col in G.nodes:
         if not is_cutting(col, G) or (
-            include_swaps and has_cutting_swappable and col in possible_swaps
+                include_swaps and has_cutting_swappable and col in possible_swaps
         ):
             scores.append((col, col, heurisitc_fkt(col, G, remaining)))
     assert len(scores) > 0
@@ -91,14 +94,14 @@ def relabel_graph_inplace(G, parent, child):
 
 
 def compute_steiner_tree(
-    root: int,
-    nodes: [int],
-    sub_graph: nx.Graph,
-    include_swaps=False,
-    lookup=None,
-    swappable_nodes=None,
-    permutation=None,
-    n_qubits=None,
+        root: int,
+        nodes: [int],
+        sub_graph: nx.Graph,
+        include_swaps=False,
+        lookup=None,
+        swappable_nodes=None,
+        permutation=None,
+        n_qubits=None,
 ):
     """
     Compute the steiner tree of the sub_graph with the given nodes.
@@ -143,10 +146,10 @@ def compute_steiner_tree(
                 # if the parent is zero and the child is one and both are swappable
                 # then swap them
                 if (
-                    lookup[parent] == 0
-                    and lookup[child] == 1
-                    and child in swappable_nodes
-                    and parent in swappable_nodes
+                        lookup[parent] == 0
+                        and lookup[child] == 1
+                        and child in swappable_nodes
+                        and parent in swappable_nodes
                 ):
                     relabel_graph_inplace(steiner_stree, parent, child)
                     relabel_graph_inplace(sub_graph, parent, child)
@@ -165,7 +168,7 @@ def compute_steiner_tree(
     return list(reversed(list(traversal)))
 
 
-def sanitize_z(row, row_z, remaining, apply):
+def sanitize_z(pivot_row, pivot_column, row_z, remaining, apply):
     """
     Sanitization process for the stabilizer part.
 
@@ -174,21 +177,21 @@ def sanitize_z(row, row_z, remaining, apply):
     - If the z_out is X (=1), then apply H
 
 
-    :param row: The row of the clifford
+    :param pivot_row: The row of the clifford
     :param row_z: The row of the clifford for the stabilizer part
     :param remaining: The remaining clifford
     :param apply: The function to apply a gate
     """
     for column in row_z:
-        if remaining.z_out(row, column) == 3:
+        if remaining.z_out(pivot_row, column) == 3:
             apply("S", (column,))
 
-        if remaining.z_out(row, column) == 1:
+        if remaining.z_out(pivot_row, column) == 1:
             apply("H", (column,))
 
     # caveat for the pivot
-    if remaining.x_out(row, row) == 3:
-        apply("S", (row,))
+    if remaining.x_out(pivot_row, pivot_column) == 3:
+        apply("S", (pivot_column,))
 
 
 def sanitize_field_x(row, row_x, remaining, apply):
@@ -213,15 +216,16 @@ def sanitize_field_x(row, row_x, remaining, apply):
 
 
 def remove_interactions(
-    pivot,
-    row,
-    sub_graph,
-    remaining,
-    apply,
-    basis,
-    include_swaps=False,
-    swappable_nodes=None,
-    permutation=None,
+        pivot_col,
+        pivot_row,
+        row,
+        sub_graph,
+        remaining,
+        apply,
+        basis,
+        include_swaps=False,
+        swappable_nodes=None,
+        permutation=None,
 ):
     """
     Remove the interactions of the destabilizer/stabilizer part.
@@ -229,7 +233,7 @@ def remove_interactions(
 
     Include swaps requires swappable_nodes, permutation and include_swaps to be set.
 
-    :param pivot: The pivot of the clifford
+    :param pivot_row: The pivot of the clifford
     :param row: The specific row of the clifford
     :param sub_graph: The graph of the topology
     :param remaining: The remaining clifford
@@ -240,10 +244,10 @@ def remove_interactions(
     :param include_swaps: Whether to include swaps in the steiner tree
 
     """
-    row = list(set([pivot] + row))
-    lookup = {node: int(remaining.x_out(pivot, node) != 0) for node in sub_graph.nodes}
+    row = list(set([pivot_col] + row))
+    lookup = {node: int(remaining.x_out(pivot_row, node) != 0) for node in sub_graph.nodes}
     traversal = compute_steiner_tree(
-        pivot,
+        pivot_col,
         row,
         sub_graph,
         include_swaps=include_swaps,
@@ -254,14 +258,14 @@ def remove_interactions(
     )
     if basis == "x":
         for parent, child in traversal:
-            if remaining.x_out(pivot, parent) == 0:
+            if remaining.x_out(pivot_row, parent) == 0:
                 apply("CNOT", (child, parent))
 
         for parent, child in traversal:
             apply("CNOT", (parent, child))
     elif basis == "z":
         for parent, child in traversal:
-            if remaining.z_out(pivot, parent) == 0:
+            if remaining.z_out(pivot_row, parent) == 0:
                 apply("CNOT", (parent, child))
 
         for parent, child in traversal:
@@ -269,18 +273,19 @@ def remove_interactions(
 
 
 def steiner_reduce_column(
-    pivot,
-    sub_graph,
-    remaining,
-    apply,
-    swappable_nodes=None,
-    permutation=None,
-    include_swaps=False,
+        pivot_col,
+        pivot_row,
+        sub_graph,
+        remaining,
+        apply,
+        swappable_nodes=None,
+        permutation=None,
+        include_swaps=False,
 ):
     """
     Steiner reduce a column of the clifford.
 
-    :param pivot: The pivot of the clifford
+    :param pivot_row: The pivot of the clifford
     :param sub_graph: The graph of the topology
     :param remaining: The remaining clifford
     :param apply: The function to apply a gate
@@ -289,12 +294,12 @@ def steiner_reduce_column(
     :param include_swaps: Whether to include swaps in the steiner tree
     """
     # 2. Sanitize the destabilizer row
-    row_x = [col for col in sub_graph.nodes if remaining.x_out(pivot, col) != 0]
-    sanitize_field_x(pivot, row_x, remaining, apply)
-
+    row_x = [col for col in sub_graph.nodes if remaining.x_out(pivot_row, col) != 0]
+    sanitize_field_x(pivot_row, row_x, remaining, apply)
     # 3. Remove the interactions from the destabilizer row
     remove_interactions(
-        pivot,
+        pivot_col,
+        pivot_row,
         row_x,
         sub_graph,
         remaining,
@@ -304,14 +309,14 @@ def steiner_reduce_column(
         swappable_nodes=swappable_nodes,
         permutation=permutation,
     )
-
     # 4. Sanitize the stabilizer row
-    row_z = [row for row in sub_graph.nodes if remaining.z_out(pivot, row) != 0]
-    sanitize_z(pivot, row_z, remaining, apply)
+    row_z = [row for row in sub_graph.nodes if remaining.z_out(pivot_row, row) != 0]
+    sanitize_z(pivot_row, pivot_col, row_z, remaining, apply)
 
     # 5. Remove the interactions from the stabilizer row
     remove_interactions(
-        pivot,
+        pivot_col,
+        pivot_row,
         row_z,
         sub_graph,
         remaining,
@@ -324,8 +329,8 @@ def steiner_reduce_column(
 
     # ensure that the pivots are in ZX basis
     # (this is provided by the construction of a clifford)
-    assert remaining.x_out(pivot, pivot) == 1
-    assert remaining.z_out(pivot, pivot) == 2
+    assert remaining.x_out(pivot_row, pivot_col) == 1
+    assert remaining.z_out(pivot_row, pivot_col) == 2
 
 
 def get_non_cutting_vertex(G, pivot_col, swappable_nodes):
@@ -338,6 +343,67 @@ def get_non_cutting_vertex(G, pivot_col, swappable_nodes):
             non_cutting_vertices.append((node, shortest_path_len))
     non_cutting = min(non_cutting_vertices, key=lambda x: x[1])[0]
     return non_cutting
+
+
+def synthesize_tableau_permutation(
+        tableau: CliffordTableau,
+        topo: Topology,
+        pivot_permutation: List[Tuple[int, int]]
+) -> Optional[Circuit]:
+    qc = Circuit(tableau.n_qubits)
+
+    remaining = tableau.inverse()
+    swappable_nodes = list(range(tableau.n_qubits))
+
+    G = topo.to_nx
+    for e1, e2 in G.edges:
+        G[e1][e2]["weight"] = 0
+
+    def apply(gate_name: str, gate_data: tuple):
+        if gate_name == "CNOT":
+            remaining.append_cnot(gate_data[0], gate_data[1])
+            qc.add_gate(CX(gate_data[0], gate_data[1]))
+            if gate_data[0] in swappable_nodes:
+                swappable_nodes.remove(gate_data[0])
+            if gate_data[1] in swappable_nodes:
+                swappable_nodes.remove(gate_data[1])
+            G[gate_data[0]][gate_data[1]]["weight"] = 2
+        elif gate_name == "H":
+            remaining.append_h(gate_data[0])
+            qc.add_gate(H(gate_data[0]))
+        elif gate_name == "S":
+            remaining.append_s(gate_data[0])
+            qc.add_gate(S(gate_data[0]))
+        else:
+            raise Exception("Unknown Gate")
+
+    for pivot_col, pivot_row in pivot_permutation:
+        if is_cutting(pivot_col, G):
+            return None
+
+        steiner_reduce_column(pivot_col, pivot_row, G, remaining, apply)
+
+        if pivot_col in swappable_nodes:
+            swappable_nodes.remove(pivot_col)
+        G.remove_node(pivot_col)
+
+    final_permutation = np.argmax(remaining.x_matrix, axis=1)
+    qc.final_permutation = final_permutation
+    signs_copy_z = remaining.signs[remaining.n_qubits: 2 * remaining.n_qubits].copy()
+
+    for col in range(remaining.n_qubits):
+        if signs_copy_z[col] != 0:
+            apply("H", (final_permutation[col],))
+            apply("S", (final_permutation[col],))
+            apply("S", (final_permutation[col],))
+            apply("H", (final_permutation[col],))
+
+    for col in range(remaining.n_qubits):
+        if remaining.signs[col] != 0:
+            apply("S", (final_permutation[col],))
+            apply("S", (final_permutation[col],))
+
+    return qc
 
 
 def synthesize_tableau(tableau: CliffordTableau, topo: Topology, include_swaps=True):
@@ -400,14 +466,14 @@ def synthesize_tableau(tableau: CliffordTableau, topo: Topology, include_swaps=T
             )
 
         steiner_reduce_column(
-            pivot_col, G, remaining, apply, swappable_nodes, permutation, include_swaps
+            pivot_col, pivot_col, G, remaining, apply, swappable_nodes, permutation, include_swaps
         )
 
         if pivot_col in swappable_nodes:
             swappable_nodes.remove(pivot_col)
         G.remove_node(pivot_col)
 
-    signs_copy_z = remaining.signs[tableau.n_qubits : 2 * tableau.n_qubits].copy()
+    signs_copy_z = remaining.signs[tableau.n_qubits: 2 * tableau.n_qubits].copy()
     for col in range(tableau.n_qubits):
         if signs_copy_z[col] != 0:
             apply("H", (col,))

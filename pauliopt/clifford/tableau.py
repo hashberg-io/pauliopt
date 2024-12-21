@@ -132,8 +132,8 @@ class CliffordTableau:
         """
         n_qubits = tableau.shape[0] // 2
         if not (
-            tableau.shape == (2 * n_qubits, 2 * n_qubits)
-            and signs.shape == (2 * n_qubits,)
+                tableau.shape == (2 * n_qubits, 2 * n_qubits)
+                and signs.shape == (2 * n_qubits,)
         ):
             raise ValueError(
                 "Tableau and signs must have shape "
@@ -198,9 +198,23 @@ class CliffordTableau:
             col (int): Column index.
         """
         return (
-            self.tableau[row + self.n_qubits, col]
-            + 2 * self.tableau[row + self.n_qubits, col + self.n_qubits]
+                self.tableau[row + self.n_qubits, col]
+                + 2 * self.tableau[row + self.n_qubits, col + self.n_qubits]
         )
+
+    @property
+    def x_matrix(self):
+        """
+        Binary matrix representing the X-Basis of the clifford tableau.
+        :return:
+        """
+        x_matrx = np.zeros((self.n_qubits, self.n_qubits), dtype=int)
+        for i in range(self.n_qubits):
+            for j in range(self.n_qubits):
+                x_matrx[i, j] = (
+                        self.tableau[i, j] + 2 * self.tableau[i, j + self.n_qubits]
+                )
+        return x_matrx
 
     def _xor_row(self, i, j):
         """
@@ -363,7 +377,7 @@ class CliffordTableau:
         for k in range(2 * self.n_qubits):
             row2 = other.tableau[k]
             x2 = other.tableau[k, : self.n_qubits]
-            z2 = other.tableau[k, self.n_qubits :]
+            z2 = other.tableau[k, self.n_qubits:]
 
             # Adding a factor of i for each Y in the image of an operator under the
             # first operation, since Y=iXZ
