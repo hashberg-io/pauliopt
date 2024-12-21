@@ -353,7 +353,6 @@ def synthesize_tableau_permutation(
     qc = Circuit(tableau.n_qubits)
 
     remaining = tableau.inverse()
-    swappable_nodes = list(range(tableau.n_qubits))
 
     G = topo.to_nx
     for e1, e2 in G.edges:
@@ -363,10 +362,6 @@ def synthesize_tableau_permutation(
         if gate_name == "CNOT":
             remaining.append_cnot(gate_data[0], gate_data[1])
             qc.add_gate(CX(gate_data[0], gate_data[1]))
-            if gate_data[0] in swappable_nodes:
-                swappable_nodes.remove(gate_data[0])
-            if gate_data[1] in swappable_nodes:
-                swappable_nodes.remove(gate_data[1])
             G[gate_data[0]][gate_data[1]]["weight"] = 2
         elif gate_name == "H":
             remaining.append_h(gate_data[0])
@@ -383,8 +378,6 @@ def synthesize_tableau_permutation(
 
         steiner_reduce_column(pivot_col, pivot_row, G, remaining, apply)
 
-        if pivot_col in swappable_nodes:
-            swappable_nodes.remove(pivot_col)
         G.remove_node(pivot_col)
 
     final_permutation = np.argmax(remaining.x_matrix, axis=1)

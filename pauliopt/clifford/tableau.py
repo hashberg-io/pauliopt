@@ -211,9 +211,19 @@ class CliffordTableau:
         x_matrx = np.zeros((self.n_qubits, self.n_qubits), dtype=int)
         for i in range(self.n_qubits):
             for j in range(self.n_qubits):
-                x_matrx[i, j] = (
-                        self.tableau[i, j] + 2 * self.tableau[i, j + self.n_qubits]
-                )
+                x_matrx[i, j] = self.x_out(i, j)
+        return x_matrx
+
+    @property
+    def z_matrix(self):
+        """
+        Binary matrix representing the X-Basis of the clifford tableau.
+        :return:
+        """
+        x_matrx = np.zeros((self.n_qubits, self.n_qubits), dtype=int)
+        for i in range(self.n_qubits):
+            for j in range(self.n_qubits):
+                x_matrx[i, j] = self.z_out(i, j)
         return x_matrx
 
     def _xor_row(self, i, j):
