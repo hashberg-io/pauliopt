@@ -34,6 +34,50 @@ def heurisitc_fkt(row, G, remaining: CliffordTableau):
     return dist_x + dist_z
 
 
+def pick_row(G, remaining: "CliffordTableau", remaining_rows, choice_fn=min):
+    scores = []
+    for row in remaining_rows:
+        row_x = [1 for col in G.nodes if remaining.x_out(row, col) != 0]
+        row_z = [1 for col in G.nodes if remaining.z_out(row, col) != 0]
+        dist_x = sum(row_x)
+        dist_z = sum(row_z)
+        scores.append((row, dist_x + dist_z))
+
+    return choice_fn(scores, key=lambda x: x[1])[0]
+
+
+def pick_col(
+        G,
+        remaining: "CliffordTableau",
+        pivot_row,
+        choice_fn=min,
+):
+    scores = []
+    for col in G.nodes:
+        if not is_cutting(col, G):
+            row_x = [
+                nx.shortest_path_length(G, source=col, target=other_col)
+                for other_col in G.nodes
+                if remaining.x_out(pivot_row, other_col) != 0
+            ]
+            row_z = [
+                nx.shortest_path_length(G, source=col, target=other_col)
+                for other_col in G.nodes
+                if remaining.z_out(pivot_row, other_col) != 0
+            ]
+            dist_x = sum(row_x)
+            dist_z = sum(row_z)
+            scores.append((col, dist_x + dist_z))
+
+    return choice_fn(scores, key=lambda x: x[1])[0]
+
+
+def pick_pivot_perm_row_col(G, remaining: "CliffordTableau", remaining_rows: List[int], choice_fn=min):
+    row = pick_row(G, remaining, remaining_rows, choice_fn)
+    col = pick_col(G, remaining, row, choice_fn)
+    return col, row
+
+
 def pick_pivot(G, remaining: "CliffordTableau", possible_swaps, include_swaps):
     """
     Pick the pivot to eliminate the next column in the clifford synthesis algorithm.
@@ -399,11 +443,66 @@ def synthesize_tableau_permutation(
     return qc
 
 
+def synthesize_tableau_perm_row_col(tableau: CliffordTableau, topo: Topology, pick_pivot_callback=None):
+    if pick_pivot_callback is None:
+        pick_pivot_callback = pick_pivot_perm_row_col
+    qc = Circuit(tableau.n_qubits)
+
+    remaining = tableau.inverse()
+    permutation = {v: v for v in range(tableau.n_qubits)}
+    remaining_rows = list(range(tableau.n_qubits))
+
+    G = topo.to_nx
+    for e1, e2 in G.edges:
+        G[e1][e2]["weight"] = 0
+
+    def apply(gate_name: str, gate_data: tuple):
+        if gate_name == "CNOT":
+            remaining.append_cnot(gate_data[0], gate_data[1])
+            qc.add_gate(CX(gate_data[0], gate_data[1]))
+            G[gate_data[0]][gate_data[1]]["weight"] = 2
+        elif gate_name == "H":
+            remaining.append_h(gate_data[0])
+            qc.add_gate(H(gate_data[0]))
+        elif gate_name == "S":
+            remaining.append_s(gate_data[0])
+            qc.add_gate(S(gate_data[0]))
+        else:
+            raise Exception("Unknown Gate")
+
+    while G.nodes:
+        # 1. Pick a pivot
+        pivot_col, pivot_row = pick_pivot_callback(G, remaining, remaining_rows)
+
+        steiner_reduce_column(pivot_col, pivot_col, G, remaining, apply)
+        remaining_rows.remove(pivot_row)
+        G.remove_node(pivot_col)
+
+    final_permutation = np.argmax(remaining.x_matrix, axis=1)
+    qc.final_permutation = final_permutation
+    signs_copy_z = remaining.signs[remaining.n_qubits: 2 * remaining.n_qubits].copy()
+
+    for col in range(remaining.n_qubits):
+        if signs_copy_z[col] != 0:
+            apply("H", (final_permutation[col],))
+            apply("S", (final_permutation[col],))
+            apply("S", (final_permutation[col],))
+            apply("H", (final_permutation[col],))
+
+    for col in range(remaining.n_qubits):
+        if remaining.signs[col] != 0:
+            apply("S", (final_permutation[col],))
+            apply("S", (final_permutation[col],))
+
+    return qc, permutation
+
+
 def synthesize_tableau(tableau: CliffordTableau, topo: Topology, include_swaps=True, pick_pivot_callback=None):
     """
     Architecture aware synthesis of a Clifford tableau.
     This is the implementation of the algorithm described in Winderl et. al. [1]
 
+    :param pick_pivot_callback:
     :param tableau: The Clifford tableau
     :param topo: The topology
     :param include_swaps: Whether to allow initial and final measurement permutations
