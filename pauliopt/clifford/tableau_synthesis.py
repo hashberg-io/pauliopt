@@ -399,7 +399,7 @@ def synthesize_tableau_permutation(
     return qc
 
 
-def synthesize_tableau(tableau: CliffordTableau, topo: Topology, include_swaps=True):
+def synthesize_tableau(tableau: CliffordTableau, topo: Topology, include_swaps=True, pick_pivot_callback=None):
     """
     Architecture aware synthesis of a Clifford tableau.
     This is the implementation of the algorithm described in Winderl et. al. [1]
@@ -417,6 +417,8 @@ def synthesize_tableau(tableau: CliffordTableau, topo: Topology, include_swaps=T
 
     """
 
+    if pick_pivot_callback is None:
+        pick_pivot_callback = pick_pivot
     qc = Circuit(tableau.n_qubits)
 
     remaining = tableau.inverse()
@@ -447,7 +449,7 @@ def synthesize_tableau(tableau: CliffordTableau, topo: Topology, include_swaps=T
 
     while G.nodes:
         # 1. Pick a pivot
-        pivot_col, pivot_row = pick_pivot(G, remaining, swappable_nodes, include_swaps)
+        pivot_col, pivot_row = pick_pivot_callback(G, remaining, swappable_nodes, include_swaps)
 
         if is_cutting(pivot_col, G) and include_swaps:
             non_cutting = get_non_cutting_vertex(G, pivot_col, swappable_nodes)
