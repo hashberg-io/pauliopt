@@ -173,13 +173,13 @@ class CliffordTableau:
         out = ""
         for i in range(self.n_qubits):
             for j in range(self.n_qubits):
-                x_str = ["I", "X", "Z", "Y"][int(self.x_out(i, j))]
-                z_str = ["I", "X", "Z", "Y"][int(self.z_out(i, j))]
+                x_str = ["I", "X", "Z", "Y"][int(self._x_out(i, j))]
+                z_str = ["I", "X", "Z", "Y"][int(self._z_out(i, j))]
                 out += f"{x_str}/{z_str}" + sep
             out += sign_sep + f"{'+' if self.signs[i] == 0 else '-'} \n"
         return out
 
-    def x_out(self, row, col):
+    def _x_out(self, row, col):
         """
         Get the X operator in row `row` and column `col`.
 
@@ -189,7 +189,7 @@ class CliffordTableau:
         """
         return self.tableau[row, col] + 2 * self.tableau[row, col + self.n_qubits]
 
-    def z_out(self, row, col):
+    def _z_out(self, row, col):
         """
         Get the Z operator in row `row` and column `col`.
 
@@ -211,20 +211,20 @@ class CliffordTableau:
         x_matrx = np.zeros((self.n_qubits, self.n_qubits), dtype=int)
         for i in range(self.n_qubits):
             for j in range(self.n_qubits):
-                x_matrx[i, j] = self.x_out(i, j)
+                x_matrx[i, j] = self._x_out(i, j)
         return x_matrx
 
     @property
     def z_matrix(self):
         """
-        Binary matrix representing the X-Basis of the clifford tableau.
+        Binary matrix representing the Z-Basis of the clifford tableau.
         :return:
         """
-        x_matrx = np.zeros((self.n_qubits, self.n_qubits), dtype=int)
+        z_matrx = np.zeros((self.n_qubits, self.n_qubits), dtype=int)
         for i in range(self.n_qubits):
             for j in range(self.n_qubits):
-                x_matrx[i, j] = self.z_out(i, j)
-        return x_matrx
+                z_matrx[i, j] = self._z_out(i, j)
+        return z_matrx
 
     def _xor_row(self, i, j):
         """

@@ -22,12 +22,12 @@ def heurisitc_fkt(row, G, remaining: CliffordTableau):
     row_x = [
         nx.shortest_path_length(G, source=row, target=col)
         for col in G.nodes
-        if remaining.x_out(row, col) != 0
+        if remaining._x_out(row, col) != 0
     ]
     row_z = [
         nx.shortest_path_length(G, source=row, target=col)
         for col in G.nodes
-        if remaining.z_out(row, col) != 0
+        if remaining._z_out(row, col) != 0
     ]
     dist_x = sum(row_x)
     dist_z = sum(row_z)
@@ -37,8 +37,8 @@ def heurisitc_fkt(row, G, remaining: CliffordTableau):
 def pick_row(G, remaining: "CliffordTableau", remaining_rows, choice_fn=min):
     scores = []
     for row in remaining_rows:
-        row_x = [1 for col in G.nodes if remaining.x_out(row, col) != 0]
-        row_z = [1 for col in G.nodes if remaining.z_out(row, col) != 0]
+        row_x = [1 for col in G.nodes if remaining._x_out(row, col) != 0]
+        row_z = [1 for col in G.nodes if remaining._z_out(row, col) != 0]
         dist_x = sum(row_x)
         dist_z = sum(row_z)
         scores.append((row, dist_x + dist_z))
@@ -58,12 +58,12 @@ def pick_col(
             row_x = [
                 nx.shortest_path_length(G, source=col, target=other_col)
                 for other_col in G.nodes
-                if remaining.x_out(pivot_row, other_col) != 0
+                if remaining._x_out(pivot_row, other_col) != 0
             ]
             row_z = [
                 nx.shortest_path_length(G, source=col, target=other_col)
                 for other_col in G.nodes
-                if remaining.z_out(pivot_row, other_col) != 0
+                if remaining._z_out(pivot_row, other_col) != 0
             ]
             dist_x = sum(row_x)
             dist_z = sum(row_z)
@@ -227,14 +227,14 @@ def sanitize_z(pivot_row, pivot_column, row_z, remaining, apply):
     :param apply: The function to apply a gate
     """
     for column in row_z:
-        if remaining.z_out(pivot_row, column) == 3:
+        if remaining._z_out(pivot_row, column) == 3:
             apply("S", (column,))
 
-        if remaining.z_out(pivot_row, column) == 1:
+        if remaining._z_out(pivot_row, column) == 1:
             apply("H", (column,))
 
     # caveat for the pivot
-    if remaining.x_out(pivot_row, pivot_column) == 3:
+    if remaining._x_out(pivot_row, pivot_column) == 3:
         apply("S", (pivot_column,))
 
 
@@ -252,10 +252,10 @@ def sanitize_field_x(row, row_x, remaining, apply):
     :param apply: The function to apply a gate
     """
     for column in row_x:
-        if remaining.x_out(row, column) == 3:
+        if remaining._x_out(row, column) == 3:
             apply("S", (column,))
 
-        if remaining.x_out(row, column) == 2:
+        if remaining._x_out(row, column) == 2:
             apply("H", (column,))
 
 
@@ -289,7 +289,7 @@ def remove_interactions(
 
     """
     row = list(set([pivot_col] + row))
-    lookup = {node: int(remaining.x_out(pivot_row, node) != 0) for node in sub_graph.nodes}
+    lookup = {node: int(remaining._x_out(pivot_row, node) != 0) for node in sub_graph.nodes}
     traversal = compute_steiner_tree(
         pivot_col,
         row,
@@ -302,14 +302,14 @@ def remove_interactions(
     )
     if basis == "x":
         for parent, child in traversal:
-            if remaining.x_out(pivot_row, parent) == 0:
+            if remaining._x_out(pivot_row, parent) == 0:
                 apply("CNOT", (child, parent))
 
         for parent, child in traversal:
             apply("CNOT", (parent, child))
     elif basis == "z":
         for parent, child in traversal:
-            if remaining.z_out(pivot_row, parent) == 0:
+            if remaining._z_out(pivot_row, parent) == 0:
                 apply("CNOT", (parent, child))
 
         for parent, child in traversal:
@@ -338,7 +338,7 @@ def steiner_reduce_column(
     :param include_swaps: Whether to include swaps in the steiner tree
     """
     # 2. Sanitize the destabilizer row
-    row_x = [col for col in sub_graph.nodes if remaining.x_out(pivot_row, col) != 0]
+    row_x = [col for col in sub_graph.nodes if remaining._x_out(pivot_row, col) != 0]
     sanitize_field_x(pivot_row, row_x, remaining, apply)
     # 3. Remove the interactions from the destabilizer row
     remove_interactions(
@@ -354,7 +354,7 @@ def steiner_reduce_column(
         permutation=permutation,
     )
     # 4. Sanitize the stabilizer row
-    row_z = [row for row in sub_graph.nodes if remaining.z_out(pivot_row, row) != 0]
+    row_z = [row for row in sub_graph.nodes if remaining._z_out(pivot_row, row) != 0]
     sanitize_z(pivot_row, pivot_col, row_z, remaining, apply)
 
     # 5. Remove the interactions from the stabilizer row
@@ -373,8 +373,8 @@ def steiner_reduce_column(
 
     # ensure that the pivots are in ZX basis
     # (this is provided by the construction of a clifford)
-    assert remaining.x_out(pivot_row, pivot_col) == 1
-    assert remaining.z_out(pivot_row, pivot_col) == 2
+    assert remaining._x_out(pivot_row, pivot_col) == 1
+    assert remaining._z_out(pivot_row, pivot_col) == 2
 
 
 def get_non_cutting_vertex(G, pivot_col, swappable_nodes):
@@ -471,11 +471,12 @@ def synthesize_tableau_perm_row_col(tableau: CliffordTableau, topo: Topology, pi
             raise Exception("Unknown Gate")
 
     while G.nodes:
-        # 1. Pick a pivot
         pivot_col, pivot_row = pick_pivot_callback(G, remaining, remaining_rows)
 
-        steiner_reduce_column(pivot_col, pivot_col, G, remaining, apply)
+        steiner_reduce_column(pivot_col, pivot_row, G, remaining, apply)
         remaining_rows.remove(pivot_row)
+        if not pivot_col in G.nodes:
+            raise Exception("Picked pivot column is not present in Graph. Please recheck your heuristic.")
         G.remove_node(pivot_col)
 
     final_permutation = np.argmax(remaining.x_matrix, axis=1)
