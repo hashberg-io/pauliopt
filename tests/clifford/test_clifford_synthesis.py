@@ -5,8 +5,11 @@ from parameterized import parameterized
 from qiskit.circuit.library import Permutation
 
 from pauliopt.clifford.tableau import CliffordTableau
-from pauliopt.clifford.tableau_synthesis import synthesize_tableau, synthesize_tableau_permutation, \
-    synthesize_tableau_perm_row_col
+from pauliopt.clifford.tableau_synthesis import (
+    synthesize_tableau,
+    synthesize_tableau_permutation,
+    synthesize_tableau_perm_row_col,
+)
 from pauliopt.topologies import Topology
 from tests.clifford.utils import tableau_from_circuit
 from tests.utils import verify_equality, random_hscx_circuit
@@ -83,7 +86,9 @@ class TestTableauSynthesis(unittest.TestCase):
             ct = CliffordTableau(n_qubits)
             ct = tableau_from_circuit(ct, circuit.copy())
             qc = synthesize_tableau_permutation(ct, topo, permutation)
-            qc.final_permutation = [source for source, target in sorted(permutation, key=lambda x: x[1])]
+            qc.final_permutation = [
+                source for source, target in sorted(permutation, key=lambda x: x[1])
+            ]
             qc = qc.to_qiskit()
 
             self.assertTrue(
