@@ -1,4 +1,4 @@
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Callable
 
 import networkx as nx
 import numpy as np
@@ -9,6 +9,11 @@ from pauliopt.clifford.tableau import CliffordTableau
 from pauliopt.gates import CX, H, S
 from pauliopt.utils import is_cutting
 from pauliopt.topologies import Topology
+
+
+class CliffordTableauSynthesisException(Exception):
+
+    pass
 
 
 def heurisitc_fkt(row, G, remaining: CliffordTableau):
@@ -173,13 +178,21 @@ def compute_steiner_tree(
         return []
     if include_swaps:
         if lookup is None:
-            raise Exception("Lookup table is required to include swaps")
+            raise CliffordTableauSynthesisException(
+                "Lookup table is required to include swaps"
+            )
         if swappable_nodes is None:
-            raise Exception("Swappable nodes are required to include swaps")
+            raise CliffordTableauSynthesisException(
+                "Swappable nodes are required to include swaps"
+            )
         if permutation is None:
-            raise Exception("Permutation is required to include swaps")
+            raise CliffordTableauSynthesisException(
+                "Permutation is required to include swaps"
+            )
         if n_qubits is None:
-            raise Exception("Number of qubits is required to include swaps")
+            raise CliffordTableauSynthesisException(
+                "Number of qubits is required to include swaps"
+            )
 
         for _ in range(n_qubits):
             dfs = list(reversed(list(nx.dfs_edges(steiner_stree, source=root))))
@@ -279,7 +292,8 @@ def remove_interactions(
 
     Include swaps requires swappable_nodes, permutation and include_swaps to be set.
 
-    :param pivot_row: The pivot of the clifford
+    :param pivot_col: The pivot column of the clifford tableau
+    :param pivot_row: The pivot row of the clifford tableau
     :param row: The specific row of the clifford
     :param sub_graph: The graph of the topology
     :param remaining: The remaining clifford
@@ -333,7 +347,8 @@ def steiner_reduce_column(
     """
     Steiner reduce a column of the clifford.
 
-    :param pivot_row: The pivot of the clifford
+    :param pivot_col: The pivot column of the clifford tableau
+    :param pivot_row: The pivot row of the clifford tableau
     :param sub_graph: The graph of the topology
     :param remaining: The remaining clifford
     :param apply: The function to apply a gate
@@ -393,67 +408,35 @@ def get_non_cutting_vertex(G, pivot_col, swappable_nodes):
     return non_cutting
 
 
-def synthesize_tableau_permutation(
-    tableau: CliffordTableau, topo: Topology, pivot_permutation: List[Tuple[int, int]]
-) -> Optional[Circuit]:
-    qc = Circuit(tableau.n_qubits)
-
-    remaining = tableau.inverse()
-
-    G = topo.to_nx
-    for e1, e2 in G.edges:
-        G[e1][e2]["weight"] = 0
-
-    def apply(gate_name: str, gate_data: tuple):
-        if gate_name == "CNOT":
-            remaining.append_cnot(gate_data[0], gate_data[1])
-            qc.add_gate(CX(gate_data[0], gate_data[1]))
-            G[gate_data[0]][gate_data[1]]["weight"] = 2
-        elif gate_name == "H":
-            remaining.append_h(gate_data[0])
-            qc.add_gate(H(gate_data[0]))
-        elif gate_name == "S":
-            remaining.append_s(gate_data[0])
-            qc.add_gate(S(gate_data[0]))
-        else:
-            raise Exception("Unknown Gate")
-
-    for pivot_col, pivot_row in pivot_permutation:
-        if is_cutting(pivot_col, G):
-            return None
-
-        steiner_reduce_column(pivot_col, pivot_row, G, remaining, apply)
-
-        G.remove_node(pivot_col)
-
-    final_permutation = np.argmax(remaining.x_matrix, axis=1)
-    qc.final_permutation = final_permutation
-    signs_copy_z = remaining.signs[remaining.n_qubits : 2 * remaining.n_qubits].copy()
-
-    for col in range(remaining.n_qubits):
-        if signs_copy_z[col] != 0:
-            apply("H", (final_permutation[col],))
-            apply("S", (final_permutation[col],))
-            apply("S", (final_permutation[col],))
-            apply("H", (final_permutation[col],))
-
-    for col in range(remaining.n_qubits):
-        if remaining.signs[col] != 0:
-            apply("S", (final_permutation[col],))
-            apply("S", (final_permutation[col],))
-
-    return qc
-
-
 def synthesize_tableau_perm_row_col(
-    tableau: CliffordTableau, topo: Topology, pick_pivot_callback=None
-):
+    tableau: CliffordTableau, topo: Topology, pick_pivot_callback: Callable = None
+) -> Circuit:
+    """
+    Architecture-aware synthesis of a clifford tableau using the perm-row-col method.
+
+    The perm-row-col method itself is described in Meijer-van de Griend and Li [1]. The tableau reduction is adapted as in [2].
+
+    We have further provided the option to pick a pivot by overwriting the `pick_pivot_callback`
+
+    *Note*: The permutation itself is stored as a final permutation object on the circuit and can be retrieved using
+    the `final_permutation` property.
+
+    :param tableau: The clifford tableau to reduce
+    :param topo: The topology constraint
+    :param pick_pivot_callback: Heuristic way to choose the new row and column to reduce
+    :return:
+
+    References
+
+    [1] Meijer-van de Griend and Li "Dynamic Qubit Routing with CNOT Circuit Synthesis for Quantum Compilation," Electronic Proceedings in Theoretical Computer Science.
+
+    [2] Winderl, Huang, et al. "Architecture-Aware Synthesis of Stabilizer Circuits from Clifford Tableaus." arXiv preprint arXiv:2309.08972 (2023).
+    """
     if pick_pivot_callback is None:
         pick_pivot_callback = pick_pivot_perm_row_col
     qc = Circuit(tableau.n_qubits)
 
     remaining = tableau.inverse()
-    permutation = {v: v for v in range(tableau.n_qubits)}
     remaining_rows = list(range(tableau.n_qubits))
 
     G = topo.to_nx
@@ -472,7 +455,7 @@ def synthesize_tableau_perm_row_col(
             remaining.append_s(gate_data[0])
             qc.add_gate(S(gate_data[0]))
         else:
-            raise Exception("Unknown Gate")
+            raise CliffordTableauSynthesisException("Unknown Gate")
 
     while G.nodes:
         pivot_col, pivot_row = pick_pivot_callback(G, remaining, remaining_rows)
@@ -480,7 +463,7 @@ def synthesize_tableau_perm_row_col(
         steiner_reduce_column(pivot_col, pivot_row, G, remaining, apply)
         remaining_rows.remove(pivot_row)
         if not pivot_col in G.nodes:
-            raise Exception(
+            raise CliffordTableauSynthesisException(
                 "Picked pivot column is not present in Graph. Please recheck your heuristic."
             )
         G.remove_node(pivot_col)
@@ -501,7 +484,7 @@ def synthesize_tableau_perm_row_col(
             apply("S", (final_permutation[col],))
             apply("S", (final_permutation[col],))
 
-    return qc, permutation
+    return qc
 
 
 def synthesize_tableau(
@@ -556,7 +539,7 @@ def synthesize_tableau(
             remaining.append_s(gate_data[0])
             qc.add_gate(S(gate_data[0]))
         else:
-            raise Exception("Unknown Gate")
+            raise CliffordTableauSynthesisException("Unknown Gate")
 
     while G.nodes:
         # 1. Pick a pivot
